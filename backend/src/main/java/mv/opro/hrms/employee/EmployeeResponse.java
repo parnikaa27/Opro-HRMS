@@ -20,6 +20,7 @@ public record EmployeeResponse(
         List<Role> roles,
         EmergencyContact emergencyContact,
         VisaResponse visa,
+        String photoUrl,
         LocalDate lastDay,
         String leavingReason) {
 
@@ -37,10 +38,10 @@ public record EmployeeResponse(
         }
     }
 
-    public static EmployeeResponse of(Employee employee, List<Role> roles, Visa visa) {
+    public static EmployeeResponse of(Employee employee, List<Role> roles, Visa visa, String photoUrl) {
         return new EmployeeResponse(employee.getId(), employee.getFullName(), employee.getDesignation(), employee.getDepartment(),
                 employee.getEmail(), employee.getPhone(), employee.getJoinedOn(), employee.getBloodGroup(), employee.getNationality(),
                 employee.getWorkLocation(), employee.getEmploymentType(), employee.getManagerId(), roles, employee.getEmergencyContact(),
-                visa == null ? null : VisaResponse.of(visa), employee.getLastDay(), employee.getLeavingReason());
+                visa == null ? null : VisaResponse.of(visa), photoUrl, employee.getLastDay(), employee.getLeavingReason());
     }
 }

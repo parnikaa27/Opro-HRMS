@@ -21,6 +21,7 @@ import mv.opro.hrms.common.ApiException;
 import mv.opro.hrms.employee.Employee;
 import mv.opro.hrms.employee.EmployeeResponse;
 import mv.opro.hrms.employee.People;
+import mv.opro.hrms.employee.Photos;
 import mv.opro.hrms.employee.VisaRepository;
 import mv.opro.hrms.leave.LeaveRequest;
 import mv.opro.hrms.leave.LeaveRequestResponse;
@@ -53,9 +54,10 @@ class TeamController {
     private final AttendanceService attendance;
     private final LeaveService leave;
     private final Corrections corrections;
+    private final Photos photos;
 
     TeamController(TeamAccess access, CurrentUser currentUser, People people, VisaRepository visas, AttendanceService attendance, LeaveService leave,
-            Corrections corrections) {
+            Corrections corrections, Photos photos) {
         this.access = access;
         this.currentUser = currentUser;
         this.people = people;
@@ -63,6 +65,7 @@ class TeamController {
         this.attendance = attendance;
         this.leave = leave;
         this.corrections = corrections;
+        this.photos = photos;
     }
 
     @GetMapping("/api/team")
@@ -117,7 +120,7 @@ class TeamController {
     }
 
     private EmployeeResponse profile(Employee employee) {
-        return EmployeeResponse.of(employee, people.rolesOf(employee), visas.findById(employee.getId()).orElse(null));
+        return EmployeeResponse.of(employee, people.rolesOf(employee), visas.findById(employee.getId()).orElse(null), photos.urlOf(employee.getId()).orElse(null));
     }
 
     private static Map<String, String> namesOf(List<Employee> employees) {

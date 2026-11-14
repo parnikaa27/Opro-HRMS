@@ -31,6 +31,20 @@ public final class ApiClient {
         return send(path, json, false);
     }
 
+    public HttpResponse<byte[]> getBytes(String path) throws IOException, InterruptedException {
+        return http.send(HttpRequest.newBuilder(URI.create(base + path)).GET().build(), HttpResponse.BodyHandlers.ofByteArray());
+    }
+
+    // A raw file upload, the way the frontend sends photos and certificates.
+    public HttpResponse<String> put(String path, byte[] body, String contentType) throws IOException, InterruptedException {
+        return http.send(withXsrf(HttpRequest.newBuilder(URI.create(base + path)).header("Content-Type", contentType)
+                .PUT(HttpRequest.BodyPublishers.ofByteArray(body))).build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    public HttpResponse<String> delete(String path) throws IOException, InterruptedException {
+        return http.send(withXsrf(HttpRequest.newBuilder(URI.create(base + path)).DELETE()).build(), HttpResponse.BodyHandlers.ofString());
+    }
+
     public HttpResponse<String> signIn(String employeeId) throws IOException, InterruptedException {
         get("/api/session/users");
         return post("/api/session/login", "{\"employeeId\":\"" + employeeId + "\"}");
@@ -40,13 +54,15 @@ public final class ApiClient {
         HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(base + path))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(json));
-        if (withXsrf) {
-            cookies.getCookieStore().getCookies().stream()
-                    .filter(cookie -> cookie.getName().equals("XSRF-TOKEN"))
-                    .map(HttpCookie::getValue)
-                    .findFirst()
-                    .ifPresent(token -> request.header("X-XSRF-TOKEN", token));
-        }
-        return http.send(request.build(), HttpResponse.BodyHandlers.ofString());
+        return http.send((withXsrf ? withXsrf(request) : request).build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpRequest.Builder withXsrf(HttpRequest.Builder request) {
+        cookies.getCookieStore().getCookies().stream()
+                .filter(cookie -> cookie.getName().equals("XSRF-TOKEN"))
+                .map(HttpCookie::getValue)
+                .findFirst()
+                .ifPresent(token -> request.header("X-XSRF-TOKEN", token));
+        return request;
     }
 }

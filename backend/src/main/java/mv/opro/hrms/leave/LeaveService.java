@@ -5,6 +5,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -13,6 +14,8 @@ import mv.opro.hrms.common.Ids;
 import mv.opro.hrms.common.Wording;
 import mv.opro.hrms.employee.Employee;
 import mv.opro.hrms.employee.EmployeeRepository;
+import mv.opro.hrms.files.Files;
+import mv.opro.hrms.files.Upload;
 import mv.opro.hrms.holiday.Holidays;
 import mv.opro.hrms.notification.Notification;
 import mv.opro.hrms.notification.Notifications;
@@ -37,16 +40,18 @@ public class LeaveService {
     private final EmployeeRepository employees;
     private final Holidays holidays;
     private final Notifications notifications;
+    private final Files files;
     private final Clock clock;
 
     LeaveService(LeaveTypeRepository types, LeaveEntitlementRepository entitlements, LeaveRequestRepository requests, EmployeeRepository employees,
-            Holidays holidays, Notifications notifications, Clock clock) {
+            Holidays holidays, Notifications notifications, Files files, Clock clock) {
         this.types = types;
         this.entitlements = entitlements;
         this.requests = requests;
         this.employees = employees;
         this.holidays = holidays;
         this.notifications = notifications;
+        this.files = files;
         this.clock = clock;
     }
 
@@ -140,11 +145,37 @@ public class LeaveService {
         return requests.save(request);
     }
 
+    // A medical certificate on one's own sick leave. A new one replaces the old.
     @Transactional
-    public LeaveRequest cancel(Employee employee, String id) {
-        LeaveRequest request = requests.findById(id)
+    public LeaveRequest attachCertificate(Employee employee, String id, Upload upload) {
+        LeaveRequest request = ownRequest(employee, id);
+        if (!request.acceptsCertificate()) {
+            throw refused(HttpStatus.CONFLICT, "Certificates go on sick leave that's waiting or approved.");
+        }
+        UUID previous = request.attachCertificate(files.store(upload, employee.getId()));
+        if (previous != null) {
+            files.delete(previous);
+        }
+        return request;
+    }
+
+    public UUID certificateOf(Employee employee, String id) {
+        UUID fileId = ownRequest(employee, id).getCertificateFileId();
+        if (fileId == null) {
+            throw refused(HttpStatus.NOT_FOUND, "No certificate on this request.");
+        }
+        return fileId;
+    }
+
+    private LeaveRequest ownRequest(Employee employee, String id) {
+        return requests.findById(id)
                 .filter(found -> found.getEmployeeId().equals(employee.getId()))
                 .orElseThrow(() -> refused(HttpStatus.NOT_FOUND, "Request not found"));
+    }
+
+    @Transactional
+    public LeaveRequest cancel(Employee employee, String id) {
+        LeaveRequest request = ownRequest(employee, id);
         if (!request.canBeCancelledOn(today())) {
             throw refused(HttpStatus.CONFLICT, "This leave has started or been decided, so it can't be cancelled any more.");
         }

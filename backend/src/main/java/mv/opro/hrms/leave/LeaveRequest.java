@@ -4,6 +4,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Entity
 public class LeaveRequest {
@@ -31,6 +32,7 @@ public class LeaveRequest {
     private String decisionNote;
     private boolean recordedByHr;
     private boolean hasCertificate;
+    private UUID certificateFileId;
 
     protected LeaveRequest() {}
 
@@ -64,6 +66,22 @@ public class LeaveRequest {
         decidedBy = by;
         decidedOn = on;
         decisionNote = note;
+    }
+
+    // Health data on a sick leave request. Returns the file it replaces, if any.
+    UUID attachCertificate(UUID fileId) {
+        UUID previous = certificateFileId;
+        certificateFileId = fileId;
+        hasCertificate = true;
+        return previous;
+    }
+
+    boolean acceptsCertificate() {
+        return "sick".equals(type) && (PENDING.equals(status) || APPROVED.equals(status));
+    }
+
+    public UUID getCertificateFileId() {
+        return certificateFileId;
     }
 
     boolean isPending() {

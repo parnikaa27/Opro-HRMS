@@ -66,6 +66,11 @@ HRMS/
       leave/               Leave types, balances, applying, cancelling and deciding, the working day count
       notification/        The notifications panel, and the service every feature uses to tell people things
       team/                The manager's view: TeamAccess limits everything to their own active direct reports
+      files/               Stored files (in PostgreSQL for now), upload checks, and serving them safely
+      document/            Someone's own employment documents and their downloads
+      announcement/        Notes from HR on everyone's overview
+      profile/             Change requests people send to HR from their profile
+      hr/                  HR only endpoints, behind HrAccess. So far: ID card photo upload
       session/             Who is signed in, /api/me, and the dev only pick a user sign in
       security/            Session cookie, XSRF check, JSON errors instead of redirects
       common/              Error shape ({"message": ...}) shared by every endpoint
@@ -121,7 +126,7 @@ Then the frontend, from `frontend/`:
 USE_MOCK_BACKEND=false npm start
 ```
 
-That sends `/api` to Spring on `http://localhost:8080` instead. Nothing else changes. So far Spring has sign in, sign out, `/api/me`, holidays and events, attendance, leave, notifications and the manager's team view, so the employee and manager pages work end to end. HR, documents, announcements and profile change requests still only work against the mock.
+That sends `/api` to Spring on `http://localhost:8080` instead. Nothing else changes. Every employee and manager page works end to end on Spring. The HR view still needs the mock, apart from uploading ID card photos.
 
 Unlike the mock, Spring keeps what you do in the database. To start again from the seed data, run this inside `backend/` (it removes only the `opro-hrms` project's volume):
 

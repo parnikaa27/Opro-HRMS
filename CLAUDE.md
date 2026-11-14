@@ -10,7 +10,7 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 | `frontend/` | Angular 22, Tailwind CSS v4, Vitest, Playwright | Employee, manager and HR views built. Employee and manager pages match the Figma design; HR pages reuse its classes |
 | `design/figma-make/` | `App.tsx` and `index.css` copied from the Figma Make file "Opro HRMS Portal" | The visual source of truth |
 | `frontend/dev-server/` | Plain Node mock API serving JSON fixtures | In progress |
-| `backend/` | Java 25, Spring Boot 4.1, PostgreSQL 18, Flyway, Maven | Session, `/api/me`, holidays and events, attendance, leave, notifications and the manager's team view (reports, team attendance, leave and punch fix decisions) are live. HR, documents, announcements and profile change requests still run on the mock only |
+| `backend/` | Java 25, Spring Boot 4.1, PostgreSQL 18, Flyway, Maven | Every employee and manager endpoint is live: session, profile with photo, holidays and events, attendance, leave with medical certificates, documents, announcements, change requests, notifications and the team view. Only HR still runs on the mock, apart from photo upload |
 
 ---
 
@@ -351,6 +351,11 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 | GET / POST | `/api/hr/punch-edits?employeeId=&month=` | The punch fix log / add or void one punch (`action`, `time`, `reason`) |
 | PUT | `/api/leave/requests/:id/certificate` | Attach a medical certificate to own sick leave (raw body, 5 MB max) |
 | GET | `/api/leave/requests/:id/certificate`, `/api/hr/leave-requests/:id/certificate` | Open a certificate: own, or any for HR. Never for managers |
+
+### Files
+- Photos, medical certificates and documents are stored in PostgreSQL (`stored_file`) for now, so they share transactions and backups with the rest. Moving to object storage later only touches the `files` package.
+- Every upload is the raw request body, read through `Upload.read`: allowed type, size limit (photos 1 MB JPEG, certificates 5 MB PDF, JPG or PNG), and the first bytes must match the type. Anything else is refused before it is stored.
+- Every file is served by `Files.serve` with `nosniff` and `Content-Security-Policy: sandbox`. Photo URLs carry a version and cache for good; certificates and documents are never cached.
 
 ### Backend conventions
 - Java 25 LTS, Spring Boot 4.1, PostgreSQL 18, Maven with its wrapper. Spring Boot's parent POM pins library versions; don't override one without a reason written beside it.
