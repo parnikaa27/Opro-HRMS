@@ -80,6 +80,10 @@ body {
 }
 
 @layer components {
+  .id-side {
+    @apply @container flex aspect-[85.6/54] w-full max-w-[26rem] break-inside-avoid flex-col overflow-hidden rounded-2xl border border-line bg-card text-ink shadow-lift [print-color-adjust:exact] print:w-[85.6mm] print:rounded-[3mm] print:shadow-none;
+  }
+
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-full bg-sea px-5 py-2.5 text-sm font-medium text-on-sea transition-[filter,scale] duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-60;
   }

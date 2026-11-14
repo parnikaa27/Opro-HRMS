@@ -7,7 +7,7 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 
 | Part | Stack | Status |
 |---|---|---|
-| `frontend/` | Angular 22, Tailwind CSS v4, Vitest, Playwright | Shell, login, dashboard, leave and attendance built |
+| `frontend/` | Angular 22, Tailwind CSS v4, Vitest, Playwright | Every employee page built. Team view next |
 | `frontend/dev-server/` | Plain Node mock API serving JSON fixtures | In progress |
 | `backend/` | Java Spring Boot | Not started |
 
@@ -63,7 +63,7 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 | `/` Dashboard | Today's punch status and hours so far, leave balance summary, next holidays, visa alert if expiring/expired, pending requests, latest announcements |
 | `/attendance` | Month view of daily records: first in, last out, all punches, time worked, status. Month summary (present, late, absent, leave, hours). Raise a correction request for a missed or wrong punch, and see their status |
 | `/leave` | Balances per leave type, apply for leave (full or half day), list of own requests with status, cancel a pending request or an approved one that has not started |
-| `/holidays` | Year list of public holidays. Islamic holidays are marked **tentative** until confirmed after moon sighting |
+| `/holidays` | Year list of public holidays grouped by month, next one highlighted, one year either side. Islamic holidays are marked **tentative** until confirmed after moon sighting (the label drops once the date has passed) |
 | `/profile` | Virtual ID card (printable), personal and job details, emergency contact, visa and work permit details, request a change to personal details |
 | Notifications | Header panel, not a page: leave decisions, correction decisions, visa reminders, announcements |
 
@@ -121,8 +121,9 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 
 ### Virtual ID card
 
-- Photo (initials fallback), full name, employee ID, designation, department, email, phone, joining date, blood group, emergency contact.
-- Printable with a print stylesheet (`window.print()`). No PDF library, no QR code in v1.
+- Front: initials (photos come later), full name, designation, department, employee ID, blood group. Back: email, phone, work location, joining date, emergency contact, a return address.
+- Both sides are sized in container units, so the same markup prints at real ID card size (85.6 × 54 mm). Printing uses `window.print()` and a print stylesheet that hides everything else. No PDF library, no QR code in v1.
+- The card is the profile's only view of personal details. Changes go to HR through a request (`POST /api/profile/change-requests` with `field` and `details`).
 
 ### Footer
 

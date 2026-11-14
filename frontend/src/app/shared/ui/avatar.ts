@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-
-const INITIALS = 2;
+import { initialsOf } from '../utils/initials';
 
 @Component({
   selector: 'app-avatar',
@@ -13,11 +12,5 @@ const INITIALS = 2;
 })
 export class Avatar {
   readonly name = input.required<string>();
-  protected readonly initials = computed(() =>
-    this.name()
-      .split(/\s+/)
-      .slice(0, INITIALS)
-      .map((part) => part.charAt(0).toUpperCase())
-      .join(''),
-  );
+  protected readonly initials = computed(() => initialsOf(this.name()));
 }

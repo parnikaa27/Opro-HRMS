@@ -17,7 +17,7 @@ import { TopBar } from './top-bar';
     </button>
     <app-top-bar [view]="view()" />
     <div class="mx-auto flex w-full max-w-7xl flex-1 gap-10 px-4 sm:px-6 lg:px-8">
-      <app-portal-nav layout="rail" [items]="navItems()" class="hidden w-48 shrink-0 py-10 lg:block" />
+      <app-portal-nav layout="rail" [items]="navItems()" class="hidden w-48 shrink-0 py-10 lg:block print:hidden" />
       <main #main id="main" tabindex="-1" class="min-w-0 flex-1 py-6 outline-none lg:py-10">
         <router-outlet />
       </main>

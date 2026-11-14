@@ -25,15 +25,17 @@ HRMS/
         core/              Session, guards, theme, config (footer details, expiry warning days), company API
           layout/          Shell, top bar with view switch, notifications and account menus, side rail and tab bar, footer
         shared/ui/         Card, status pill, avatar, icon, dialog, field error
-        shared/utils/      Date and time in Maldives time, expiry status, preferences, safe resource reads
+        shared/utils/      Date and time in Maldives time, expiry status, initials, preferences, safe resource reads
         models/            Types that mirror the API responses
         features/
           login/           Test sign in (pick any employee)
           dashboard/       Home: today, leave left, needs your attention, coming up, from HR
           leave/           Balances, apply form with day count preview, requests with cancel
           attendance/      Month view of punches, summary, punch fix form and list
-          holidays/ team/  API services so far, pages come next
-          not-built/       Temporary page for routes not built yet
+          holidays/        Year view grouped by month, next holiday highlighted, tentative dates marked
+          profile/         Two sided printable ID card, visa and work permit status, change request to HR
+          team/            API service so far, pages come next
+          not-built/       Temporary page for the team routes not built yet
       testing/             Test helpers, fixtures and setup.ts (a dialog shim, since jsdom has none). Never shipped
     public/                Static files served as is (favicon, robots.txt)
     e2e/                   Playwright tests

@@ -18,8 +18,8 @@ export const routes: Routes = [
       { path: '', title: 'Home · Opro HRMS', loadComponent: () => import('./features/dashboard/dashboard-page').then((page) => page.DashboardPage) },
       { path: 'attendance', title: 'Attendance · Opro HRMS', loadComponent: () => import('./features/attendance/attendance-page').then((page) => page.AttendancePage) },
       { path: 'leave', title: 'Leave · Opro HRMS', loadComponent: () => import('./features/leave/leave-page').then((page) => page.LeavePage) },
-      { path: 'holidays', title: 'Holidays · Opro HRMS', loadComponent: notBuilt },
-      { path: 'profile', title: 'Profile · Opro HRMS', loadComponent: notBuilt },
+      { path: 'holidays', title: 'Holidays · Opro HRMS', loadComponent: () => import('./features/holidays/holidays-page').then((page) => page.HolidaysPage) },
+      { path: 'profile', title: 'Profile · Opro HRMS', loadComponent: () => import('./features/profile/profile-page').then((page) => page.ProfilePage) },
       {
         path: 'team',
         canMatch: [isManager],
