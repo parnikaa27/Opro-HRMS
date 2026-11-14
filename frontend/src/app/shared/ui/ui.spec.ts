@@ -10,6 +10,7 @@ import { StatusPill } from './status-pill';
   imports: [Avatar, Card, Icon, StatusPill],
   template: `
     <app-avatar name="Mariyam  Nisha Ali" />
+    <app-avatar name="Big Face" [isLarge]="true" data-testid="large-avatar" />
     <app-status-pill tone="late">Late</app-status-pill>
     <app-icon name="bell" />
     <app-card label="Today" [isLoading]="isLoading" [hasError]="hasError"><p data-testid="body">Body</p></app-card>
@@ -32,6 +33,8 @@ describe('shared UI', () => {
     const element = await render();
 
     expect(text(element.querySelector('app-avatar') as HTMLElement)).toBe('MN');
+    expect(element.querySelector('app-avatar')?.className).toContain('size-9');
+    expect(element.querySelector('[data-testid=large-avatar]')?.className).toContain('size-14');
     expect(element.querySelector('app-status-pill span')?.className).toContain('text-late');
     expect(element.querySelector('app-icon path')?.getAttribute('d')).toMatch(/^M6 16/);
   });

@@ -1,16 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { AttendanceDay, AttendanceStatus } from '../../models/attendance';
 import { Dialog } from '../../shared/ui/dialog';
-import { addMonths, formatDuration, formatMonth, maldivesToday, monthOf } from '../../shared/utils/date-time';
+import { MonthSwitcher } from '../../shared/ui/month-switcher';
+import { formatDuration, maldivesToday, monthOf } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { AttendanceApi } from './attendance-api';
 import { AttendanceDays, FixRequest } from './attendance-days';
 import { CorrectionForm } from './correction-form';
 import { CorrectionList } from './correction-list';
+import { ListSkeleton } from '../../shared/ui/list-skeleton';
 
 @Component({
   selector: 'app-attendance-page',
-  imports: [Dialog, AttendanceDays, CorrectionForm, CorrectionList],
+  imports: [ListSkeleton, Dialog, MonthSwitcher, AttendanceDays, CorrectionForm, CorrectionList],
   template: `
     <header class="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div>
@@ -20,18 +22,12 @@ import { CorrectionList } from './correction-list';
       <button type="button" class="btn-primary" (click)="openFix({ date: today, kind: 'missed-out' })" data-testid="open-fix">Fix a punch</button>
     </header>
 
-    <div class="mb-4 flex items-center justify-between gap-3">
-      <button type="button" class="btn-quiet" [attr.aria-label]="'Show ' + formatMonth(previousMonth())" (click)="month.set(previousMonth())" data-testid="previous-month">
-        ‹ <span class="hidden sm:inline">{{ formatMonth(previousMonth()) }}</span>
-      </button>
-      <h2 class="font-display text-xl whitespace-nowrap" aria-live="polite" data-testid="month-label">{{ formatMonth(month()) }}</h2>
-      <button type="button" class="btn-quiet" [class.invisible]="isCurrentMonth()" [disabled]="isCurrentMonth()" [attr.aria-label]="'Show ' + formatMonth(nextMonth())" (click)="month.set(nextMonth())" data-testid="next-month">
-        <span class="hidden sm:inline">{{ formatMonth(nextMonth()) }}</span> ›
-      </button>
-    </div>
+    <app-month-switcher class="mb-4 block" [(month)]="month" [latest]="currentMonth" />
 
     @if (attendance.error()) {
       <p class="text-sm text-danger">This month's attendance didn't load. Refresh the page to try again.</p>
+    } @else if (attendance.isLoading() && days().length === 0) {
+      <app-list-skeleton [count]="5" />
     } @else {
       <div class="@container mb-4">
         <dl class="grid grid-cols-2 gap-3 @md:grid-cols-3 @4xl:grid-cols-6" [attr.aria-busy]="attendance.isLoading()">
@@ -50,6 +46,8 @@ import { CorrectionList } from './correction-list';
       <h2 id="fixes-heading" class="eyebrow mb-3">Punch fixes you asked for</h2>
       @if (corrections.error()) {
         <p class="text-sm text-danger">These didn't load. Refresh the page to try again.</p>
+      } @else if (corrections.isLoading() && correctionList().length === 0) {
+        <app-list-skeleton [count]="2" />
       } @else {
         <app-correction-list [corrections]="correctionList()" />
       }
@@ -65,10 +63,8 @@ export class AttendancePage {
   private readonly api = inject(AttendanceApi);
 
   protected readonly today = maldivesToday();
-  protected readonly month = signal(monthOf(this.today));
-  protected readonly previousMonth = computed(() => addMonths(this.month(), -1));
-  protected readonly nextMonth = computed(() => addMonths(this.month(), 1));
-  protected readonly isCurrentMonth = computed(() => this.month() === monthOf(this.today));
+  protected readonly currentMonth = monthOf(this.today);
+  protected readonly month = signal(this.currentMonth);
 
   protected readonly attendance = this.api.month(this.month);
   protected readonly corrections = this.api.corrections();
@@ -96,7 +92,6 @@ export class AttendancePage {
 
   protected readonly isFixing = signal(false);
   protected readonly fixing = signal<FixRequest>({ date: this.today, kind: 'missed-out' });
-  protected readonly formatMonth = formatMonth;
 
   protected openFix(request: FixRequest) {
     this.fixing.set(request);

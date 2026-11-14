@@ -7,7 +7,7 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 
 | Part | Stack | Status |
 |---|---|---|
-| `frontend/` | Angular 22, Tailwind CSS v4, Vitest, Playwright | Every employee page built. Team view next |
+| `frontend/` | Angular 22, Tailwind CSS v4, Vitest, Playwright | Every v1 page built, employee and manager |
 | `frontend/dev-server/` | Plain Node mock API serving JSON fixtures | In progress |
 | `backend/` | Java Spring Boot | Not started |
 
@@ -72,10 +72,10 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 | Route | Contents |
 |---|---|
 | `/team` | Today at a glance for direct reports: in, late, not in yet, on leave. Visa alerts for the team |
-| `/team/approvals` | Pending leave requests and attendance correction requests. Approve or reject with an optional note. History of past decisions |
-| `/team/attendance` | Attendance for all direct reports, by day or month |
-| `/team/calendar` | Who is out when, merged with public holidays |
-| `/team/:employeeId` | One report's profile, leave balance, attendance and visa |
+| `/team/approvals` | Pending leave requests and attendance correction requests, oldest first. Approve in one click. Saying no needs a reason, so the employee can plan around it. Leave requests show who else is off on those dates. Last 10 decisions below |
+| `/team/attendance` | Month grid, one row per report and one dot per day, with late and missed totals |
+| `/team/calendar` | Who is out when (approved solid, waiting dashed), merged with public holidays. A month grid on wide screens, a list of busy days on phones |
+| `/team/:employeeId` | One report's leave balances, this month's attendance, leave requests, visa and contact card. Read only |
 
 ### Attendance rules (placeholders, confirm with HR)
 
@@ -264,6 +264,7 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 - Menus and panels use the native `popover` attribute, dialogs use `<dialog>`. No CDK or UI kit unless a real gap shows up.
 - Shared state (session, current view) lives in small `providedIn: 'root'` services built on signals. No NgRx or other state libraries without Parnika's approval.
 - Prop drilling beyond 2 levels → move state into a service or restructure.
+- Lists show `ListSkeleton` while their first load is in flight, never their empty state. An empty state that flashes before data arrives is a lie.
 
 ### Styling
 - **Tailwind CSS v4** for layout and spacing. Design tokens (colours, fonts, shadows, easing) are defined once with `@theme` in `src/styles.css`. Colours use `light-dark()`, so dark mode follows `color-scheme`, which the theme toggle sets on `<html>`.

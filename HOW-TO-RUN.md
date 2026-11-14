@@ -24,7 +24,7 @@ HRMS/
         app.routes.ts      Every route, with the sign in and manager guards
         core/              Session, guards, theme, config (footer details, expiry warning days), company API
           layout/          Shell, top bar with view switch, notifications and account menus, side rail and tab bar, footer
-        shared/ui/         Card, status pill, avatar, icon, dialog, field error
+        shared/ui/         Card, status pill, avatar, icon, dialog, field error, month switcher, list skeleton
         shared/utils/      Date and time in Maldives time, expiry status, initials, preferences, safe resource reads
         models/            Types that mirror the API responses
         features/
@@ -34,8 +34,7 @@ HRMS/
           attendance/      Month view of punches, summary, punch fix form and list
           holidays/        Year view grouped by month, next holiday highlighted, tentative dates marked
           profile/         Two sided printable ID card, visa and work permit status, change request to HR
-          team/            API service so far, pages come next
-          not-built/       Temporary page for the team routes not built yet
+          team/            Manager pages: today, approvals with decisions, attendance grid, leave calendar, one person's page
       testing/             Test helpers, fixtures and setup.ts (a dialog shim, since jsdom has none). Never shipped
     public/                Static files served as is (favicon, robots.txt)
     e2e/                   Playwright tests

@@ -19,6 +19,9 @@ const STATUS: Record<CorrectionRequest['status'], { label: string; tone: Tone }>
           <div>
             <p class="font-medium">{{ formatShortDate(item.date) }}, punch {{ item.kind === 'missed-in' ? 'in' : 'out' }} at {{ item.requestedTime }}</p>
             <p class="mt-1 text-sm text-soft">{{ item.reason }}</p>
+            @if (item.decisionNote) {
+              <blockquote class="mt-2 border-s-2 border-line ps-3 text-sm text-soft">“{{ item.decisionNote }}”</blockquote>
+            }
           </div>
           <app-status-pill [tone]="status[item.status].tone">{{ status[item.status].label }}</app-status-pill>
         </li>

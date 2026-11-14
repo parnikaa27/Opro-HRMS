@@ -25,6 +25,7 @@ export const maldivesHour = (now = new Date()) => Number(hourFormat.format(now))
 export const yearOf = (date: string) => Number(date.slice(0, YEAR_LENGTH));
 export const monthOf = (date: string) => date.slice(0, MONTH_LENGTH);
 export const weekdayOf = (date: string) => dateOnly(date).getUTCDay();
+export const dayOfMonth = (date: string) => dateOnly(date).getUTCDate();
 
 export const formatTime = (iso: string) => timeFormat.format(new Date(iso));
 export const formatLongDate = (date: string) => longDateFormat.format(dateOnly(date));

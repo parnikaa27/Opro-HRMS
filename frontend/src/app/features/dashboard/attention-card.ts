@@ -61,8 +61,8 @@ export class AttentionCard {
   private readonly session = inject(Session);
   private readonly today = maldivesToday();
   private readonly myRequests = inject(LeaveApi).requests();
-  private readonly teamLeave = inject(TeamApi).leaveRequests('pending', this.session.isManager);
-  private readonly teamCorrections = inject(TeamApi).corrections('pending', this.session.isManager);
+  private readonly teamLeave = inject(TeamApi).leaveRequests({ status: 'pending', isEnabled: this.session.isManager });
+  private readonly teamCorrections = inject(TeamApi).corrections({ status: 'pending', isEnabled: this.session.isManager });
 
   protected readonly dot = DOT;
   protected readonly isLoading = computed(() => this.myRequests.isLoading() || this.teamLeave.isLoading() || this.teamCorrections.isLoading());

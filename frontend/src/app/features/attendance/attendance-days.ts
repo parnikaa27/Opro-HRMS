@@ -29,7 +29,7 @@ export interface FixRequest {
             <span class="text-sm text-soft">{{ punchSummary(day) }}</span>
             <span class="text-sm sm:text-end">{{ day.workedMinutes ? formatDuration(day.workedMinutes) : '' }}</span>
           }
-          @if (fixKind(day); as kind) {
+          @if (!isReadOnly() && fixKind(day); as kind) {
             <button type="button" class="col-span-full justify-self-start text-sm font-medium text-sea hover:underline sm:col-start-3" (click)="fix.emit({ date: day.date, kind })" data-testid="fix-day">
               Fix this day
             </button>
@@ -44,6 +44,7 @@ export interface FixRequest {
 })
 export class AttendanceDays {
   readonly days = input.required<readonly AttendanceDay[]>();
+  readonly isReadOnly = input(false);
   readonly fix = output<FixRequest>();
 
   protected readonly isQuiet = (day: AttendanceDay) => QUIET.includes(day.status);

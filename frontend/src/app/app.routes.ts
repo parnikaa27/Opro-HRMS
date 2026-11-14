@@ -2,8 +2,6 @@ import { Routes } from '@angular/router';
 import { isManager, isSignedIn } from './core/guards';
 import { Shell } from './core/layout/shell';
 
-const notBuilt = () => import('./features/not-built/not-built-page').then((page) => page.NotBuiltPage);
-
 export const routes: Routes = [
   {
     path: 'login',
@@ -24,10 +22,11 @@ export const routes: Routes = [
         path: 'team',
         canMatch: [isManager],
         children: [
-          { path: '', title: 'Team · Opro HRMS', loadComponent: notBuilt },
-          { path: 'approvals', title: 'Approvals · Opro HRMS', loadComponent: notBuilt },
-          { path: 'attendance', title: 'Team attendance · Opro HRMS', loadComponent: notBuilt },
-          { path: 'calendar', title: 'Team calendar · Opro HRMS', loadComponent: notBuilt },
+          { path: '', title: 'Team · Opro HRMS', loadComponent: () => import('./features/team/team-today-page').then((page) => page.TeamTodayPage) },
+          { path: 'approvals', title: 'Approvals · Opro HRMS', loadComponent: () => import('./features/team/approvals-page').then((page) => page.ApprovalsPage) },
+          { path: 'attendance', title: 'Team attendance · Opro HRMS', loadComponent: () => import('./features/team/team-attendance-page').then((page) => page.TeamAttendancePage) },
+          { path: 'calendar', title: 'Team calendar · Opro HRMS', loadComponent: () => import('./features/team/team-calendar-page').then((page) => page.TeamCalendarPage) },
+          { path: ':employeeId', title: 'Team member · Opro HRMS', loadComponent: () => import('./features/team/team-member-page').then((page) => page.TeamMemberPage) },
         ],
       },
     ],

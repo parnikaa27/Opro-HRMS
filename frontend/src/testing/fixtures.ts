@@ -68,3 +68,6 @@ export const click = (root: HTMLElement, testId: string) => {
   (root.querySelector(`[data-testid=${testId}]`) as HTMLElement).click();
   TestBed.tick();
 };
+
+export const byTestId = (root: HTMLElement, testId: string) => [...root.querySelectorAll<HTMLElement>(`[data-testid=${testId}]`)];
+export const texts = (root: HTMLElement, testId: string) => byTestId(root, testId).map((element) => text(element));

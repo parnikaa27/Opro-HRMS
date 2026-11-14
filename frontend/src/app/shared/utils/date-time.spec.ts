@@ -4,6 +4,7 @@ import {
   addMonths,
   datesBetween,
   daysUntil,
+  dayOfMonth,
   formatDayShort,
   formatMonth,
   formatDuration,
@@ -74,6 +75,7 @@ describe('calendar helpers', () => {
     expect(formatMonth('2026-11')).toBe('November 2026');
     expect(formatDayShort('2026-11-12')).toBe('Thu 12 Nov');
     expect(weekdayOf('2026-11-13')).toBe(5);
+    expect(dayOfMonth('2026-11-03')).toBe(3);
     expect(yearOf('2026-11-12')).toBe(2026);
     expect(monthOf('2026-11-12')).toBe('2026-11');
   });

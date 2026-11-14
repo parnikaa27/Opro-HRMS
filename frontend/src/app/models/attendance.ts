@@ -16,6 +16,7 @@ export interface Punch {
 
 export interface AttendanceDay {
   employeeId: string;
+  employeeName?: string;
   date: string;
   status: AttendanceStatus;
   punches: Punch[];
@@ -35,4 +36,7 @@ export interface CorrectionRequest {
   reason: string;
   status: 'pending' | 'approved' | 'rejected';
   raisedOn: string;
+  decidedBy?: string;
+  decidedOn?: string;
+  decisionNote?: string;
 }

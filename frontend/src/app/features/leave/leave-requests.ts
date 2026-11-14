@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { LeaveRequest, LeaveStatus, LeaveType } from '../../models/leave';
 import { StatusPill, Tone } from '../../shared/ui/status-pill';
-import { formatFullDate, formatShortDate, maldivesToday } from '../../shared/utils/date-time';
-import { plural } from '../../shared/utils/text';
+import { formatShortDate, maldivesToday } from '../../shared/utils/date-time';
 import { LeaveApi } from './leave-api';
+import { describeDates, describeLength } from './leave-format';
 
 const STATUS: Record<LeaveStatus, { label: string; tone: Tone }> = {
   pending: { label: 'Waiting', tone: 'late' },
@@ -11,8 +11,6 @@ const STATUS: Record<LeaveStatus, { label: string; tone: Tone }> = {
   rejected: { label: 'Not approved', tone: 'danger' },
   cancelled: { label: 'Cancelled', tone: 'neutral' },
 };
-
-const HALF: Record<'first' | 'second', string> = { first: 'morning', second: 'afternoon' };
 
 @Component({
   selector: 'app-leave-requests',
@@ -34,7 +32,7 @@ const HALF: Record<'first' | 'second', string> = { first: 'morning', second: 'af
           }
           <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-soft">
             <span>Applied {{ formatShortDate(request.appliedOn) }}</span>
-            @if (canCancel(request)) {
+            @if (!isReadOnly() && canCancel(request)) {
               @if (confirming() === request.id) {
                 <span class="flex flex-wrap items-center gap-2 text-sm text-ink" role="group" aria-label="Confirm cancellation">
                   Cancel this request?
@@ -63,6 +61,7 @@ export class LeaveRequests {
 
   readonly requests = input.required<readonly LeaveRequest[]>();
   readonly types = input.required<readonly LeaveType[]>();
+  readonly isReadOnly = input(false);
   readonly changed = output();
 
   protected readonly sorted = computed(() => [...this.requests()].sort((first, second) => second.from.localeCompare(first.from)));
@@ -72,8 +71,8 @@ export class LeaveRequests {
 
   protected readonly nameOf = (code: string) => this.types().find((type) => type.code === code)?.name ?? code;
   protected readonly canCancel = ({ status, from }: LeaveRequest) => status === 'pending' || (status === 'approved' && from > this.today);
-  protected readonly dates = ({ from, to }: LeaveRequest) => (from === to ? formatFullDate(from) : `${formatShortDate(from)} to ${formatFullDate(to)}`);
-  protected readonly length = ({ days, halfDay }: LeaveRequest) => (halfDay ? `${HALF[halfDay]} only` : plural(days, 'day'));
+  protected readonly dates = describeDates;
+  protected readonly length = describeLength;
   protected readonly formatShortDate = formatShortDate;
 
   protected async cancel(id: string) {

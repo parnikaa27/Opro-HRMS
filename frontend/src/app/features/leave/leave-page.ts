@@ -7,10 +7,11 @@ import { LeaveApi } from './leave-api';
 import { LeaveBalances } from './leave-balances';
 import { LeaveForm } from './leave-form';
 import { LeaveRequests } from './leave-requests';
+import { ListSkeleton } from '../../shared/ui/list-skeleton';
 
 @Component({
   selector: 'app-leave-page',
-  imports: [Dialog, LeaveBalances, LeaveForm, LeaveRequests],
+  imports: [ListSkeleton, Dialog, LeaveBalances, LeaveForm, LeaveRequests],
   template: `
     <header class="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div>
@@ -24,6 +25,8 @@ import { LeaveRequests } from './leave-requests';
       <h2 id="balances-heading" class="eyebrow mb-3">Balances</h2>
       @if (balances.error()) {
         <p class="text-sm text-danger">Your balances didn't load. Refresh the page to try again.</p>
+      } @else if (balances.isLoading() && balanceList().length === 0) {
+        <app-list-skeleton [count]="1" />
       } @else {
         <app-leave-balances [balances]="balanceList()" [types]="typeList()" />
       }
@@ -33,6 +36,8 @@ import { LeaveRequests } from './leave-requests';
       <h2 id="requests-heading" class="eyebrow mb-3">Your requests</h2>
       @if (requests.error()) {
         <p class="text-sm text-danger">Your requests didn't load. Refresh the page to try again.</p>
+      } @else if (requests.isLoading() && requestList().length === 0) {
+        <app-list-skeleton />
       } @else {
         <app-leave-requests [requests]="requestList()" [types]="typeList()" (changed)="refresh()" />
       }
