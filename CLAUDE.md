@@ -10,7 +10,7 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 | `frontend/` | Angular 22, Tailwind CSS v4, Vitest, Playwright | Employee, manager and HR views built. Employee and manager pages match the Figma design; HR pages reuse its classes |
 | `design/figma-make/` | `App.tsx` and `index.css` copied from the Figma Make file "Opro HRMS Portal" | The visual source of truth |
 | `frontend/dev-server/` | Plain Node mock API serving JSON fixtures | In progress |
-| `backend/` | Java Spring Boot | Not started |
+| `backend/` | Java 25, Spring Boot 4.1, PostgreSQL 18, Flyway, Maven | Started: schema for people and visas, session, XSRF, `/api/me`. The rest of the API moves over feature by feature |
 
 ---
 
@@ -254,7 +254,15 @@ HRMS/
       data/            # JSON fixtures
     proxy.conf.mjs     # Sends /api to the mock or to Spring
     scripts/build-dark-theme.mjs  # Generates src/styles/dark.css from the light styles
-  backend/             # Spring Boot (later)
+  backend/             # Spring Boot 4.1 on Java 25, Maven (./mvnw)
+    compose.yaml       # PostgreSQL for development. Project name opro-hrms
+    src/main/java/mv/opro/hrms/
+      employee/        # One package per feature, like the frontend
+      session/
+      security/
+      common/          # Error shape shared by every endpoint
+    src/main/resources/db/migration/  # Flyway, the schema
+    src/main/resources/db/dev/        # Dev seed data, dev profile only
 ```
 
 Unit tests sit next to the file they test (`leave-balance.ts` → `leave-balance.spec.ts`), which is the Angular convention.
@@ -336,6 +344,19 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 | GET / POST | `/api/hr/punch-edits?employeeId=&month=` | The punch fix log / add or void one punch (`action`, `time`, `reason`) |
 | PUT | `/api/leave/requests/:id/certificate` | Attach a medical certificate to own sick leave (raw body, 5 MB max) |
 | GET | `/api/leave/requests/:id/certificate`, `/api/hr/leave-requests/:id/certificate` | Open a certificate: own, or any for HR. Never for managers |
+
+### Backend conventions
+- Java 25 LTS, Spring Boot 4.1, PostgreSQL 18, Maven with its wrapper. Spring Boot's parent POM pins library versions; don't override one without a reason written beside it.
+- One package per feature (`employee`, `leave`, `attendance`...), mirroring `frontend/src/app/features`. Controllers stay thin and talk to a feature service.
+- Records for request and response shapes, named to match the frontend's models field for field. Entities are classes with getters, no setters the API doesn't need.
+- Constructor injection, package private where possible. No Lombok.
+- Every error leaves as `{"message": "..."}`, written for the person reading it. Throw `ApiException` with a status for refusals people can act on. Never send stack traces or internal details.
+- Bean Validation on every request body. The frontend's checks are for comfort, these are the real ones.
+- The schema changes only through a new Flyway migration. Never edit one that has been applied anywhere shared. Hibernate only validates (`ddl-auto: validate`).
+- "Today" always comes from the injected `Clock` (Maldives time), never `LocalDate.now()` on its own.
+- Roles are worked out per request: manager from active reports, HR from the record. Load the signed in employee through `CurrentUser` so a leaving date or new reporting line applies at once.
+- The `dev` profile holds everything development only: the local database, the seed people and the pick a user sign in. Nothing in it may ship.
+- Tests are integration tests against a real server and a throwaway PostgreSQL (Testcontainers), using a cookie keeping client so the session cookie and XSRF round trip are tested as a browser sees them.
 
 ### Angular conventions
 - Standalone components only, `ChangeDetectionStrategy.OnPush`, zoneless change detection.
@@ -491,6 +512,10 @@ After **every** code change, run these in order inside `frontend/`:
 - [ ] `npm run test:e2e` affected journeys passing (needs the mock server running)
 - [ ] Dead code scan on all touched files
 - [ ] `npm run test:coverage` meets 80%
+
+And inside `backend/` when it changed (Docker Desktop running):
+
+- [ ] `./mvnw verify` builds with no new warnings and every test passes
 
 If any step fails, stop, fix it and rerun that step before moving on.
 

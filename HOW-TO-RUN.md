@@ -7,7 +7,8 @@
 | Node.js | 26 LTS (Angular 22 needs 24.15 or newer) |
 | npm | 11 or newer |
 | Google Chrome | Any recent version, used by the Playwright tests |
-| Java | 21 or newer, once the Spring backend exists |
+| Java | 25 (LTS), Eclipse Temurin: `brew install --cask temurin@25` |
+| Docker Desktop | Runs PostgreSQL for development and a throwaway one for backend tests |
 
 ## Folder structure
 
@@ -55,7 +56,21 @@ HRMS/
     playwright.config.ts   Starts the mock and the app, then runs e2e tests in Chrome
     eslint.config.js       Lint rules
     .postcssrc.json        Plugs Tailwind into the Angular build
-  backend/                 Spring Boot, not started yet
+  backend/                 Spring Boot 4.1 API on Java 25. Maven, with its own wrapper (mvnw)
+    compose.yaml           PostgreSQL 18.7 for development
+    pom.xml                Dependencies, pinned by Spring Boot's own version list
+    src/main/java/mv/opro/hrms/
+      employee/            Employees and visas, and roles worked out from reporting lines
+      session/             Who is signed in, /api/me, and the dev only pick a user sign in
+      security/            Session cookie, XSRF check, JSON errors instead of redirects
+      common/              Error shape ({"message": ...}) shared by every endpoint
+      config/              The Maldives time clock
+    src/main/resources/
+      application.yml      Settings for every environment. The database comes from DB_URL, DB_USER, DB_PASSWORD
+      application-dev.yml  Local database and the dev sign in
+      db/migration/        Flyway migrations, the schema
+      db/dev/              Development seed data, the same people as the mock. Never loaded outside dev
+    src/test/java/         Integration tests: a real server against a throwaway PostgreSQL (Testcontainers)
 ```
 
 ## First time setup
@@ -85,11 +100,31 @@ Everything you change (approving leave, applying, cancelling, asking for punch f
 
 ### Against the real backend
 
+Start the database and Spring, from `backend/`:
+
+```bash
+docker compose up -d
+```
+
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+Then the frontend, from `frontend/`:
+
 ```bash
 USE_MOCK_BACKEND=false npm start
 ```
 
-That sends `/api` to Spring on `http://localhost:8080` instead. Nothing else changes.
+That sends `/api` to Spring on `http://localhost:8080` instead. Nothing else changes. So far Spring has sign in, sign out and `/api/me`. The rest of the API comes over feature by feature, so for now most pages only work against the mock.
+
+### Backend tests (inside `backend/`)
+
+```bash
+./mvnw verify
+```
+
+Needs Docker Desktop running: each run starts its own PostgreSQL and throws it away afterwards.
 
 ## Scripts (inside `frontend/`)
 
