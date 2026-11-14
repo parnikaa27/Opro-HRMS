@@ -22,21 +22,23 @@ describe('CorrectionForm', () => {
     fixture.componentRef.setInput('date', '2026-11-10');
     fixture.componentRef.setInput('kind', 'missed-in');
     let raised = 0;
+    let cancelled = 0;
     fixture.componentInstance.raised.subscribe(() => raised++);
+    fixture.componentInstance.cancelled.subscribe(() => cancelled++);
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
     const submitForm = async () => {
       (root.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit', { cancelable: true }));
       await settle();
     };
-    return { root, submitForm, raisedCount: () => raised };
+    return { root, submitForm, raisedCount: () => raised, cancelledCount: () => cancelled };
   };
 
   it('starts from the day and kind it was opened with', async () => {
     const { root } = await render();
 
     expect((root.querySelector('[data-testid=fix-date]') as HTMLInputElement).value).toBe('2026-11-10');
-    expect((root.querySelector('input[type=radio]:checked') as HTMLInputElement).value).toBe('missed-in');
+    expect((root.querySelector('[data-testid=fix-kind]') as HTMLSelectElement).value).toBe('missed-in');
   });
 
   it('asks for the time and a reason, and refuses future days', async () => {
@@ -77,5 +79,13 @@ describe('CorrectionForm', () => {
 
     expect(root.querySelector('[role=alert]')).not.toBeNull();
     expect(raisedCount()).toBe(0);
+  });
+
+  it('lets people back out', async () => {
+    const { root, cancelledCount } = await render();
+
+    (root.querySelector('.secondary-button') as HTMLButtonElement).click();
+
+    expect(cancelledCount()).toBe(1);
   });
 });

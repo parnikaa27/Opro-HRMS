@@ -15,33 +15,37 @@
 HRMS/
   CLAUDE.md                Requirements and coding rules. Read this first.
   HOW-TO-RUN.md            This file.
+  design/figma-make/       App.tsx and index.css copied from the Figma Make file. The design to match, not built
   frontend/                Angular 22 app
     src/
       index.html           Page shell, carries the noindex tag
-      styles.css           Tailwind entry, self hosted fonts and design tokens (palette, light and dark)
+      styles.css           Tailwind, self hosted fonts (DM Sans, Manrope), tokens, and our additions to the design
+      styles/portal.css    The Figma stylesheet, ported as is
       main.ts              Boots the app
       app/
         app.routes.ts      Every route, with the sign in and manager guards
-        core/              Session, guards, theme, config (footer details, expiry warning days), company API
-          layout/          Shell, top bar with view switch, notifications and account menus, side rail and tab bar, footer
-        shared/ui/         Card, status pill, avatar, icon, dialog, field error, month switcher, list skeleton
-        shared/utils/      Date and time in Maldives time, expiry status, initials, preferences, safe resource reads
+        core/              Session, guards, config (company details, shift length, expiry warning days), company API
+          layout/          Shell, navy sidebar (a slide in menu on phones), top bar with search, view switch, notifications and profile menu, footer
+        shared/ui/         Logo, Lucide icons, status pill, avatar, welcome banner, ring, modal dialog, success screen, month picker, list skeleton
+        shared/utils/      Date and time in Maldives time, expiry status, initials, CSV export, preferences, safe resource reads
         models/            Types that mirror the API responses
         features/
           login/           Test sign in (pick any employee)
-          dashboard/       Home: today, leave left, needs your attention, coming up, from HR
-          leave/           Balances, apply form with day count preview, requests with cancel
-          attendance/      Month view of punches, summary, punch fix form and list
-          holidays/        Year view grouped by month, next holiday highlighted, tentative dates marked
+          dashboard/       Overview: welcome banner, today's attendance, leave balance, visa, recent attendance, staff card, next holiday, latest request
+          documents/       Employment documents with download
+          leave/           Balance rings, request history with cancel, request modal with day count preview
+          attendance/      Summary cards, attendance log, punch fixes, device status, CSV export
+          calendar/        Company calendar: holidays, events, and team leave for managers
+          holidays/        API for holidays and company events
           profile/         Two sided printable ID card, visa and work permit status, change request to HR
-          team/            Manager pages: today, approvals with decisions, attendance grid, leave calendar, one person's page
+          team/            Manager pages: overview, people directory, leave requests with tabs, team attendance table, one person's page
       testing/             Test helpers, fixtures and setup.ts (a dialog shim, since jsdom has none). Never shipped
     public/                Static files served as is (favicon, robots.txt)
     e2e/                   Playwright tests
     dev-server/            Mock API that stands in for Spring
       server.mjs           Routes, sessions, XSRF check. Node built ins only
       attendance.mjs       Generates the last 62 days of punches relative to today
-      data/                JSON fixtures: employees, visas, leave, holidays, corrections, announcements, notifications
+      data/                JSON fixtures: employees, visas, leave, holidays, events, corrections, announcements, notifications
     proxy.conf.mjs         Sends /api to the mock or to Spring
     playwright.config.ts   Starts the mock and the app, then runs e2e tests in Chrome
     eslint.config.js       Lint rules
@@ -115,6 +119,7 @@ In CI, run `npx playwright install chromium` and drop `channel: 'chrome'` from `
 |---|---|---|
 | `USE_MOCK_BACKEND` | `true` | `true` sends `/api` to the mock, `false` sends it to Spring on 8080 |
 | `MOCK_PORT` | `4300` | Port for the mock API |
+| `MOCK_NOW` | unset | Pins the mock's clock, for example `MOCK_NOW=2026-11-12T15:10:00+05:00 npm run mock`. Handy on weekends, when every screen shows days off |
 
 ## Version notes
 

@@ -1,18 +1,31 @@
 import { TestBed } from '@angular/core/testing';
-import { text } from '../../../testing/fixtures';
+import { texts } from '../../../testing/fixtures';
 import { LeaveBalances } from './leave-balances';
 
 describe('LeaveBalances', () => {
-  it('shows what is left, what is taken and what is waiting', async () => {
+  it('rings the first two balances and shows the rest as special leave', async () => {
     const fixture = TestBed.createComponent(LeaveBalances);
-    fixture.componentRef.setInput('types', [{ code: 'annual', name: 'Annual leave', allowsHalfDay: true }]);
+    fixture.componentRef.setInput('types', [
+      { code: 'annual', name: 'Annual leave', allowsHalfDay: true },
+      { code: 'sick', name: 'Sick leave', allowsHalfDay: true },
+      { code: 'family', name: 'Family responsibility leave', allowsHalfDay: true },
+    ]);
     fixture.componentRef.setInput('balances', [
       { type: 'annual', entitled: 30, taken: 9, pending: 8 },
-      { type: 'paternity', entitled: 0, taken: 0, pending: 0 },
+      { type: 'sick', entitled: 0, taken: 0, pending: 0 },
+      { type: 'family', entitled: 10, taken: 3, pending: 0 },
+      { type: 'study', entitled: 2, taken: 0, pending: 0 },
     ]);
     await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
 
-    const tiles = [...(fixture.nativeElement as HTMLElement).querySelectorAll('[data-testid=leave-balance]')].map((tile) => text(tile));
-    expect(tiles).toEqual(['Annual leave 13 of 30 left 9 taken, 8 waiting for approval', 'paternity 0 of 0 left 0 taken']);
+    expect(texts(root, 'leave-balance')).toEqual([
+      '13 annual days Annual leave 13 of 30 days available',
+      '0 sick days Sick leave 0 of 0 days available',
+      'Family responsibility leave 7 days available Caring for a sick family member',
+      'study 2 days available',
+    ]);
+    expect((root.querySelector('.progress-track i') as HTMLElement).style.width).toBe('43.3333%');
+    expect(root.querySelectorAll('.progress-track')[1].classList).toContain('amber');
   });
 });

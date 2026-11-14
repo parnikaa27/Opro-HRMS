@@ -1,7 +1,9 @@
-import { HttpTestingController } from '@angular/common/http/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { click, fail, NOW, respond, setupHttp, text } from '../../../testing/fixtures';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { click, fail, NOW, respond, setupHttp, settle, text } from '../../../testing/fixtures';
 import { LeaveForm } from './leave-form';
 import { LeavePage } from './leave-page';
 
@@ -24,12 +26,16 @@ describe('LeavePage', () => {
 
   afterEach(() => vi.useRealTimers());
 
-  it('shows balances and requests, and opens the form', async () => {
+  const render = async () => {
     const fixture = TestBed.createComponent(LeavePage);
     await respond(http, DATA);
-    const root = fixture.nativeElement as HTMLElement;
+    return fixture;
+  };
 
-    expect(text(root)).toContain('What you have left for 2026');
+  it('shows balances and requests, and opens the form', async () => {
+    const root = (await render()).nativeElement as HTMLElement;
+
+    expect(text(root)).toContain('Leave & time off');
     expect(root.querySelectorAll('[data-testid=leave-balance]')).toHaveLength(1);
 
     click(root, 'apply-leave');
@@ -37,18 +43,41 @@ describe('LeavePage', () => {
     expect(root.querySelector('app-leave-form')).not.toBeNull();
   });
 
-  it('closes the form and reloads after an application', async () => {
-    const fixture = TestBed.createComponent(LeavePage);
-    await respond(http, DATA);
+  it('confirms an application, reloads, and closes on Done or Cancel', async () => {
+    const fixture = await render();
     const root = fixture.nativeElement as HTMLElement;
     click(root, 'apply-leave');
 
     fixture.debugElement.query(By.directive(LeaveForm)).componentInstance.applied.emit();
     TestBed.tick();
-
-    expect((root.querySelector('dialog') as HTMLDialogElement).open).toBe(false);
+    expect(text(root.querySelector('[data-testid=success-state]') as HTMLElement)).toContain('Request submitted');
     expect(http.match('/api/leave/requests')).toHaveLength(1);
     expect(http.match('/api/leave/balances')).toHaveLength(1);
+
+    (root.querySelector('[data-testid=success-state] button') as HTMLButtonElement).click();
+    await settle();
+    expect((root.querySelector('dialog') as HTMLDialogElement).open).toBe(false);
+
+    click(root, 'apply-leave');
+    fixture.debugElement.query(By.directive(LeaveForm)).componentInstance.cancelled.emit();
+    await settle();
+    expect((root.querySelector('dialog') as HTMLDialogElement).open).toBe(false);
+  });
+
+  it('opens the form straight away when linked with ?apply', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({ apply: '1' }) } } },
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+    const root = (await render()).nativeElement as HTMLElement;
+
+    expect((root.querySelector('dialog') as HTMLDialogElement).open).toBe(true);
   });
 
   it('explains when balances or requests fail to load', async () => {

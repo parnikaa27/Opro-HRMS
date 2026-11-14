@@ -26,11 +26,14 @@ const addDays = (date, offset) => {
   return day.toISOString().slice(0, 10);
 };
 
+// MOCK_NOW pins the mock's clock (an ISO time) so previews and tests can show a working day.
+export const clockNow = () => (process.env.MOCK_NOW ? new Date(process.env.MOCK_NOW) : new Date());
+
 export const maldivesNow = () => {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Indian/Maldives', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-    }).formatToParts(new Date()).map(({ type, value }) => [type, value]),
+    }).formatToParts(clockNow()).map(({ type, value }) => [type, value]),
   );
   return { date: `${parts.year}-${parts.month}-${parts.day}`, minutes: Number(parts.hour) * 60 + Number(parts.minute) };
 };
@@ -63,14 +66,14 @@ const workday = (employeeId, date, isToday, nowMinutes) => {
   return { status: isLate ? 'late' : isHalfDay ? 'half-day' : 'present', punchMinutes };
 };
 
-const toRecord = ({ employeeId, date, status, punchMinutes }) => {
+const toRecord = ({ employeeId, date, status, punchMinutes, device }) => {
   const isComplete = punchMinutes.length % 2 === 0 && punchMinutes.length > 0;
   const lastOut = isComplete ? punchMinutes.at(-1) : undefined;
   return {
     employeeId,
     date,
     status,
-    punches: punchMinutes.map((minute, index) => ({ at: toIso(date, minute), direction: index % 2 === 0 ? 'in' : 'out' })),
+    punches: punchMinutes.map((minute, index) => ({ at: toIso(date, minute), direction: index % 2 === 0 ? 'in' : 'out', device })),
     ...(punchMinutes.length > 0 && { firstIn: toIso(date, punchMinutes[0]) }),
     ...(lastOut !== undefined && { lastOut: toIso(date, lastOut) }),
     workedMinutes: isComplete ? workedMinutes(punchMinutes) : 0,
@@ -86,12 +89,12 @@ export const buildAttendance = ({ employees, holidays, leaveRequests }) => {
 
   const dates = Array.from({ length: DAYS_OF_HISTORY }, (_, index) => addDays(now.date, index - DAYS_OF_HISTORY + 1));
 
-  return employees.flatMap(({ id: employeeId }) =>
+  return employees.flatMap(({ id: employeeId, workLocation }) =>
     dates.map((date) => {
       const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
       const offDay = WEEKEND.has(weekday) ? 'weekend' : holidayDates.has(date) ? 'holiday' : isOnLeave(employeeId, date) ? 'on-leave' : undefined;
       const day = offDay ? { status: offDay, punchMinutes: [] } : workday(employeeId, date, date === now.date, now.minutes);
-      return toRecord({ employeeId, date, ...day });
+      return toRecord({ employeeId, date, device: workLocation === 'Hulhumalé site' ? 'Site gate' : 'Front desk', ...day });
     }),
   );
 };

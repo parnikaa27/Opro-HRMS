@@ -10,6 +10,7 @@
     "bloodGroup": "O+",
     "nationality": "Maldivian",
     "workLocation": "Malé office",
+    "employmentType": "Full-time",
     "roles": ["EMPLOYEE", "MANAGER"],
     "emergencyContact": { "name": "Aminath Hassan", "relation": "Spouse", "phone": "+960 777 2001" }
   },
@@ -24,6 +25,7 @@
     "bloodGroup": "B+",
     "nationality": "Maldivian",
     "workLocation": "Malé office",
+    "employmentType": "Full-time",
     "managerId": "OPR-0001",
     "roles": ["EMPLOYEE", "MANAGER"],
     "emergencyContact": { "name": "Fathimath Rasheed", "relation": "Sister", "phone": "+960 777 2004" }
@@ -39,6 +41,7 @@
     "bloodGroup": "A+",
     "nationality": "Maldivian",
     "workLocation": "Malé office",
+    "employmentType": "Full-time",
     "managerId": "OPR-0004",
     "roles": ["EMPLOYEE"],
     "emergencyContact": { "name": "Ali Shareef", "relation": "Father", "phone": "+960 777 2011" }
@@ -54,6 +57,7 @@
     "bloodGroup": "AB+",
     "nationality": "Indian",
     "workLocation": "Malé office",
+    "employmentType": "Full-time",
     "managerId": "OPR-0004",
     "roles": ["EMPLOYEE"],
     "emergencyContact": { "name": "Ravi Nair", "relation": "Brother", "phone": "+91 98470 12015" }
@@ -69,6 +73,7 @@
     "bloodGroup": "O-",
     "nationality": "Sri Lankan",
     "workLocation": "Hulhumalé site",
+    "employmentType": "Contract",
     "managerId": "OPR-0004",
     "roles": ["EMPLOYEE"],
     "emergencyContact": { "name": "Dilani Perera", "relation": "Spouse", "phone": "+94 77 120 1018" }
@@ -84,6 +89,7 @@
     "bloodGroup": "B-",
     "nationality": "Bangladeshi",
     "workLocation": "Malé office",
+    "employmentType": "Full-time",
     "managerId": "OPR-0004",
     "roles": ["EMPLOYEE"],
     "emergencyContact": { "name": "Nasima Begum", "relation": "Mother", "phone": "+880 1711 021021" }
@@ -99,6 +105,7 @@
     "bloodGroup": "A-",
     "nationality": "Maldivian",
     "workLocation": "Malé office",
+    "employmentType": "Full-time",
     "managerId": "OPR-0004",
     "roles": ["EMPLOYEE"],
     "emergencyContact": { "name": "Shiuna Zahir", "relation": "Spouse", "phone": "+960 777 2023" }
@@ -114,6 +121,7 @@
     "bloodGroup": "O+",
     "nationality": "Filipino",
     "workLocation": "Malé office",
+    "employmentType": "Full-time",
     "managerId": "OPR-0004",
     "roles": ["EMPLOYEE"],
     "emergencyContact": { "name": "Ramon Mendoza", "relation": "Father", "phone": "+63 917 102 7027" }

@@ -1,35 +1,42 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { CorrectionRequest } from '../../models/attendance';
+import { Icon } from '../../shared/ui/icon';
 import { StatusPill, Tone } from '../../shared/ui/status-pill';
 import { formatShortDate } from '../../shared/utils/date-time';
 
 const STATUS: Record<CorrectionRequest['status'], { label: string; tone: Tone }> = {
-  pending: { label: 'Waiting', tone: 'late' },
+  pending: { label: 'Pending', tone: 'late' },
   approved: { label: 'Fixed', tone: 'ok' },
-  rejected: { label: 'Not approved', tone: 'danger' },
+  rejected: { label: 'Declined', tone: 'danger' },
 };
 
 @Component({
   selector: 'app-correction-list',
-  imports: [StatusPill],
+  imports: [Icon, StatusPill],
   template: `
-    <ul class="divide-y divide-line rounded-2xl border border-line bg-card shadow-lift">
+    <section class="card request-history">
+      <div class="card-heading">
+        <div>
+          <span class="eyebrow">PUNCH FIXES</span>
+          <h2>Fixes you asked for</h2>
+        </div>
+      </div>
       @for (item of sorted(); track item.id) {
-        <li class="flex flex-wrap items-start justify-between gap-3 p-5" data-testid="correction">
+        <div class="history-row" data-testid="correction">
+          <div class="leave-type-icon"><app-icon name="fingerprint" [size]="18" /></div>
           <div>
-            <p class="font-medium">{{ formatShortDate(item.date) }}, punch {{ item.kind === 'missed-in' ? 'in' : 'out' }} at {{ item.requestedTime }}</p>
-            <p class="mt-1 text-sm text-soft">{{ item.reason }}</p>
-            @if (item.decisionNote) {
-              <blockquote class="mt-2 border-s-2 border-line ps-3 text-sm text-soft">“{{ item.decisionNote }}”</blockquote>
-            }
+            <strong>Punch {{ item.kind === 'missed-in' ? 'in' : 'out' }} at {{ item.requestedTime }}</strong>
+            <span>{{ formatShortDate(item.date) }} · {{ item.reason }}@if (item.decisionNote) { · “{{ item.decisionNote }}”}</span>
           </div>
+          <span></span>
           <app-status-pill [tone]="status[item.status].tone">{{ status[item.status].label }}</app-status-pill>
-        </li>
+        </div>
       } @empty {
-        <li class="p-5 text-sm text-soft">No fixes requested. If the device misses a punch, ask for a fix and it shows up here.</li>
+        <p class="attendance-off">No fixes requested. If the device misses a punch, ask for a fix and it shows up here.</p>
       }
-    </ul>
+    </section>
   `,
+  host: { class: 'contents' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CorrectionList {

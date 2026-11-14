@@ -1,51 +1,53 @@
-import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { Icon } from '../../shared/ui/icon';
 import { PortalView, Session } from '../session';
-import { AccountMenu } from './account-menu';
+import { NavItem } from './nav-items';
 import { NotificationsMenu } from './notifications-menu';
+import { PortalSearch } from './portal-search';
+import { ProfileMenu } from './profile-menu';
 
-const VIEW_OPTIONS: readonly { value: PortalView; short: string; long: string }[] = [
-  { value: 'mine', short: 'Me', long: 'My view' },
-  { value: 'team', short: 'Team', long: 'Team view' },
+const VIEW_OPTIONS: readonly { value: PortalView; label: string }[] = [
+  { value: 'mine', label: 'Employee' },
+  { value: 'team', label: 'Manager' },
 ];
 
 @Component({
   selector: 'app-top-bar',
-  imports: [RouterLink, AccountMenu, NotificationsMenu],
+  imports: [Icon, NotificationsMenu, PortalSearch, ProfileMenu],
   template: `
-    <header class="sticky top-0 z-30 border-b border-line bg-canvas/85 backdrop-blur no-print">
-      <div class="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:px-8">
-        <a routerLink="/" class="me-auto flex items-baseline gap-1.5" aria-label="Opro HRMS home">
-          <span class="font-display text-2xl font-medium tracking-tight">opro</span>
-          <span class="text-xs text-soft">people</span>
-        </a>
-
+    <header class="topbar no-print">
+      <button type="button" class="mobile-menu" aria-label="Open navigation" (click)="menuOpened.emit()" data-testid="open-menu">
+        <app-icon name="menu" [size]="22" />
+      </button>
+      <app-portal-search [items]="navItems()" />
+      <div class="top-actions">
         @if (session.isManager()) {
-          <div role="group" aria-label="Switch view" class="flex rounded-full bg-sea-soft p-1 text-sm">
+          <div class="role-switch" role="group" aria-label="Switch view">
             @for (option of viewOptions; track option.value) {
               <button
                 type="button"
-                class="rounded-full px-3 py-1 text-sea transition-colors duration-300 ease-spring aria-pressed:bg-sea aria-pressed:text-on-sea"
+                [class.active]="view() === option.value"
                 [attr.aria-pressed]="view() === option.value"
-                [attr.data-testid]="'view-' + option.value"
                 (click)="session.switchView(option.value)"
+                [attr.data-testid]="'view-' + option.value"
               >
-                <span class="sm:hidden">{{ option.short }}</span>
-                <span class="hidden sm:inline">{{ option.long }}</span>
+                {{ option.label }}
               </button>
             }
           </div>
         }
-
         <app-notifications-menu />
-        <app-account-menu />
+        <app-profile-menu [view]="view()" />
       </div>
     </header>
   `,
+  host: { class: 'contents' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TopBar {
   protected readonly session = inject(Session);
   protected readonly viewOptions = VIEW_OPTIONS;
   readonly view = input.required<PortalView>();
+  readonly navItems = input.required<readonly NavItem[]>();
+  readonly menuOpened = output();
 }

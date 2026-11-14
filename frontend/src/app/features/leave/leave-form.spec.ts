@@ -18,13 +18,14 @@ const BALANCES: LeaveBalance[] = [
 
 @Component({
   imports: [LeaveForm],
-  template: `<app-leave-form [types]="types" [balances]="balances" [holidays]="holidays" (applied)="applied.set(true)" />`,
+  template: `<app-leave-form [types]="types" [balances]="balances" [holidays]="holidays" (applied)="applied.set(true)" (cancelled)="cancelled.set(true)" />`,
 })
 class Host {
   types = TYPES;
   balances = BALANCES;
   holidays = new Set(['2026-12-01']);
   readonly applied = signal(false);
+  readonly cancelled = signal(false);
 }
 
 describe('LeaveForm', () => {
@@ -90,9 +91,8 @@ describe('LeaveForm', () => {
     fill(root, 'leave-from', '2026-12-06');
     fill(root, 'leave-to', '2026-12-08');
 
-    const preview = text(root.querySelector('[data-testid=leave-preview]') as HTMLElement);
-    expect(preview).toContain("That's 3 working days . You'll have 27 days left.");
-    expect(preview).toContain('needs a medical certificate');
+    expect(text(root.querySelector('[data-testid=leave-preview]') as HTMLElement)).toBe('3 days requested 27 days will remain after approval');
+    expect(text(root)).toContain('needs a medical certificate');
   });
 
   it('offers half days only for a single day', () => {
@@ -121,6 +121,7 @@ describe('LeaveForm', () => {
     fill(root, 'leave-type', 'unpaid');
     fill(root, 'leave-from', '2026-12-06');
     fill(root, 'leave-to', '2026-12-17');
+    expect(text(root.querySelector('[data-testid=leave-preview]') as HTMLElement)).toBe('10 days requested Unpaid, so it doesn’t use a balance.');
     fill(root, 'leave-reason', 'Family emergency');
     await submitForm();
 
@@ -139,5 +140,13 @@ describe('LeaveForm', () => {
 
     expect(root.querySelector('[role=alert]')).not.toBeNull();
     expect(host.applied()).toBe(false);
+  });
+
+  it('hints at what counts before dates are picked, and can be cancelled', () => {
+    expect(text(root.querySelector('[data-testid=leave-preview]') as HTMLElement)).toBe('Pick your dates Weekends and public holidays don’t count.');
+
+    (root.querySelector('.secondary-button') as HTMLButtonElement).click();
+
+    expect(host.cancelled()).toBe(true);
   });
 });

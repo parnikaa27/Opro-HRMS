@@ -1,66 +1,57 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/fraunces/opsz.css';
-@import '@fontsource/ibm-plex-sans/latin-400.css';
-@import '@fontsource/ibm-plex-sans/latin-500.css';
+@import '@fontsource-variable/dm-sans/wght.css';
+@import '@fontsource-variable/manrope/wght.css';
+@import './styles/portal.css';
 
-/* Palette comes from Malé coral stone, limestone and teak. light-dark() follows color-scheme, which the theme toggle sets. */
+/* Tailwind tokens mapped onto the Figma palette, for templates that use utilities. */
 @theme {
-  --font-display: 'Fraunces Variable', Georgia, serif;
-  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-display: 'Manrope Variable', system-ui, sans-serif;
+  --font-sans: 'DM Sans Variable', system-ui, sans-serif;
 
-  --color-canvas: light-dark(#f6f2ea, #15191b);
-  --color-card: light-dark(#fffdf9, #1e2427);
-  --color-line: light-dark(#e6dfd2, #2f373b);
-  --color-ink: light-dark(#22272a, #ece7df);
-  --color-soft: light-dark(#5b6063, #a3a8a9);
+  --color-canvas: #f3f7f6;
+  --color-card: #ffffff;
+  --color-line: #e6ecee;
+  --color-ink: #16313f;
+  --color-soft: #71828c;
+  --color-navy: #102d3f;
 
-  --color-sea: light-dark(#1f5c57, #7dbdb3);
-  --color-sea-soft: light-dark(#e3eeec, #1d3532);
-  --color-on-sea: light-dark(#fffdf9, #15191b);
-  --color-coral: light-dark(#a9472f, #e58a6f);
-  --color-coral-soft: light-dark(#f8e7e0, #3a2420);
-  --color-ok: light-dark(#356b45, #8cc49a);
-  --color-ok-soft: light-dark(#e5f0e7, #1f3324);
-  --color-late: light-dark(#8a590f, #e0b062);
-  --color-late-soft: light-dark(#f7ecd9, #3a2e18);
-  --color-danger: light-dark(#a33636, #ee8e85);
-  --color-danger-soft: light-dark(#f8e3e1, #3d1f1d);
-  --color-leave: light-dark(#4f4895, #a9a3e6);
-  --color-leave-soft: light-dark(#ecebf6, #2a2843);
+  --color-sea: #11ae9e;
+  --color-sea-dark: #078e83;
+  --color-sea-soft: #e5f7f3;
+  --color-on-sea: #ffffff;
+  --color-coral: #d66552;
+  --color-coral-soft: #fff0ed;
+  --color-ok: #148b7b;
+  --color-ok-soft: #e6f7f3;
+  --color-late: #bc7b12;
+  --color-late-soft: #fff4dd;
+  --color-danger: #d66552;
+  --color-danger-soft: #fff0ed;
+  --color-leave: #6543a5;
+  --color-leave-soft: #eee8ff;
 
-  --shadow-lift: 0 1px 2px rgb(34 39 42 / 0.06), 0 8px 24px -12px rgb(34 39 42 / 0.18);
+  --shadow-lift: 0 2px 4px rgb(31 54 64 / 0.025);
   --ease-spring: linear(0, 0.25 7%, 0.7 18%, 1.02 31%, 1.08 39%, 1.03 52%, 0.99 66%, 1);
 }
 
-:root {
-  color-scheme: light dark;
-  &[data-theme='light'] {
-    color-scheme: light;
-  }
-  &[data-theme='dark'] {
-    color-scheme: dark;
-  }
-}
-
 body {
-  background: var(--color-canvas);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-sea);
+  outline: 2px solid var(--aqua);
   outline-offset: 2px;
-  border-radius: 6px;
 }
 
+/* Additions the Figma file doesn't cover: our extra statuses and uppercase labels from data. */
 .eyebrow {
-  font-size: 0.6875rem;
-  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-soft);
+}
+
+.status-pill.neutral {
+  background: #eef2f3;
+  color: #71828c;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -84,44 +75,324 @@ body {
     @apply @container flex aspect-[85.6/54] w-full max-w-[26rem] break-inside-avoid flex-col overflow-hidden rounded-2xl border border-line bg-card text-ink shadow-lift [print-color-adjust:exact] print:w-[85.6mm] print:rounded-[3mm] print:shadow-none;
   }
 
-  .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-sea px-5 py-2.5 text-sm font-medium text-on-sea transition-[filter,scale] duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-60;
-  }
-
-  .btn-quiet {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-sea transition-colors hover:bg-sea-soft disabled:opacity-60;
-  }
-
-  .field-label {
-    @apply mb-1.5 block text-sm font-medium;
-  }
-
-  .field-input {
-    @apply w-full rounded-xl border border-line bg-canvas px-3 py-2.5 text-ink transition-colors focus:border-sea aria-invalid:border-danger;
-  }
-
   .field-error {
     @apply mt-1.5 text-sm text-danger;
   }
+}
 
-  .menu-panel {
-    @apply fixed inset-auto top-16 right-4 left-4 m-0 max-h-[70dvh] overflow-auto rounded-2xl border border-line bg-card p-4 text-ink shadow-lift sm:left-auto sm:w-96;
-    opacity: 0;
-    translate: 0 -6px;
-    transition:
-      opacity 0.15s,
-      translate 0.3s var(--ease-spring),
-      display 0.3s allow-discrete,
-      overlay 0.3s allow-discrete;
+/* Pieces the Figma file shows but doesn't style: search results and popover actions. */
+.header-search {
+  position: relative;
+}
 
-    &:popover-open {
-      opacity: 1;
-      translate: 0 0;
+.search-results {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: white;
+  border: 1px solid #e5ebed;
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgba(16, 45, 63, 0.12);
 
-      @starting-style {
-        opacity: 0;
-        translate: 0 -6px;
-      }
+  a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    color: var(--ink);
+    font-weight: 600;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--aqua-light);
     }
+  }
+
+  small {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 500;
+  }
+}
+
+.search-empty {
+  padding: 10px;
+  color: var(--muted);
+}
+
+.notification-popover {
+  .popover-action {
+    margin-top: 10px;
+    border: 0;
+    background: none;
+    padding: 0;
+    color: var(--aqua-dark);
+    font-weight: 700;
+  }
+
+  .popover-error {
+    color: var(--coral);
+  }
+
+  p.is-read {
+    opacity: 0.7;
+  }
+}
+
+.profile-popover {
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+
+  a,
+  button {
+    border: 0;
+    background: none;
+    padding: 10px 6px;
+    text-align: left;
+    color: var(--ink);
+    font-weight: 600;
+    border-radius: 8px;
+
+    &:hover {
+      background: var(--aqua-light);
+    }
+  }
+}
+
+/* Overview states the Figma file only shows one version of. */
+.portrait-initials {
+  width: 66px;
+  height: 73px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: #1e4a5e;
+  color: white;
+  font: 700 22px 'Manrope Variable';
+}
+
+.attendance-off {
+  margin: 20px 0 18px;
+  color: var(--muted);
+
+  strong {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--ink);
+    font: 700 15px 'Manrope Variable';
+  }
+}
+
+.approval-icon.pending {
+  background: #fff4dd;
+  color: #bc7b12;
+}
+
+.approval-icon.declined {
+  background: #fff0ed;
+  color: #d66552;
+}
+
+/* Fixes a phone overflow in the Figma CSS: a plain 1fr column can't shrink below the 600px tables. */
+@media (max-width: 860px) {
+  .employee-grid,
+  .manager-grid,
+  .calendar-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The design's modal runs on a native <dialog>, which needs these to sit like the original overlay. */
+dialog.modal {
+  margin: auto;
+  border: 0;
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  color: var(--ink);
+
+  &::backdrop {
+    background: rgba(9, 30, 41, 0.55);
+    backdrop-filter: blur(3px);
+  }
+
+  .field-error {
+    margin-top: -2px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  [role='alert'] {
+    color: var(--coral);
+    font-size: 11px;
+  }
+}
+
+/* Two buttons where the design's title has one, and a real select inside the date chip. */
+.title-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.filter-chip select {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+/* Cancelling a request from the history row, which the design doesn't show. */
+.history-row .row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--muted);
+
+  .text-link {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: 10px;
+  }
+
+  .danger {
+    color: var(--coral);
+  }
+}
+
+.history-row .row-error {
+  color: var(--coral);
+  font-size: 10px;
+}
+
+/* Calendar chips for things the design's mock calendar doesn't have: holidays and team leave. */
+.calendar-days small {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+
+  &.holiday {
+    background: #fff4dd;
+    color: #a26a10;
+  }
+
+  &.leave {
+    background: #eee8ff;
+    color: #6543a5;
+  }
+
+  &.pending {
+    background: transparent;
+    border: 1px dashed #b7a6e0;
+    color: #6543a5;
+  }
+}
+
+.primary-button.danger {
+  background: var(--coral);
+
+  &:hover {
+    background: #d66552;
+  }
+}
+
+/* Notes the design's request rows don't have: overlaps and save errors. */
+.large-request {
+  .overlap {
+    margin-top: 3px;
+    color: #bc7b12;
+    font-size: 9px;
+    font-weight: 600;
+  }
+
+  .row-error {
+    grid-column: 1 / -1;
+    color: var(--coral);
+    font-size: 10px;
+  }
+}
+
+.request-list .row-error {
+  margin: -4px 0 6px;
+  color: var(--coral);
+  font-size: 10px;
+}
+
+/* A person cell in the team attendance table, which the design shows as a single person's log. */
+.person-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+
+  &:hover strong {
+    color: var(--aqua-dark);
+  }
+}
+
+/* Plain cards for pages the Figma file doesn't include (profile, team member). */
+.card-pad {
+  padding: 22px;
+
+  .card-body {
+    margin-top: 16px;
+  }
+
+  .card-text {
+    margin: 12px 0 16px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+}
+
+.back-link {
+  display: inline-flex;
+  margin-bottom: 14px;
+}
+
+@media print {
+  .print-plain {
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .app-content,
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+
+/* The punch fixes card under the attendance log, a section the design doesn't have. */
+.full-table + app-correction-list > .request-history,
+.attendance-off + app-correction-list > .request-history {
+  margin-top: 19px;
+}
+
+/* The overview chart shows every working day of the month, so bars stretch to fill it and future days stay faint. */
+.chart-area i {
+  max-width: none;
+
+  &.future {
+    background: #edf2f2;
   }
 }

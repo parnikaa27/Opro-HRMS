@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, inject, input, linkedSignal, output
 import { FormField, form, maxLength, required, submit, validate } from '@angular/forms/signals';
 import { CorrectionRequest } from '../../models/attendance';
 import { FieldError } from '../../shared/ui/field-error';
+import { Icon } from '../../shared/ui/icon';
+import { ModalHeading } from '../../shared/ui/modal-heading';
 import { maldivesToday } from '../../shared/utils/date-time';
 import { AttendanceApi } from './attendance-api';
 
@@ -9,52 +11,46 @@ const MAX_REASON = 300;
 
 @Component({
   selector: 'app-correction-form',
-  imports: [FormField, FieldError],
+  imports: [FormField, FieldError, Icon, ModalHeading],
   template: `
-    <form class="space-y-5" novalidate (submit)="save($event)">
-      <p class="text-sm text-soft">Forgot to punch, or the device was down? Tell your manager what really happened and they'll fix the record.</p>
-
-      <div class="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label class="field-label" for="fix-date">Day</label>
-          <input id="fix-date" type="date" class="field-input" [max]="today" [formField]="fixForm.date" data-testid="fix-date"
-            [attr.aria-invalid]="fixForm.date().touched() && fixForm.date().invalid()" aria-describedby="fix-date-error" />
-          <app-field-error id="fix-date-error" [errors]="fixForm.date().errors()" [isTouched]="fixForm.date().touched()" />
-        </div>
-        <div>
-          <label class="field-label" for="fix-time">Actual time</label>
-          <input id="fix-time" type="time" class="field-input" [formField]="fixForm.requestedTime" data-testid="fix-time"
-            [attr.aria-invalid]="fixForm.requestedTime().touched() && fixForm.requestedTime().invalid()" aria-describedby="fix-time-error" />
-          <app-field-error id="fix-time-error" [errors]="fixForm.requestedTime().errors()" [isTouched]="fixForm.requestedTime().touched()" />
-        </div>
+    <app-modal-heading eyebrow="BIOMETRIC RECORDS" heading="Fix a punch" intro="Forgot to punch, or the device was down? Tell your manager what really happened." />
+    <form novalidate (submit)="save($event)">
+      <div class="form-row">
+        <label>
+          Day
+          <input type="date" [max]="today" [formField]="fixForm.date" data-testid="fix-date" [attr.aria-invalid]="fixForm.date().touched() && fixForm.date().invalid()" aria-describedby="fix-date-error" />
+        </label>
+        <label>
+          Actual time
+          <input type="time" [formField]="fixForm.requestedTime" data-testid="fix-time" [attr.aria-invalid]="fixForm.requestedTime().touched() && fixForm.requestedTime().invalid()" aria-describedby="fix-time-error" />
+        </label>
       </div>
+      <app-field-error id="fix-date-error" [errors]="fixForm.date().errors()" [isTouched]="fixForm.date().touched()" />
+      <app-field-error id="fix-time-error" [errors]="fixForm.requestedTime().errors()" [isTouched]="fixForm.requestedTime().touched()" />
 
-      <fieldset>
-        <legend class="field-label">What's missing?</legend>
-        <div class="flex flex-wrap gap-2">
+      <label>
+        What's missing?
+        <select [formField]="fixForm.kind" data-testid="fix-kind">
           @for (option of kinds; track option.value) {
-            <label class="flex cursor-pointer items-center gap-2 rounded-full border border-line px-4 py-2 text-sm has-checked:border-sea has-checked:bg-sea-soft has-checked:text-sea">
-              <input type="radio" class="sr-only" [value]="option.value" [formField]="fixForm.kind" />
-              {{ option.label }}
-            </label>
+            <option [value]="option.value">{{ option.label }}</option>
           }
-        </div>
-      </fieldset>
+        </select>
+      </label>
 
-      <div>
-        <label class="field-label" for="fix-reason">What happened?</label>
-        <textarea id="fix-reason" rows="3" class="field-input" [formField]="fixForm.reason" placeholder="The device at the Hulhumalé site was offline" data-testid="fix-reason"
-          [attr.aria-invalid]="fixForm.reason().touched() && fixForm.reason().invalid()" aria-describedby="fix-reason-error"></textarea>
-        <app-field-error id="fix-reason-error" [errors]="fixForm.reason().errors()" [isTouched]="fixForm.reason().touched()" />
-      </div>
+      <label>
+        What happened?
+        <textarea [formField]="fixForm.reason" placeholder="The device at the Hulhumalé site was offline" data-testid="fix-reason" [attr.aria-invalid]="fixForm.reason().touched() && fixForm.reason().invalid()" aria-describedby="fix-reason-error"></textarea>
+      </label>
+      <app-field-error id="fix-reason-error" [errors]="fixForm.reason().errors()" [isTouched]="fixForm.reason().touched()" />
 
       @if (submitFailed()) {
-        <p class="text-sm text-danger" role="alert">That didn't go through. Check your connection and try again.</p>
+        <p role="alert">That didn't go through. Check your connection and try again.</p>
       }
 
-      <div class="flex justify-end">
-        <button type="submit" class="btn-primary" [disabled]="fixForm().submitting()" data-testid="fix-submit">
-          {{ fixForm().submitting() ? 'Sending…' : 'Send to my manager' }}
+      <div class="modal-actions">
+        <button type="button" class="secondary-button" (click)="cancelled.emit()">Cancel</button>
+        <button type="submit" class="primary-button" [disabled]="fixForm().submitting()" data-testid="fix-submit">
+          {{ fixForm().submitting() ? 'Sending…' : 'Send to my manager' }} <app-icon name="arrow" [size]="16" />
         </button>
       </div>
     </form>
@@ -67,6 +63,7 @@ export class CorrectionForm {
   readonly date = input('');
   readonly kind = input<CorrectionRequest['kind']>('missed-out');
   readonly raised = output();
+  readonly cancelled = output();
 
   protected readonly today = maldivesToday();
   protected readonly kinds = [

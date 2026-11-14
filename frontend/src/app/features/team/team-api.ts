@@ -33,7 +33,8 @@ const listRequest = (url: string, { status, isEnabled = () => true }: ListOption
 export class TeamApi {
   private readonly http = inject(HttpClient);
 
-  members = () => httpResource<TeamMember[]>(() => '/api/team', { defaultValue: [] });
+  members = ({ isEnabled = () => true }: Pick<ListOptions, 'isEnabled'> = {}) =>
+    httpResource<TeamMember[]>(() => (isEnabled() ? '/api/team' : undefined), { defaultValue: [] });
   member = (id: () => string) => httpResource<TeamMemberDetail>(() => `/api/team/${encodeURIComponent(id())}`);
   attendance = (month: () => string) =>
     httpResource<AttendanceDay[]>(() => ({ url: '/api/team/attendance', params: { month: month() } }), { defaultValue: [] });

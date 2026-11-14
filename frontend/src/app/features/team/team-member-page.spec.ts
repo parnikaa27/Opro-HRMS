@@ -38,12 +38,12 @@ describe('TeamMemberPage', () => {
     const root = fixture.nativeElement as HTMLElement;
 
     expect(text(root.querySelector('h1') as HTMLElement)).toBe('Kasun Perera');
-    expect(texts(root, 'leave-balance')).toEqual(['Annual leave 12 of 30 left 18 taken']);
-    expect(texts(root, 'attendance-day')).toEqual(['Tue 10 Nov Absent No punches']);
+    expect(texts(root, 'leave-balance')).toEqual(['12 annual days Annual leave 12 of 30 days available']);
+    expect(texts(root, 'attendance-row')).toEqual(['Tuesday 10 Nov, Tue — — — Absent']);
+    expect(text(root.querySelector('[data-testid=visa-card]') as HTMLElement)).toContain('Missing');
     expect(texts(root, 'leave-request')).toHaveLength(1);
-    expect(root.querySelector('[data-testid=fix-day]')).toBeNull();
     expect(root.querySelector('[data-testid=cancel-request]')).toBeNull();
-    expect(root.querySelector('[data-testid=id-card-front]')).not.toBeNull();
+    expect(root.querySelector('[data-testid=employee-card]')).not.toBeNull();
   });
 
   it('says so when the person is not on the team', async () => {

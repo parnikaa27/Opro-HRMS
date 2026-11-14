@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { Visa } from '../../models/employee';
+import { Icon, IconName } from '../../shared/ui/icon';
 import { StatusPill, Tone } from '../../shared/ui/status-pill';
 import { daysUntil, formatFullDate, maldivesToday } from '../../shared/utils/date-time';
 import { expiryStatus, ExpiryStatus } from '../../shared/utils/expiry';
@@ -11,36 +12,50 @@ const EXPIRY: Record<ExpiryStatus, { label: string; tone: Tone }> = {
   expired: { label: 'Expired', tone: 'danger' },
 };
 
+interface DocumentRow {
+  name: string;
+  icon: IconName;
+  number: string;
+  dates: string;
+  countdown: string;
+  status?: ExpiryStatus;
+}
+
 @Component({
   selector: 'app-visa-details',
-  imports: [StatusPill],
+  imports: [Icon, StatusPill],
   template: `
-    @if (visa(); as record) {
-      <dl class="divide-y divide-line rounded-2xl border border-line bg-card shadow-lift">
+    <section class="card request-history">
+      <div class="card-heading">
+        <div>
+          <span class="eyebrow">WORK VISA</span>
+          <h2>Visa and work permit</h2>
+        </div>
+      </div>
+      @if (visa()) {
         @for (document of documents(); track document.name) {
-          <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4" data-testid="visa-document">
+          <div class="history-row" data-testid="visa-document">
+            <div class="leave-type-icon"><app-icon [name]="document.icon" [size]="18" /></div>
             <div>
-              <dt class="font-medium">{{ document.name }}</dt>
-              <dd class="mt-0.5 text-sm text-soft">{{ document.number }}</dd>
-              <dd class="mt-0.5 text-sm text-soft">{{ document.dates }}</dd>
+              <strong>{{ document.name }}</strong>
+              <span>{{ document.number }}@if (document.dates) { · {{ document.dates }}}</span>
             </div>
-            <dd class="flex flex-col items-end gap-1 text-xs text-soft">
-              <app-status-pill [tone]="expiry[document.status].tone">{{ expiry[document.status].label }}</app-status-pill>
-              {{ document.countdown }}
-            </dd>
+            <span>{{ document.countdown }}</span>
+            @if (document.status; as status) {
+              <app-status-pill [tone]="expiry[status].tone">{{ expiry[status].label }}</app-status-pill>
+            } @else {
+              <span></span>
+            }
           </div>
         }
-        <div class="px-5 py-4">
-          <dt class="font-medium">Work permit</dt>
-          <dd class="mt-0.5 text-sm text-soft">{{ record.workPermitNumber }}</dd>
-        </div>
-      </dl>
-    } @else {
-      <p class="rounded-2xl border border-line bg-card px-5 py-4 text-sm text-soft shadow-lift" data-testid="visa-none">
-        {{ isNational() ? "Not needed. Maldivian nationals don't need a work visa." : "We don't have your visa on record. Send a copy to HR so they can track the renewal for you." }}
-      </p>
-    }
+      } @else {
+        <p class="attendance-off" data-testid="visa-none">
+          {{ isNational() ? "Not needed. Maldivian nationals don't need a work visa." : "We don't have your visa on record. Send a copy to HR so they can track the renewal for you." }}
+        </p>
+      }
+    </section>
   `,
+  host: { class: 'contents' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class VisaDetails {
@@ -51,26 +66,27 @@ export class VisaDetails {
   protected readonly expiry = EXPIRY;
   protected readonly isNational = computed(() => this.nationality() === 'Maldivian');
 
-  protected readonly documents = computed(() => {
+  protected readonly documents = computed<DocumentRow[]>(() => {
     const visa = this.visa();
     if (!visa) {
       return [];
     }
-    const describe = (name: string, number: string, expires: string, issued?: string) => {
+    const describe = (name: string, icon: IconName, number: string, expires: string, issued?: string): DocumentRow => {
       const daysLeft = daysUntil(expires, this.today);
       const status = expiryStatus(expires, this.today);
-      const countdown = daysLeft >= 0 ? `${plural(daysLeft, 'day')} left` : `${plural(-daysLeft, 'day')} ago`;
       return {
         name,
+        icon,
         number,
         dates: issued ? `Issued ${formatFullDate(issued)}, expires ${formatFullDate(expires)}` : `Expires ${formatFullDate(expires)}`,
         status,
-        countdown: status === 'valid' ? '' : countdown,
+        countdown: status === 'valid' ? '' : daysLeft >= 0 ? `${plural(daysLeft, 'day')} left` : `${plural(-daysLeft, 'day')} ago`,
       };
     };
     return [
-      describe('Work visa', visa.visaNumber, visa.visaExpiry, visa.visaIssuedOn),
-      describe('Passport', `Ending ${visa.passportLast4}`, visa.passportExpiry),
+      describe('Work visa', 'globe', visa.visaNumber, visa.visaExpiry, visa.visaIssuedOn),
+      describe('Passport', 'file', `Ending ${visa.passportLast4}`, visa.passportExpiry),
+      { name: 'Work permit', icon: 'badgeCheck', number: visa.workPermitNumber, dates: '', countdown: '' },
     ];
   });
 }

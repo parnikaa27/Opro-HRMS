@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
-import { buildAttendance, maldivesNow } from './attendance.mjs';
+import { buildAttendance, clockNow, maldivesNow } from './attendance.mjs';
 
 const PORT = Number(process.env.MOCK_PORT ?? 4300);
 const MAX_BODY_BYTES = 10_000;
@@ -18,6 +18,7 @@ const db = {
   leaveBalances: load('leave-balances'),
   leaveRequests: load('leave-requests'),
   holidays: load('holidays'),
+  events: load('events'),
   corrections: load('corrections'),
   announcements: load('announcements'),
   notifications: load('notifications'),
@@ -25,6 +26,26 @@ const db = {
 db.attendance = buildAttendance(db);
 
 const sessions = new Map();
+const SENT = Symbol('sent');
+const MINUTE_MS = 60_000;
+
+// Sync times are relative to now so the "synced 3 min ago" label always reads true.
+const devices = () => [
+  { id: 'OPR-MLE-01', name: 'Front desk', location: 'Malé office', isOnline: true, lastSyncAt: new Date(clockNow().getTime() - 3 * MINUTE_MS).toISOString() },
+  { id: 'OPR-HMH-01', name: 'Site gate', location: 'Hulhumalé site', isOnline: true, lastSyncAt: new Date(clockNow().getTime() - 11 * MINUTE_MS).toISOString() },
+];
+
+const documentsOf = (user) => {
+  const visa = db.visas.find(({ employeeId }) => employeeId === user.id);
+  return [
+    { id: 'contract', name: 'Employment contract', updatedOn: user.joinedOn, status: 'verified' },
+    ...(visa ? [{ id: 'visa', name: 'Visa copy', expiresOn: visa.visaExpiry, status: 'verified' }] : []),
+    user.nationality === 'Maldivian'
+      ? { id: 'national-id', name: 'National ID', status: 'verified' }
+      : { id: 'passport', name: 'Passport copy', expiresOn: visa?.passportExpiry, status: 'verified' },
+    { id: 'insurance', name: 'Health insurance', updatedOn: '2026-02-05', status: 'pending' },
+  ];
+};
 
 class HttpError extends Error {
   constructor(status, message) {
@@ -35,7 +56,7 @@ class HttpError extends Error {
 
 const today = () => maldivesNow().date;
 const nameOf = (employeeId) => db.employees.find(({ id }) => id === employeeId)?.fullName;
-const withName = (item) => ({ ...item, employeeName: nameOf(item.employeeId) });
+const withName = (item) => ({ ...item, employeeName: nameOf(item.employeeId), ...(item.decidedBy && { decidedByName: nameOf(item.decidedBy) }) });
 const withVisa = (employee) => ({ ...employee, visa: db.visas.find(({ employeeId }) => employeeId === employee.id) });
 const reportsOf = (user) => db.employees.filter(({ managerId }) => managerId === user.id);
 
@@ -85,7 +106,7 @@ const routes = [
   ['POST', /^\/api\/profile\/change-requests$/, () => ({ status: 'received' })],
 
   ['GET', /^\/api\/attendance$/, ({ user, query }) => db.attendance.filter((record) => record.employeeId === user.id).filter(inMonth(query.get('month')))],
-  ['GET', /^\/api\/attendance\/corrections$/, ({ user }) => db.corrections.filter(({ employeeId }) => employeeId === user.id)],
+  ['GET', /^\/api\/attendance\/corrections$/, ({ user }) => db.corrections.filter(({ employeeId }) => employeeId === user.id).map(withName)],
   ['POST', /^\/api\/attendance\/corrections$/, ({ user, body }) => {
     const correction = { id: `AC-${randomUUID().slice(0, 6)}`, employeeId: user.id, date: body.date, kind: body.kind, requestedTime: body.requestedTime, reason: body.reason, status: 'pending', raisedOn: today() };
     db.corrections = [correction, ...db.corrections];
@@ -94,7 +115,7 @@ const routes = [
 
   ['GET', /^\/api\/leave\/types$/, () => db.leaveTypes],
   ['GET', /^\/api\/leave\/balances$/, ({ user }) => db.leaveBalances[user.id] ?? []],
-  ['GET', /^\/api\/leave\/requests$/, ({ user }) => db.leaveRequests.filter(({ employeeId }) => employeeId === user.id)],
+  ['GET', /^\/api\/leave\/requests$/, ({ user }) => db.leaveRequests.filter(({ employeeId }) => employeeId === user.id).map(withName)],
   ['POST', /^\/api\/leave\/requests$/, ({ user, body }) => {
     // The real backend counts days itself. The mock trusts the client to keep things simple.
     const request = { id: `LR-${randomUUID().slice(0, 6)}`, employeeId: user.id, type: body.type, from: body.from, to: body.to, ...(body.halfDay && { halfDay: body.halfDay }), days: body.days, reason: body.reason, status: 'pending', appliedOn: today() };
@@ -113,6 +134,19 @@ const routes = [
 
   ['GET', /^\/api\/holidays$/, ({ query }) => db.holidays.filter(({ date }) => date.startsWith(query.get('year') ?? today().slice(0, 4)))],
   ['GET', /^\/api\/announcements$/, () => db.announcements],
+  ['GET', /^\/api\/events$/, ({ query }) => db.events.filter(({ date }) => date.startsWith(query.get('year') ?? today().slice(0, 4)))],
+  ['GET', /^\/api\/devices$/, () => devices()],
+  ['GET', /^\/api\/documents$/, ({ user }) => documentsOf(user)],
+  ['GET', /^\/api\/documents\/([\w-]+)\/file$/, ({ user, params: [id], res }) => {
+    const document = documentsOf(user).find((entry) => entry.id === id);
+    if (!document) {
+      throw new HttpError(404, 'Document not found');
+    }
+    // A stand in file. Real documents come from storage once the backend exists.
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Content-Disposition': `attachment; filename="${id}.txt"` });
+    res.end(`${document.name} for ${user.fullName}\nThis is a sample file from the mock server.\n`);
+    return SENT;
+  }],
   ['GET', /^\/api\/notifications$/, ({ user }) => db.notifications.filter(({ employeeId }) => employeeId === user.id)],
   ['POST', /^\/api\/notifications\/read$/, ({ user }) => {
     db.notifications = db.notifications.map((entry) => (entry.employeeId === user.id ? { ...entry, isRead: true } : entry));
@@ -204,7 +238,9 @@ createServer(async (req, res) => {
     const body = method === 'GET' ? {} : await readBody(req);
     const params = url.pathname.match(pattern).slice(1);
     const result = await handler({ user, body, params, query: url.searchParams, token, res });
-    send(res, result === undefined ? 204 : 200, result);
+    if (result !== SENT) {
+      send(res, result === undefined ? 204 : 200, result);
+    }
   } catch (error) {
     const status = error instanceof HttpError ? error.status : 500;
     if (status === 500) {

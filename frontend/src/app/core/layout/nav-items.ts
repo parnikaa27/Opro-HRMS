@@ -4,19 +4,22 @@ export interface NavItem {
   label: string;
   path: string;
   icon: IconName;
+  isExact?: boolean;
+  showsPendingCount?: boolean;
 }
 
-export const MY_NAV: readonly NavItem[] = [
-  { label: 'Home', path: '/', icon: 'home' },
-  { label: 'Attendance', path: '/attendance', icon: 'clock' },
-  { label: 'Leave', path: '/leave', icon: 'leave' },
-  { label: 'Holidays', path: '/holidays', icon: 'calendar' },
-  { label: 'Profile', path: '/profile', icon: 'user' },
+export const EMPLOYEE_NAV: readonly NavItem[] = [
+  { label: 'Overview', path: '/', icon: 'dashboard', isExact: true },
+  { label: 'Attendance', path: '/attendance', icon: 'fingerprint' },
+  { label: 'Leave', path: '/leave', icon: 'palm' },
+  { label: 'Calendar', path: '/calendar', icon: 'calendar' },
+  { label: 'Documents', path: '/documents', icon: 'file' },
 ];
 
-export const TEAM_NAV: readonly NavItem[] = [
-  { label: 'Today', path: '/team', icon: 'team' },
-  { label: 'Approvals', path: '/team/approvals', icon: 'approvals' },
-  { label: 'Attendance', path: '/team/attendance', icon: 'grid' },
+export const MANAGER_NAV: readonly NavItem[] = [
+  { label: 'Overview', path: '/team', icon: 'dashboard', isExact: true },
+  { label: 'People', path: '/team/people', icon: 'users' },
+  { label: 'Attendance', path: '/team/attendance', icon: 'fingerprint' },
+  { label: 'Leave', path: '/team/approvals', icon: 'userCheck', showsPendingCount: true },
   { label: 'Calendar', path: '/team/calendar', icon: 'calendar' },
 ];

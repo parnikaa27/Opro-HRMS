@@ -26,6 +26,7 @@ export interface Employee {
   bloodGroup: string;
   nationality: string;
   workLocation: string;
+  employmentType: string;
   managerId?: string;
   roles: Role[];
   emergencyContact: EmergencyContact;

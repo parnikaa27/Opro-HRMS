@@ -1,5 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { Dialog } from '../../shared/ui/dialog';
+import { Icon } from '../../shared/ui/icon';
+import { SuccessState } from '../../shared/ui/success-state';
 import { maldivesToday, yearOf } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { HolidaysApi } from '../holidays/holidays-api';
@@ -11,40 +14,41 @@ import { ListSkeleton } from '../../shared/ui/list-skeleton';
 
 @Component({
   selector: 'app-leave-page',
-  imports: [ListSkeleton, Dialog, LeaveBalances, LeaveForm, LeaveRequests],
+  imports: [Dialog, Icon, LeaveBalances, LeaveForm, LeaveRequests, ListSkeleton, SuccessState],
   template: `
-    <header class="mb-8 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 class="font-display text-3xl tracking-tight sm:text-4xl">Leave</h1>
-        <p class="mt-2 text-soft">What you have left for {{ year }}, and every request you've made.</p>
+    <div class="page-view">
+      <div class="page-title">
+        <div>
+          <span class="eyebrow">TIME OFF</span>
+          <h1>Leave &amp; time off</h1>
+          <p>Plan your time off and keep track of request statuses.</p>
+        </div>
+        <button type="button" class="primary-button compact" (click)="isApplying.set(true)" data-testid="apply-leave"><app-icon name="plus" [size]="17" /> Request leave</button>
       </div>
-      <button type="button" class="btn-primary" (click)="isApplying.set(true)" data-testid="apply-leave">Apply for leave</button>
-    </header>
 
-    <section aria-labelledby="balances-heading">
-      <h2 id="balances-heading" class="eyebrow mb-3">Balances</h2>
       @if (balances.error()) {
-        <p class="text-sm text-danger">Your balances didn't load. Refresh the page to try again.</p>
+        <p class="attendance-off">Your balances didn't load. Refresh the page to try again.</p>
       } @else if (balances.isLoading() && balanceList().length === 0) {
         <app-list-skeleton [count]="1" />
       } @else {
         <app-leave-balances [balances]="balanceList()" [types]="typeList()" />
       }
-    </section>
 
-    <section class="mt-10" aria-labelledby="requests-heading">
-      <h2 id="requests-heading" class="eyebrow mb-3">Your requests</h2>
       @if (requests.error()) {
-        <p class="text-sm text-danger">Your requests didn't load. Refresh the page to try again.</p>
+        <p class="attendance-off">Your requests didn't load. Refresh the page to try again.</p>
       } @else if (requests.isLoading() && requestList().length === 0) {
         <app-list-skeleton />
       } @else {
         <app-leave-requests [requests]="requestList()" [types]="typeList()" (changed)="refresh()" />
       }
-    </section>
+    </div>
 
-    <app-dialog heading="Apply for leave" [(isOpen)]="isApplying">
-      <app-leave-form [types]="typeList()" [balances]="balanceList()" [holidays]="holidayDates()" (applied)="onApplied()" />
+    <app-dialog heading="Request leave" [(isOpen)]="isApplying">
+      @if (wasApplied()) {
+        <app-success-state heading="Request submitted" body="Your manager has been notified. You can track the status from the Leave page." (done)="closeForm()" />
+      } @else {
+        <app-leave-form [types]="typeList()" [balances]="balanceList()" [holidays]="holidayDates()" (applied)="onApplied()" (cancelled)="closeForm()" />
+      }
     </app-dialog>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -53,8 +57,9 @@ export class LeavePage {
   private readonly leaveApi = inject(LeaveApi);
   private readonly holidaysApi = inject(HolidaysApi);
 
-  protected readonly year = yearOf(maldivesToday());
-  protected readonly isApplying = signal(false);
+  private readonly year = yearOf(maldivesToday());
+  // The overview's "Request leave" button links here with ?apply=1.
+  protected readonly isApplying = signal(inject(ActivatedRoute).snapshot.queryParamMap.has('apply'));
 
   protected readonly balances = this.leaveApi.balances();
   protected readonly requests = this.leaveApi.requests();
@@ -74,8 +79,15 @@ export class LeavePage {
     this.requests.reload();
   }
 
+  protected readonly wasApplied = signal(false);
+
   protected onApplied() {
-    this.isApplying.set(false);
+    this.wasApplied.set(true);
     this.refresh();
+  }
+
+  protected closeForm() {
+    this.isApplying.set(false);
+    this.wasApplied.set(false);
   }
 }

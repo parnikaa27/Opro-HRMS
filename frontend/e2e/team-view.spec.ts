@@ -3,49 +3,51 @@ import { expect, Page, test } from '@playwright/test';
 const signInAsManager = async (page: Page) => {
   await page.goto('/login');
   await page.getByTestId('login-as-OPR-0004').click();
-  await expect(page.getByTestId('greeting').or(page.getByRole('heading', { name: 'Your team today' }))).toBeVisible();
+  await expect(page.getByTestId('greeting')).toBeVisible();
   await page.goto('/team');
 };
 
-const pendingCard = (page: Page, name: string) => page.getByTestId('pending-leave').filter({ has: page.getByText(name, { exact: true }) });
+const leaveRow = (page: Page, name: string) => page.getByTestId('leave-row').filter({ has: page.getByText(name, { exact: true }) });
 
-test('a manager sees the team today and opens one person', async ({ page }) => {
+test('a manager sees the team overview and opens one person', async ({ page }) => {
   await signInAsManager(page);
 
-  await expect(page.getByTestId('team-member')).toHaveCount(6);
-  await expect(page.getByTestId('visa-warning').filter({ hasText: 'Rahim Uddin' }).first()).toContainText('expired');
+  await expect(page.getByTestId('stat-members')).toHaveText('6');
+  await expect(page.getByTestId('visa-alert').filter({ hasText: 'Rahim Uddin' }).first()).toBeVisible();
 
-  await page.getByTestId('team-member').filter({ hasText: 'Kasun Perera' }).click();
+  await page.getByTestId('nav-people').click();
+  await page.getByTestId('person-card').filter({ hasText: 'Kasun Perera' }).getByRole('link', { name: 'View profile' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Kasun Perera');
-  await expect(page.getByTestId('visa-document').first()).toContainText('Expires soon');
+  await expect(page.getByTestId('visa-card')).toContainText('Expires soon');
 });
 
-test('a manager approves one request and turns down another with a reason', async ({ page }) => {
+test('a manager approves one request and declines another with a reason', async ({ page }) => {
   await signInAsManager(page);
-  await page.getByRole('link', { name: 'Approvals' }).first().click();
+  await page.getByTestId('nav-leave').click();
 
-  await pendingCard(page, 'Mariyam Nisha').getByTestId('approve').click();
-  await expect(pendingCard(page, 'Mariyam Nisha')).toHaveCount(0);
+  await leaveRow(page, 'Mariyam Nisha').getByTestId('approve').click();
+  await expect(leaveRow(page, 'Mariyam Nisha')).toHaveCount(0);
 
-  const priya = pendingCard(page, 'Priya Nair');
-  await priya.getByTestId('reject').click();
-  await priya.getByTestId('confirm-reject').click();
-  await expect(priya.getByText('Give a short reason')).toBeVisible();
-  await priya.getByTestId('decision-note').fill('Year end close needs you until the 24th');
-  await priya.getByTestId('confirm-reject').click();
+  await leaveRow(page, 'Priya Nair').getByTestId('reject').click();
+  await page.getByTestId('confirm-reject').click();
+  await expect(page.getByText('Give a short reason')).toBeVisible();
+  await page.getByTestId('decision-note').fill('Year end close needs you until the 24th');
+  await page.getByTestId('confirm-reject').click();
 
-  await expect(page.getByTestId('decided').filter({ hasText: 'Priya Nair' })).toContainText('Not approved');
-  await expect(page.getByTestId('decided').filter({ hasText: 'Mariyam Nisha, annual leave' })).toContainText('Approved');
+  await page.getByTestId('tab-rejected').click();
+  await expect(leaveRow(page, 'Priya Nair')).toContainText('Year end close needs you until the 24th');
+  await page.getByTestId('tab-approved').click();
+  await expect(leaveRow(page, 'Mariyam Nisha').first()).toContainText('Approved');
 });
 
 test('team attendance and the calendar show the whole team', async ({ page }) => {
   await signInAsManager(page);
 
-  await page.getByRole('link', { name: 'Attendance' }).first().click();
+  await page.getByTestId('nav-attendance').click();
   await expect(page.getByTestId('team-attendance-row')).toHaveCount(6);
 
-  await page.getByRole('link', { name: 'Calendar' }).first().click();
-  await expect(page.getByRole('heading', { name: 'Team calendar' })).toBeVisible();
+  await page.getByTestId('nav-calendar').click();
+  await expect(page.getByRole('heading', { name: 'Holidays & events' })).toBeVisible();
   await page.getByTestId('previous-month').click();
   await expect(page.getByTestId('calendar-day').filter({ hasText: 'Ahmed Zahir' }).first()).toBeVisible();
 });
@@ -56,4 +58,18 @@ test('a manager cannot open someone outside their team', async ({ page }) => {
   await page.goto('/team/OPR-0001');
 
   await expect(page.getByRole('heading', { name: 'Not on your team' })).toBeVisible();
+});
+
+test('a manager finds someone on the People page and from the top search', async ({ page }) => {
+  await signInAsManager(page);
+
+  await page.getByTestId('nav-people').click();
+  await expect(page.getByTestId('person-card')).toHaveCount(6);
+  await page.getByTestId('people-search').fill('grace');
+  await expect(page.getByTestId('person-card')).toHaveCount(1);
+
+  await page.getByTestId('search-input').fill('priya');
+  await expect(page.getByTestId('search-results')).toContainText('Priya Nair');
+  await page.getByTestId('search-input').press('Enter');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Priya Nair');
 });

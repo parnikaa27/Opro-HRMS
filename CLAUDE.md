@@ -7,7 +7,8 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 
 | Part | Stack | Status |
 |---|---|---|
-| `frontend/` | Angular 22, Tailwind CSS v4, Vitest, Playwright | Every v1 page built, employee and manager |
+| `frontend/` | Angular 22, Tailwind CSS v4, Vitest, Playwright | Every employee and manager page matches the Figma design. HR next |
+| `design/figma-make/` | `App.tsx` and `index.css` copied from the Figma Make file "Opro HRMS Portal" | The visual source of truth |
 | `frontend/dev-server/` | Plain Node mock API serving JSON fixtures | In progress |
 | `backend/` | Java Spring Boot | Not started |
 
@@ -41,10 +42,10 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 |---|---|---|
 | Employee | Everyone | Own attendance, leave, holidays, profile, ID card, visa, notifications |
 | Manager | People with direct reports | Everything an employee can, plus a **Team view** for their **direct reports only** |
-| HR Admin | *Planned, not in v1* | Maintains holidays, visa records, leave policy, employee master data |
+| HR | HR staff, who are also employees | Everything an employee can, plus an **HR view** for the whole company (see HR below). Not built yet |
 
-- A manager is also an employee. A **My view / Team view** switch sits in the header and is only rendered for managers. The last chosen view is remembered per browser.
-- Until HR Admin exists, holidays, visa data and leave policy are read only and come from the backend (mock JSON for now).
+- A manager is also an employee. An **Employee / Manager** switch sits in the header and is only rendered for managers (HR adds a third option). The last chosen view is remembered per browser.
+- Until HR is built, holidays, visa data and leave policy are read only and come from the backend (mock JSON for now).
 - The UI hides what a role cannot use, but **the backend is the real gate**. Never rely on a route guard for security.
 
 ### Login
@@ -55,27 +56,32 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 
 ### Pages (v1)
 
+The look of every page comes from the Figma Make file (see Design below). Sidebar nav for employees: Overview, Attendance, Leave, Calendar, Documents. For managers: Overview, People, Attendance, Leave (with a count of what's waiting), Calendar. Profile is reached from the name menu at the top right.
+
 **Employee view**
 
 | Route | Contents |
 |---|---|
 | `/login` | Mock user picker (dev only) |
-| `/` Dashboard | Today's punch status and hours so far, leave balance summary, next holidays, visa alert if expiring/expired, pending requests, latest announcements |
-| `/attendance` | Month view of daily records: first in, last out, all punches, time worked, status. Month summary (present, late, absent, leave, hours). Raise a correction request for a missed or wrong punch, and see their status |
-| `/leave` | Balances per leave type, apply for leave (full or half day), list of own requests with status, cancel a pending request or an approved one that has not started |
-| `/holidays` | Year list of public holidays grouped by month, next one highlighted, one year either side. Islamic holidays are marked **tentative** until confirmed after moon sighting (the label drops once the date has passed) |
+| `/` Overview | Welcome banner, today's attendance (time in, expected out, effective hours, device sync), leave balance, visa status, recent attendance table, dark staff card, next holiday and long weekend, latest leave request |
+| `/documents` | Employment documents with status and download (sample files from the mock until storage exists) |
+| `/attendance` | My attendance: four summary cards, the attendance log for a chosen month, CSV export, punch fix requests and their status, and the device's sync state |
+| `/leave` | Leave and time off: balance rings, other leave types, request history with cancel (pending, or approved and not started), and the Request leave modal with a working day preview and a success screen |
+| `/calendar` | Company calendar: month grid with public holidays and company events, upcoming holidays, the holiday policy. Islamic holidays are marked **tentative** until confirmed after moon sighting. `/holidays` redirects here |
 | `/profile` | Virtual ID card (printable), personal and job details, emergency contact, visa and work permit details, request a change to personal details |
 | Notifications | Header panel, not a page: leave decisions, correction decisions, visa reminders, announcements |
+| Search | Top bar, ⌘K or Ctrl K. Finds pages, and people for managers |
 
 **Team view (managers only)**
 
 | Route | Contents |
 |---|---|
-| `/team` | Today at a glance for direct reports: in, late, not in yet, on leave. Visa alerts for the team |
-| `/team/approvals` | Pending leave requests and attendance correction requests, oldest first. Approve in one click. Saying no needs a reason, so the employee can plan around it. Leave requests show who else is off on those dates. Last 10 decisions below |
-| `/team/attendance` | Month grid, one row per report and one dot per day, with late and missed totals |
-| `/team/calendar` | Who is out when (approved solid, waiting dashed), merged with public holidays. A month grid on wide screens, a list of busy days on phones |
-| `/team/:employeeId` | One report's leave balances, this month's attendance, leave requests, visa and contact card. Read only |
+| `/team` | Manager overview: welcome banner, team members, pending requests, average attendance and out of office cards, waiting leave with one click approve, team today, a month attendance chart with CSV export, visa alerts |
+| `/team/people` | Card directory of direct reports with today's status and search |
+| `/team/approvals` | Leave requests in tabs (Pending, Approved, Declined, Punch fixes). Approve in one click. Declining opens a modal that needs a reason, so the employee can plan around it. Waiting leave shows who else is off on those dates |
+| `/team/attendance` | Team summary cards and a table with one row per report (days present, late, missed, hours, today), month picker, CSV export, every device's status |
+| `/team/calendar` | The company calendar plus who on the team is away (approved filled, pending dashed) |
+| `/team/:employeeId` | One report's leave balances, this month's attendance log, leave requests, staff card and visa. Read only |
 
 ### Attendance rules (placeholders, confirm with HR)
 
@@ -127,13 +133,30 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 
 ### Footer
 
-Company name, "Malé, Republic of Maldives", HR contact email, copyright year. **Address and email are placeholders** in `core/config.ts` until Parnika confirms them. Links to Leave policy, Privacy and Help get added once those pages exist.
+Logo, "People first, always.", "© year Opro Pvt Ltd · Malé, Republic of Maldives", links to Privacy, HR policies and Support. **Legal name, address, HR email and the two policy URLs are placeholders** in `core/config.ts` until Parnika confirms them.
+
+### HR (agreed, not built yet)
+
+- HR is a role on an employee record. HR staff get a third view switch option, "HR", and see the whole company.
+- **Holiday calendar:** add, edit and delete holidays per year. Mark an Islamic date confirmed after moon sighting, which notifies everyone. "Start next year" copies the fixed civil holidays (New Year, Independence Day, Victory Day, Republic Day).
+- **Company events** on the calendar ("Office social", "Team review"), managed by HR.
+- **Leave policy:** leave types and yearly entitlements.
+- **Balance adjustments:** add or remove days for one person with a required reason. Every change is logged with who, when and why.
+- **Leave on someone's behalf**, and approving or rejecting any request when the manager is away.
+- **Visa records:** add or update visa, work permit and passport details on renewal.
+- **Profile change requests:** an inbox for the requests employees send from their profile.
+- **Announcements:** post and edit the notes from HR.
+- Out of scope for now: adding or removing employees and reporting lines, editing raw punches, changing shift rules.
+
+### Exports
+
+- "Export report" downloads a CSV built in the browser. Every cell is quoted, and cells starting with `=`, `+`, `-` or `@` get a leading apostrophe so a spreadsheet never runs them as formulas.
 
 ### Non functional
 
 - English only, but use CSS logical properties (`margin-inline-start`, not `margin-left`) so Dhivehi (right to left) can be added later without a rewrite.
 - Fully responsive. Phones are a first class target, many staff will check punches and leave on mobile.
-- Light and dark mode via `prefers-color-scheme`, with a manual toggle.
+- Light only, because the Figma design has no dark version. Add dark mode only when a design for it exists.
 - WCAG 2.2 AA.
 - **Not indexed by search engines.** `<meta name="robots" content="noindex, nofollow">` and a `robots.txt` that disallows everything. No Open Graph, no structured data, no SEO work. Each page still gets a clear `<title>` via the router's `title` property.
 
@@ -157,19 +180,21 @@ This is a daily work tool. People open it to check a punch, apply for leave or a
 - Microcopy has personality but stays respectful. Empty states, errors and confirmations are written, not defaulted.
 - Use real quotation marks (" "), proper ellipses (…), no dashes as punctuation.
 
-### Visual
-- No gradient blob heroes, no generic stock illustration, no turquoise ocean postcard clichés just because the company is in the Maldives.
-- Colours are curated, defined in `oklch()`, and live as design tokens in one place. Hover and active states come from `color-mix()`.
-- Not everything symmetric. The dashboard uses a deliberate, uneven grid.
+### Visual: the Figma design is the source of truth
+- **Match the Figma Make file "Opro HRMS Portal" exactly**: layout, sections, navigation, colours, type and spacing. Its code is copied into `design/figma-make/`. Before building or changing a page, read the matching component in `App.tsx` and its classes in `index.css`, and reuse those class names.
+- `frontend/src/styles/portal.css` is that stylesheet, ported verbatim. Only font names differ, and sidebar rules also cover links. Don't restyle its classes. Anything the design doesn't cover (search results, our extra statuses, states the mock design only shows one version of, a phone overflow fix) goes in `src/styles.css` under a comment saying why.
+- Palette: navy `#102d3f`, aqua `#11ae9e`, aqua dark `#078e83`, page `#f3f7f6`, ink `#16313f`, muted `#71828c`, yellow `#ffc85a`, coral `#f27f68`.
+- Icons are Lucide shapes stored in `shared/ui/icon-shapes.ts`. Add new ones from Lucide the same way, not a new icon library.
+- No photos yet, so people show initials in the same frames.
 - Status colour is never the only signal. Always pair it with text or an icon.
 
 ### Typography
-- Avoid "Inter for everything" and the generic geometric heading plus humanist body pairing.
-- Hierarchy through weight, size, case, colour and spacing, not size alone.
+- Manrope for headings and big numbers, DM Sans for everything else, as the design specifies. Both self hosted.
+- Times use the design's 12 hour clock ("08:56 AM"). Durations read "6h 14m", table hours "08h 54m".
 - Times, dates and numbers use tabular figures so columns line up.
 
-### Modern CSS to use where it earns its place
-Container queries, subgrid, `:has()`, native nesting, `@scope`, `color-mix()`, `oklch()`, View Transitions (route changes, view switch), `linear()` spring easing, scroll driven animations used sparingly, layered shadows. Always respect `prefers-reduced-motion`. Design proper `:focus-visible` styles.
+### CSS
+Respect `prefers-reduced-motion`. Keep visible `:focus-visible` styles. Use modern CSS (nesting, `:has()`, container queries) in our own additions where it earns its place.
 
 ---
 
@@ -179,17 +204,21 @@ Container queries, subgrid, `:has()`, native nesting, `@scope`, `color-mix()`, `
 HRMS/
   CLAUDE.md
   HOW-TO-RUN.md
+  design/figma-make/   # App.tsx and index.css from the Figma Make file. Reference only, not built
   frontend/
+    src/styles.css     # Tailwind, fonts, tokens and our additions to the design
+    src/styles/portal.css  # The Figma stylesheet, ported
     src/app/
       core/            # App wide singletons: auth, layout shell (header, nav, footer), guards, interceptors, config
-      shared/ui/       # Pure presentational pieces (button, badge, card, empty state, stat, avatar)
+      shared/ui/       # Pure presentational pieces (logo, icon, status pill, avatar, welcome banner, dialog, month switcher)
       shared/utils/    # Pure helper functions (dates, formatting)
       features/
         dashboard/
         attendance/
         leave/
         holidays/
-        profile/       # ID card, personal details, visa
+        documents/
+        profile/       # Staff cards, personal details, visa
         team/          # Manager only screens
       models/          # Shared TypeScript types mirroring API responses
     public/            # Static assets, robots.txt
@@ -234,7 +263,7 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 | POST | `/api/session/login` | Mock login, sets session cookie |
 | POST | `/api/session/logout` | Clears session |
 | GET | `/api/me` | Logged in employee profile, roles and visa (absent for nationals) |
-| GET | `/api/attendance?month=YYYY-MM` | Own daily records |
+| GET | `/api/attendance?month=YYYY-MM` | Own daily records. Each punch carries the `device` that recorded it |
 | GET / POST | `/api/attendance/corrections` | Own correction requests / raise one |
 | GET | `/api/leave/types` | Leave types from the policy. `isUnlimited` marks types with no balance, like unpaid |
 | GET | `/api/leave/balances` | Own balances |
@@ -243,6 +272,10 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 | GET | `/api/holidays?year=YYYY` | Public holidays |
 | POST | `/api/profile/change-requests` | Ask HR to change personal details |
 | GET | `/api/announcements` | Company announcements |
+| GET | `/api/events?year=YYYY` | Company events for the calendar |
+| GET | `/api/devices` | Biometric devices with location, online state and last sync time |
+| GET | `/api/documents` | Own documents (`updatedOn` or `expiresOn`, `status`) |
+| GET | `/api/documents/:id/file` | Download one document |
 | GET | `/api/notifications` | Own notifications |
 | POST | `/api/notifications/read` | Mark all own notifications read |
 | GET | `/api/team` | Direct reports with today's attendance and visa |
@@ -267,8 +300,9 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 - Lists show `ListSkeleton` while their first load is in flight, never their empty state. An empty state that flashes before data arrives is a lie.
 
 ### Styling
-- **Tailwind CSS v4** for layout and spacing. Design tokens (colours, fonts, shadows, easing) are defined once with `@theme` in `src/styles.css`. Colours use `light-dark()`, so dark mode follows `color-scheme`, which the theme toggle sets on `<html>`.
-- Fonts: Fraunces for display (greetings, page titles, big numbers), IBM Plex Sans for everything else. Both self hosted through `@fontsource`.
+- Pages use the design's own classes from `portal.css` (`card`, `card-heading`, `eyebrow`, `status-pill`, `primary-button`, `page-view`, `page-title` and so on), written exactly as the Figma markup uses them.
+- **Tailwind CSS v4** is for small layout gaps the design classes don't cover. Its tokens in `src/styles.css` map onto the Figma palette.
+- Fonts: Manrope and DM Sans through `@fontsource-variable`.
 - Component specific CSS goes in the component's own stylesheet when Tailwind can't express it cleanly.
 - No inline `style` attributes except truly dynamic single values (a progress width).
 - More than ~5 utility classes on an element repeated in several places → extract a shared component.

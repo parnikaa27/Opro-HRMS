@@ -7,6 +7,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
       <p class="field-error" [id]="id()">{{ text }}</p>
     }
   `,
+  host: { class: 'contents' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FieldError {

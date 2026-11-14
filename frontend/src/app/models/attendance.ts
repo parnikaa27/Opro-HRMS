@@ -12,6 +12,7 @@ export type AttendanceStatus =
 export interface Punch {
   at: string;
   direction: 'in' | 'out';
+  device?: string;
 }
 
 export interface AttendanceDay {

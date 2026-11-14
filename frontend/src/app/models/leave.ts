@@ -28,6 +28,7 @@ export interface LeaveRequest {
   status: LeaveStatus;
   appliedOn: string;
   decidedBy?: string;
+  decidedByName?: string;
   decidedOn?: string;
   decisionNote?: string;
 }

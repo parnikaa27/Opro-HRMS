@@ -18,6 +18,7 @@ export const employee = (overrides: Partial<Employee> = {}): Employee => ({
   bloodGroup: 'O-',
   nationality: 'Sri Lankan',
   workLocation: 'Hulhumalé site',
+  employmentType: 'Contract',
   managerId: 'OPR-0004',
   roles: ['EMPLOYEE'],
   emergencyContact: { name: 'Dilani Perera', relation: 'Spouse', phone: '+94 77 120 1018' },

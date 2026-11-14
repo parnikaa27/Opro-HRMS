@@ -4,11 +4,26 @@ export interface Holiday {
   isTentative: boolean;
 }
 
-export interface Announcement {
+export interface CompanyEvent {
   id: string;
-  title: string;
-  body: string;
-  publishedOn: string;
+  date: string;
+  name: string;
+}
+
+export interface Device {
+  id: string;
+  name: string;
+  location: string;
+  isOnline: boolean;
+  lastSyncAt: string;
+}
+
+export interface EmployeeDocument {
+  id: string;
+  name: string;
+  updatedOn?: string;
+  expiresOn?: string;
+  status: 'verified' | 'pending';
 }
 
 export interface AppNotification {

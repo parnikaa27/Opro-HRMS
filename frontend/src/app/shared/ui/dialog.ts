@@ -1,23 +1,16 @@
 import { ChangeDetectionStrategy, Component, effect, ElementRef, input, model, viewChild } from '@angular/core';
+import { Icon } from './icon';
 
+// The design's modal, on a native <dialog> so focus, Escape and the backdrop come for free.
 @Component({
   selector: 'app-dialog',
+  imports: [Icon],
   template: `
-    <dialog
-      #dialog
-      class="m-auto w-full max-w-lg rounded-2xl border border-line bg-card p-0 text-ink shadow-lift backdrop:bg-ink/40 max-sm:mb-0 max-sm:max-w-none max-sm:rounded-b-none"
-      [attr.aria-label]="heading()"
-      (close)="isOpen.set(false)"
-    >
-      <div class="p-6">
-        <header class="mb-5 flex items-start justify-between gap-4">
-          <h2 class="font-display text-2xl">{{ heading() }}</h2>
-          <button type="button" class="btn-quiet -me-2 -mt-1 px-3" (click)="isOpen.set(false)">Close</button>
-        </header>
-        @if (isOpen()) {
-          <ng-content />
-        }
-      </div>
+    <dialog #dialog class="modal" [attr.aria-label]="heading()" (close)="isOpen.set(false)">
+      <button type="button" class="modal-close" aria-label="Close" (click)="isOpen.set(false)"><app-icon name="x" /></button>
+      @if (isOpen()) {
+        <ng-content />
+      }
     </dialog>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -1,0 +1,54 @@
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { StatusPill, Tone } from '../../shared/ui/status-pill';
+
+export interface AttendanceRow {
+  date: string;
+  day: string;
+  dateLabel: string;
+  punchIn: string;
+  punchOut: string;
+  hours: string;
+  status: { label: string; tone: Tone };
+}
+
+@Component({
+  selector: 'app-attendance-table',
+  imports: [StatusPill],
+  template: `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">DAY</th>
+            <th scope="col">PUNCH IN</th>
+            <th scope="col">PUNCH OUT</th>
+            <th scope="col">WORK HOURS</th>
+            <th scope="col">STATUS</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows(); track row.date) {
+            <tr data-testid="attendance-row">
+              <td>
+                <strong>{{ row.day }}</strong>
+                <span>{{ row.dateLabel }}</span>
+              </td>
+              <td>{{ row.punchIn }}</td>
+              <td>{{ row.punchOut }}</td>
+              <td><b>{{ row.hours }}</b></td>
+              <td><app-status-pill [tone]="row.status.tone">{{ row.status.label }}</app-status-pill></td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5">No punches recorded yet.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  `,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class AttendanceTable {
+  readonly rows = input.required<readonly AttendanceRow[]>();
+}
