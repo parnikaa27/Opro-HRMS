@@ -59,6 +59,24 @@ describe('Session', () => {
     expect(navigate).toHaveBeenCalledWith('/team');
   });
 
+  it('sends HR back to the HR view, but never someone without the role', async () => {
+    localStorage.setItem('opro.view', 'hr');
+    const signingIn = session.signIn('OPR-0002');
+    http.expectOne('/api/session/login').flush(null);
+    await Promise.resolve();
+    http.expectOne('/api/me').flush(employee({ roles: ['EMPLOYEE', 'HR'] }));
+    await signingIn;
+    expect(navigate).toHaveBeenLastCalledWith('/hr');
+
+    session.user.set(undefined);
+    const asManager = session.signIn('OPR-0004');
+    http.expectOne('/api/session/login').flush(null);
+    await Promise.resolve();
+    http.expectOne('/api/me').flush(manager());
+    await asManager;
+    expect(navigate).toHaveBeenLastCalledWith('/');
+  });
+
   it('starts employees on home even if a team preference is stored', async () => {
     localStorage.setItem('opro.view', 'team');
     const signingIn = session.signIn('OPR-0018');

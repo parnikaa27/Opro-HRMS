@@ -38,7 +38,7 @@ export class ProfileMenu {
 
   protected readonly subtitle = computed(() => {
     const user = this.session.user();
-    return this.view() === 'team' ? (user?.designation ?? '') : `Employee · ${user?.id ?? ''}`;
+    return this.view() === 'mine' ? `Employee · ${user?.id ?? ''}` : (user?.designation ?? '');
   });
 
   protected async signOut() {

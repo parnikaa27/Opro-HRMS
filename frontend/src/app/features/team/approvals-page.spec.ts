@@ -82,7 +82,7 @@ describe('ApprovalsPage', () => {
     click(root, 'reject');
     expect(text(root.querySelector('dialog') as HTMLElement)).toContain('Decline Rahim’s request?');
     click(root, 'confirm-reject');
-    expect(text(root.querySelector('.field-error') as HTMLElement)).toBe('Give a short reason so they can plan around it.');
+    expect(text(root.querySelector('.field-error') as HTMLElement)).toBe('Give a short reason so they know what to do next.');
 
     fill(root, 'decision-note', ' The log shows 16:30 ');
     click(root, 'confirm-reject');

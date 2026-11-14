@@ -40,6 +40,24 @@ describe('VisaCard', () => {
     expect(text(await render({}))).toContain("Missing We don't have your visa on record.");
   });
 
+  it('words notes for a manager or HR reading someone else’s card', async () => {
+    const asReader = async (reader: 'manager' | 'hr', overrides: Parameters<typeof employee>[0]) => {
+      const fixture = TestBed.createComponent(VisaCard);
+      fixture.componentRef.setInput('employee', employee(overrides));
+      fixture.componentRef.setInput('reader', reader);
+      await fixture.whenStable();
+      return text(fixture.nativeElement);
+    };
+    const expired = { visa: { ...VISA, visaExpiry: '2026-11-02' } };
+
+    expect(await asReader('manager', expired)).toContain('Make sure HR knows today');
+    expect(await asReader('hr', expired)).toContain('Their visa has lapsed. Start the renewal today');
+    expect(await asReader('hr', { visa: { ...VISA, visaExpiry: '2026-12-01' } })).toContain('Ask them for their renewal documents');
+    expect(await asReader('manager', { visa: { ...VISA, passportExpiry: '2026-12-01' } })).toContain('Their passport expires on 1 December 2026. Ask them to start the renewal.');
+    expect(await asReader('manager', {})).toContain("HR doesn't have their visa on record yet.");
+    expect(await asReader('hr', {})).toContain('No visa on record. Add it with Update visa.');
+  });
+
   it('copes with a visa issued and expiring on the same day', async () => {
     const root = await render({ visa: { ...VISA, visaIssuedOn: '2027-11-12' } });
 

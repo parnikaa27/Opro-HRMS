@@ -5,6 +5,7 @@ export interface LeaveType {
   name: string;
   allowsHalfDay: boolean;
   isUnlimited?: boolean;
+  defaultEntitlement?: number;
   documentRequiredAfterDays?: number;
 }
 
@@ -31,4 +32,16 @@ export interface LeaveRequest {
   decidedByName?: string;
   decidedOn?: string;
   decisionNote?: string;
+  recordedByHr?: boolean;
+}
+
+export interface BalanceAdjustment {
+  id: string;
+  employeeId: string;
+  type: string;
+  days: number;
+  reason: string;
+  by: string;
+  byName?: string;
+  on: string;
 }

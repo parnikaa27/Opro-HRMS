@@ -32,7 +32,7 @@ const MAX_REASON = 300;
         What's missing?
         <select [formField]="fixForm.kind" data-testid="fix-kind">
           @for (option of kinds; track option.value) {
-            <option [value]="option.value">{{ option.label }}</option>
+            <option [value]="option.value" [selected]="option.value === draft().kind">{{ option.label }}</option>
           }
         </select>
       </label>

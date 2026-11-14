@@ -1,0 +1,20 @@
+[
+  {
+    "id": "CR-11",
+    "employeeId": "OPR-0018",
+    "field": "Phone number",
+    "details": "+960 777 8018",
+    "status": "open",
+    "raisedOn": "2026-11-09"
+  },
+  {
+    "id": "CR-10",
+    "employeeId": "OPR-0015",
+    "field": "Emergency contact",
+    "details": "Ravi Nair, brother, +91 98470 55555",
+    "status": "done",
+    "raisedOn": "2026-10-20",
+    "decidedBy": "OPR-0002",
+    "decidedOn": "2026-10-21"
+  }
+]

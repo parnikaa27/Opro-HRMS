@@ -23,8 +23,8 @@ HRMS/
       styles/portal.css    The Figma stylesheet, ported as is
       main.ts              Boots the app
       app/
-        app.routes.ts      Every route, with the sign in and manager guards
-        core/              Session, guards, config (company details, shift length, expiry warning days), company API
+        app.routes.ts      Every route, with the sign in, manager and HR guards
+        core/              Session, guards, config (company details, shift length, expiry warning days), company API, an interceptor that refreshes nav counts after a save
           layout/          Shell, navy sidebar (a slide in menu on phones), top bar with search, view switch, notifications and profile menu, footer
         shared/ui/         Logo, Lucide icons, status pill, avatar, welcome banner, ring, modal dialog, success screen, month picker, list skeleton
         shared/utils/      Date and time in Maldives time, expiry status, initials, CSV export, preferences, safe resource reads
@@ -38,7 +38,9 @@ HRMS/
           calendar/        Company calendar: holidays, events, and team leave for managers
           holidays/        API for holidays and company events
           profile/         Two sided printable ID card, visa and work permit status, change request to HR
-          team/            Manager pages: overview, people directory, leave requests with tabs, team attendance table, one person's page
+          team/            Manager pages: overview, people directory, leave requests with tabs, team attendance table, one person's page. People and leave requests also serve HR
+          hr/              HR pages: overview, one person with record leave, adjust balance and update visa, holiday calendar, visas, inbox, announcements, leave policy
+            forms/         The HR dialogs' forms
       testing/             Test helpers, fixtures and setup.ts (a dialog shim, since jsdom has none). Never shipped
     public/                Static files served as is (favicon, robots.txt)
     e2e/                   Playwright tests
@@ -106,6 +108,7 @@ In CI, run `npx playwright install chromium` and drop `channel: 'chrome'` from `
 
 | Employee | Role | Good for testing |
 |---|---|---|
+| Aishath Shifa (OPR-0002) | HR | HR view: everyone, holidays, visas, inbox, announcements, leave policy |
 | Ibrahim Rasheed (OPR-0004) | Manager | Team view, approvals, visa alerts for the team |
 | Hassan Waheed (OPR-0001) | Manager | Approving Ibrahim's leave |
 | Kasun Perera (OPR-0018) | Employee | Visa expiring soon |

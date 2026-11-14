@@ -10,6 +10,8 @@ const TITLES: Record<AppNotification['kind'], string> = {
   leave: 'Leave request updated',
   visa: 'Visa reminder',
   correction: 'Punch fix updated',
+  holiday: 'Holiday confirmed',
+  announcement: 'From HR',
 };
 
 @Component({

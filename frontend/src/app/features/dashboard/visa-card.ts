@@ -8,10 +8,37 @@ import { plural } from '../../shared/utils/text';
 
 const PERCENT = 100;
 
-const STATE: Record<ExpiryStatus, { pill: string; tone: Tone; note: string; icon: IconName }> = {
-  valid: { pill: 'Valid', tone: 'ok', note: 'No action needed right now', icon: 'shieldCheck' },
-  expiring: { pill: 'Expires soon', tone: 'late', note: 'Send your renewal documents to HR', icon: 'alert' },
-  expired: { pill: 'Expired', tone: 'danger', note: 'Speak to HR today', icon: 'alert' },
+export type VisaReader = 'self' | 'manager' | 'hr';
+
+const STATE: Record<ExpiryStatus, { pill: string; tone: Tone; icon: IconName }> = {
+  valid: { pill: 'Valid', tone: 'ok', icon: 'shieldCheck' },
+  expiring: { pill: 'Expires soon', tone: 'late', icon: 'alert' },
+  expired: { pill: 'Expired', tone: 'danger', icon: 'alert' },
+};
+
+// The same facts, worded for whoever is reading the card.
+const NOTES: Record<VisaReader, Record<ExpiryStatus | 'passport' | 'missing', string>> = {
+  self: {
+    valid: 'No action needed right now',
+    expiring: 'Send your renewal documents to HR',
+    expired: 'Speak to HR today',
+    passport: 'Your passport expires on {date}. Start the renewal.',
+    missing: "We don't have your visa on record. Send a copy to HR so they can track the renewal.",
+  },
+  manager: {
+    valid: 'No action needed right now',
+    expiring: 'Ask them to send their renewal documents to HR',
+    expired: 'Make sure HR knows today',
+    passport: 'Their passport expires on {date}. Ask them to start the renewal.',
+    missing: "HR doesn't have their visa on record yet.",
+  },
+  hr: {
+    valid: 'No action needed right now',
+    expiring: 'Ask them for their renewal documents',
+    expired: 'Their visa has lapsed. Start the renewal today',
+    passport: 'Their passport expires on {date}. Ask them to start the renewal.',
+    missing: 'No visa on record. Add it with Update visa.',
+  },
 };
 
 @Component({
@@ -52,7 +79,7 @@ const STATE: Record<ExpiryStatus, { pill: string; tone: Tone; note: string; icon
         <small class="visa-note"><app-icon [name]="note().icon" [size]="14" /> {{ note().text }}</small>
       } @else {
         <p class="attendance-off">
-          {{ isNational() ? "Maldivian nationals don't need a work visa." : "We don't have your visa on record. Send a copy to HR so they can track the renewal." }}
+          {{ isNational() ? "Maldivian nationals don't need a work visa." : notes().missing }}
         </p>
       }
     </section>
@@ -62,14 +89,18 @@ const STATE: Record<ExpiryStatus, { pill: string; tone: Tone; note: string; icon
 })
 export class VisaCard {
   readonly employee = input.required<Employee>();
-  // A manager reading someone else's card gets wording about them, not "you".
-  readonly isOwn = input(true);
+  readonly reader = input<VisaReader>('self');
   private readonly today = maldivesToday();
 
+  protected readonly notes = computed(() => NOTES[this.reader()]);
   protected readonly isNational = computed(() => this.employee().nationality === 'Maldivian');
-  protected readonly visaState = computed(() => {
+  private readonly status = computed(() => {
     const visa = this.employee().visa;
-    return visa ? STATE[expiryStatus(visa.visaExpiry, this.today)] : undefined;
+    return visa ? expiryStatus(visa.visaExpiry, this.today) : undefined;
+  });
+  protected readonly visaState = computed(() => {
+    const status = this.status();
+    return status ? STATE[status] : undefined;
   });
   protected readonly remaining = computed(() => {
     const days = daysUntil(this.employee().visa?.visaExpiry ?? this.today, this.today);
@@ -86,12 +117,11 @@ export class VisaCard {
   // A passport running out matters even while the visa itself is fine.
   protected readonly note = computed(() => {
     const visa = this.employee().visa;
-    const state = this.visaState();
-    if (visa && state?.pill === 'Valid' && expiryStatus(visa.passportExpiry, this.today) !== 'valid') {
-      return { icon: 'alert' as const, text: `${this.isOwn() ? 'Your' : 'Their'} passport expires on ${formatFullDate(visa.passportExpiry)}. ${this.isOwn() ? 'Start' : 'Ask them to start'} the renewal.` };
+    const status = this.status();
+    if (visa && status === 'valid' && expiryStatus(visa.passportExpiry, this.today) !== 'valid') {
+      return { icon: 'alert' as const, text: this.notes().passport.replace('{date}', formatFullDate(visa.passportExpiry)) };
     }
-    const text = state?.note ?? '';
-    return { icon: state?.icon ?? ('shieldCheck' as const), text: this.isOwn() ? text : text.replace('Send your', 'Ask them to send their').replace('Speak to HR today', 'Make sure HR knows today') };
+    return { icon: this.visaState()?.icon ?? ('shieldCheck' as const), text: status ? this.notes()[status] : '' };
   });
 
   protected readonly formatCompactDate = formatCompactDate;

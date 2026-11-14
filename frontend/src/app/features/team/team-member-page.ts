@@ -59,7 +59,7 @@ import { TeamApi } from './team-api';
           </div>
           <div class="side-column">
             <app-employee-card [employee]="employee" />
-            <app-visa-card [employee]="employee" [isOwn]="false" />
+            <app-visa-card [employee]="employee" reader="manager" />
           </div>
         </div>
       }

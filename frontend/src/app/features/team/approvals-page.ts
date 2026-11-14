@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { CorrectionRequest } from '../../models/attendance';
 import { LeaveRequest } from '../../models/leave';
 import { Avatar } from '../../shared/ui/avatar';
@@ -13,7 +13,7 @@ import { describeDates, describeLength } from '../leave/leave-format';
 import { DecisionState } from './decision-state';
 import { DeclineForm } from './decline-form';
 import { submittedAgo } from './request-row';
-import { TeamApi } from './team-api';
+import { RequestScope, TeamApi } from './team-api';
 
 type Tab = 'pending' | 'approved' | 'rejected' | 'fixes';
 
@@ -33,9 +33,9 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
     <div class="page-view">
       <div class="page-title">
         <div>
-          <span class="eyebrow">TEAM MANAGEMENT</span>
+          <span class="eyebrow">{{ scope() === 'hr' ? 'PEOPLE & CULTURE' : 'TEAM MANAGEMENT' }}</span>
           <h1>Leave requests</h1>
-          <p>Review and manage leave requests and punch fixes from your team.</p>
+          <p>{{ scope() === 'hr' ? 'Every request across Opro. Step in when a manager is away.' : 'Review and manage leave requests and punch fixes from your team.' }}</p>
         </div>
       </div>
 
@@ -121,8 +121,11 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
 export class ApprovalsPage {
   private readonly api = inject(TeamApi);
 
-  protected readonly leave = this.api.leaveRequests();
-  protected readonly fixes = this.api.corrections();
+  // Set from route data: managers decide for their team, HR for anyone.
+  readonly scope = input<RequestScope>('team');
+
+  protected readonly leave = this.api.leaveRequests({ scope: this.scope });
+  protected readonly fixes = this.api.corrections({ scope: this.scope });
   private readonly types = inject(LeaveApi).types();
   protected readonly decisions = new DecisionState();
 
@@ -173,18 +176,18 @@ export class ApprovalsPage {
   protected readonly submittedAgo = submittedAgo;
 
   protected approveLeave({ id }: LeaveRequest) {
-    return this.decisions.run(id, () => this.api.decideLeave(id, { decision: 'approved' }), () => this.leave.reload());
+    return this.decisions.run(id, () => this.api.decideLeave(id, { decision: 'approved' }, this.scope()), () => this.leave.reload());
   }
 
   protected approveFix({ id }: CorrectionRequest) {
-    return this.decisions.run(id, () => this.api.decideCorrection(id, { decision: 'approved' }), () => this.fixes.reload());
+    return this.decisions.run(id, () => this.api.decideCorrection(id, { decision: 'approved' }, this.scope()), () => this.fixes.reload());
   }
 
   protected async decline(target: Declining, note: string) {
     this.declining.set(undefined);
     const decision = { decision: 'rejected' as const, note };
     return target.kind === 'leave'
-      ? this.decisions.run(target.id, () => this.api.decideLeave(target.id, decision), () => this.leave.reload())
-      : this.decisions.run(target.id, () => this.api.decideCorrection(target.id, decision), () => this.fixes.reload());
+      ? this.decisions.run(target.id, () => this.api.decideLeave(target.id, decision, this.scope()), () => this.leave.reload())
+      : this.decisions.run(target.id, () => this.api.decideCorrection(target.id, decision, this.scope()), () => this.fixes.reload());
   }
 }

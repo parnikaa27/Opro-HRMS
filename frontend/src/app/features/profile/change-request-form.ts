@@ -18,7 +18,7 @@ const FIELDS = ['Phone number', 'Emergency contact', 'Blood group', 'Name', 'Som
         What needs changing?
         <select [formField]="changeForm.field" data-testid="change-field">
           @for (option of fields; track option) {
-            <option [value]="option">{{ option }}</option>
+            <option [value]="option" [selected]="option === draft().field">{{ option }}</option>
           }
         </select>
       </label>

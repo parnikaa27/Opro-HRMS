@@ -7,6 +7,7 @@ import { LoginPage } from './login-page';
 const people = [
   { id: 'OPR-0018', fullName: 'Kasun Perera', designation: 'Site Engineer', roles: ['EMPLOYEE'] },
   { id: 'OPR-0004', fullName: 'Ibrahim Rasheed', designation: 'Operations Manager', roles: ['EMPLOYEE', 'MANAGER'] },
+  { id: 'OPR-0002', fullName: 'Aishath Shifa', designation: 'HR Manager', roles: ['EMPLOYEE', 'HR'] },
 ];
 
 describe('LoginPage', () => {
@@ -24,11 +25,12 @@ describe('LoginPage', () => {
     return fixture.nativeElement as HTMLElement;
   };
 
-  it('lists managers first', async () => {
+  it('lists people with a role first, labelled', async () => {
     const element = await render();
 
-    const ids = [...element.querySelectorAll('[data-testid^=login-as-]')].map((button) => button.getAttribute('data-testid'));
-    expect(ids).toEqual(['login-as-OPR-0004', 'login-as-OPR-0018']);
+    const buttons = [...element.querySelectorAll('[data-testid^=login-as-]')];
+    expect(buttons.map((button) => button.getAttribute('data-testid'))).toEqual(['login-as-OPR-0004', 'login-as-OPR-0002', 'login-as-OPR-0018']);
+    expect(buttons.map((button) => button.querySelector('app-status-pill')?.textContent?.trim())).toEqual(['Manager', 'HR', undefined]);
   });
 
   it('signs in as the chosen person', async () => {

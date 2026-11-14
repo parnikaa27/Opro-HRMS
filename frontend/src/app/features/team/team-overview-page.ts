@@ -11,8 +11,7 @@ import { StatusPill } from '../../shared/ui/status-pill';
 import { WelcomeBanner } from '../../shared/ui/welcome-banner';
 import { ATTENDANCE_STATUS } from '../../shared/utils/attendance-status';
 import { downloadCsv } from '../../shared/utils/csv';
-import { addDays, addMonths, datesBetween, daysUntil, formatBannerDate, formatClock, formatCompactDate, formatShortDate, maldivesHour, maldivesToday, monthOf, weekdayOf } from '../../shared/utils/date-time';
-import { expiryStatus } from '../../shared/utils/expiry';
+import { addDays, addMonths, datesBetween, formatBannerDate, formatClock, formatShortDate, maldivesHour, maldivesToday, monthOf, weekdayOf } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { plural } from '../../shared/utils/text';
 import { summarise } from '../attendance/attendance-summary';
@@ -22,6 +21,7 @@ import { describeDates, describeLength } from '../leave/leave-format';
 import { DecisionState } from './decision-state';
 import { DeclineForm } from './decline-form';
 import { TeamApi, TeamMember } from './team-api';
+import { visaAlertsFor } from './visa-alerts';
 
 const PREVIEW_COUNT = 3;
 const TEAM_PREVIEW = 4;
@@ -256,28 +256,7 @@ export class TeamOverviewPage {
     return last ? [...Array.from({ length: CHART_SECTIONS }, (_, index) => bars[index * step]), last].map(({ date }) => formatShortDate(date)) : [];
   });
 
-  protected readonly visaAlerts = computed(() =>
-    this.members().flatMap((member) => {
-      const visa = member.visa;
-      if (!visa) {
-        return [];
-      }
-      return [
-        { label: 'Visa', expiry: visa.visaExpiry },
-        { label: 'Passport', expiry: visa.passportExpiry },
-      ]
-        .filter(({ expiry }) => expiryStatus(expiry, this.today) !== 'valid')
-        .map(({ label, expiry }) => {
-          const days = daysUntil(expiry, this.today);
-          return {
-            id: `${member.id}-${label}`,
-            name: member.fullName,
-            detail: `${label} ${days < 0 ? 'expired' : 'expires'} ${formatCompactDate(expiry)}`,
-            days: days < 0 ? 'Expired' : plural(days, 'day'),
-          };
-        });
-    }),
-  );
+  protected readonly visaAlerts = computed(() => visaAlertsFor(this.members(), this.today));
 
   protected readonly info = (member: TeamMember) => ATTENDANCE_STATUS[statusOf(member)];
   protected readonly timeNote = ({ today }: TeamMember) => {

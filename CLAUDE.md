@@ -7,7 +7,7 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 
 | Part | Stack | Status |
 |---|---|---|
-| `frontend/` | Angular 22, Tailwind CSS v4, Vitest, Playwright | Every employee and manager page matches the Figma design. HR next |
+| `frontend/` | Angular 22, Tailwind CSS v4, Vitest, Playwright | Employee, manager and HR views built. Employee and manager pages match the Figma design; HR pages reuse its classes |
 | `design/figma-make/` | `App.tsx` and `index.css` copied from the Figma Make file "Opro HRMS Portal" | The visual source of truth |
 | `frontend/dev-server/` | Plain Node mock API serving JSON fixtures | In progress |
 | `backend/` | Java Spring Boot | Not started |
@@ -42,10 +42,10 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 |---|---|---|
 | Employee | Everyone | Own attendance, leave, holidays, profile, ID card, visa, notifications |
 | Manager | People with direct reports | Everything an employee can, plus a **Team view** for their **direct reports only** |
-| HR | HR staff, who are also employees | Everything an employee can, plus an **HR view** for the whole company (see HR below). Not built yet |
+| HR | HR staff, who are also employees | Everything an employee can, plus an **HR view** for the whole company (see HR below) |
 
-- A manager is also an employee. An **Employee / Manager** switch sits in the header and is only rendered for managers (HR adds a third option). The last chosen view is remembered per browser.
-- Until HR is built, holidays, visa data and leave policy are read only and come from the backend (mock JSON for now).
+- A manager is also an employee. A view switch sits in the header with **Employee**, plus **Manager** for managers and **HR** for HR staff. It only renders when there is more than one option. The last chosen view is remembered per browser, and only restored if the person still has that role.
+- Holidays, events, visa records, leave policy and announcements are read only for everyone except HR.
 - The UI hides what a role cannot use, but **the backend is the real gate**. Never rely on a route guard for security.
 
 ### Login
@@ -82,6 +82,22 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 | `/team/attendance` | Team summary cards and a table with one row per report (days present, late, missed, hours, today), month picker, CSV export, every device's status |
 | `/team/calendar` | The company calendar plus who on the team is away (approved filled, pending dashed) |
 | `/team/:employeeId` | One report's leave balances, this month's attendance log, leave requests, staff card and visa. Read only |
+
+**HR view (HR role only)**
+
+Sidebar: Overview, People, Leave (count waiting), Calendar, Visas, Inbox (count open), Announcements, Leave policy.
+
+| Route | Contents |
+|---|---|
+| `/hr` | Welcome banner, people, waiting decisions, visas to act on and inbox counts, oldest waiting leave, visa alerts, tentative holidays in the next 60 days |
+| `/hr/people` | The People page for everyone at Opro |
+| `/hr/people/:employeeId` | One person's balances, this month's log, requests, balance change log, staff card and visa. Record leave, adjust a balance, update visa |
+| `/hr/leave` | The leave requests page for every request in the company, so HR can step in when a manager is away |
+| `/hr/calendar` | Holidays and events per year: add, edit, delete, confirm a tentative date, add the civil holidays to an empty year |
+| `/hr/visas` | Every expatriate, people with no record first, then soonest visa or passport expiry |
+| `/hr/inbox` | Profile change requests in tabs (Open, Done, Declined). Declining needs a reason |
+| `/hr/announcements` | Post, edit and take down notes from HR. A new one notifies everyone |
+| `/hr/policy` | Leave types with yearly days and half day rule. A new entitlement applies from the next leave year |
 
 ### Attendance rules (placeholders, confirm with HR)
 
@@ -135,14 +151,14 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 
 Logo, "People first, always.", "© year Opro Pvt Ltd · Malé, Republic of Maldives", links to Privacy, HR policies and Support. **Legal name, address, HR email and the two policy URLs are placeholders** in `core/config.ts` until Parnika confirms them.
 
-### HR (agreed, not built yet)
+### HR
 
 - HR is a role on an employee record. HR staff get a third view switch option, "HR", and see the whole company.
-- **Holiday calendar:** add, edit and delete holidays per year. Mark an Islamic date confirmed after moon sighting, which notifies everyone. "Start next year" copies the fixed civil holidays (New Year, Independence Day, Victory Day, Republic Day).
+- **Holiday calendar:** add, edit and delete holidays per year. Mark an Islamic date confirmed after moon sighting, which notifies everyone. An empty year can start from the fixed civil holidays (New Year, Independence Day, Victory Day, Republic Day).
 - **Company events** on the calendar ("Office social", "Team review"), managed by HR.
 - **Leave policy:** leave types and yearly entitlements.
-- **Balance adjustments:** add or remove days for one person with a required reason. Every change is logged with who, when and why.
-- **Leave on someone's behalf**, and approving or rejecting any request when the manager is away.
+- **Balance adjustments:** add or remove days for one person with a required reason. Every change is logged with who, when and why. Adjusting a type they don't hold yet (paternity, say) creates that balance.
+- **Leave on someone's behalf** is saved as approved and only offers types the person holds a balance for, plus unlimited ones. HR can approve or reject any request when the manager is away.
 - **Visa records:** add or update visa, work permit and passport details on renewal.
 - **Profile change requests:** an inbox for the requests employees send from their profile.
 - **Announcements:** post and edit the notes from HR.
@@ -285,6 +301,22 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 | POST | `/api/team/leave-requests/:id/decision` | Approve or reject |
 | GET | `/api/team/corrections?status=` | Reports' correction requests |
 | POST | `/api/team/corrections/:id/decision` | Approve or reject |
+| GET | `/api/hr/employees` | Everyone, with today's attendance and visa. HR only, like every `/api/hr` route |
+| GET | `/api/hr/employees/:id` | One person's profile, visa, leave balances and balance adjustments |
+| PUT | `/api/hr/employees/:id/visa` | Add or update visa, work permit and passport (last 4 only) |
+| GET | `/api/hr/attendance?employeeId=&month=YYYY-MM` | One person's daily records |
+| GET / POST | `/api/hr/leave-requests?status=` | Every leave request / record leave for someone, saved as approved |
+| POST | `/api/hr/leave-requests/:id/decision` | Approve or reject any request |
+| GET | `/api/hr/corrections?status=` | Every correction request |
+| POST | `/api/hr/corrections/:id/decision` | Approve or reject |
+| POST | `/api/hr/balance-adjustments` | Add or remove days with a reason (`employeeId`, `type`, `days`, `reason`) |
+| PUT | `/api/hr/leave-types/:code` | Change a leave type's name, `defaultEntitlement` or `allowsHalfDay` |
+| POST / PUT / DELETE | `/api/hr/holidays`, `/api/hr/holidays/:id` | Manage holidays. Confirming a tentative one notifies everyone |
+| POST | `/api/hr/holidays/start-year` | Add the fixed civil holidays to a year (`year`) |
+| POST / PUT / DELETE | `/api/hr/events`, `/api/hr/events/:id` | Manage company events |
+| GET | `/api/hr/change-requests` | Profile change requests |
+| POST | `/api/hr/change-requests/:id/decision` | `done` or `declined` with a `note` |
+| POST / PUT / DELETE | `/api/hr/announcements`, `/api/hr/announcements/:id` | Manage announcements. A new one notifies everyone |
 
 ### Angular conventions
 - Standalone components only, `ChangeDetectionStrategy.OnPush`, zoneless change detection.

@@ -4,7 +4,7 @@ import { COMPANY } from '../config';
 import { Session } from '../session';
 import { Icon } from '../../shared/ui/icon';
 import { Logo } from '../../shared/ui/logo';
-import { NavItem } from './nav-items';
+import { BadgeKey, NavItem } from './nav-items';
 
 @Component({
   selector: 'app-sidebar',
@@ -29,12 +29,12 @@ import { NavItem } from './nav-items';
             [routerLinkActiveOptions]="{ exact: item.isExact ?? false }"
             ariaCurrentWhenActive="page"
             (click)="isOpen.set(false)"
-            [attr.data-testid]="'nav-' + item.label.toLowerCase()"
+            [attr.data-testid]="testId(item.label)"
           >
             <app-icon [name]="item.icon" [size]="19" [strokeWidth]="1.8" />
             <span>{{ item.label }}</span>
-            @if (item.showsPendingCount && pendingCount() > 0) {
-              <b [attr.aria-label]="pendingCount() + ' waiting'">{{ pendingCount() }}</b>
+            @if (item.badge && badges()[item.badge]; as count) {
+              <b [attr.aria-label]="count + ' waiting'">{{ count }}</b>
             }
           </a>
         }
@@ -64,10 +64,11 @@ export class Sidebar {
   private readonly session = inject(Session);
 
   readonly items = input.required<readonly NavItem[]>();
-  readonly pendingCount = input(0);
+  readonly badges = input<Partial<Record<BadgeKey, number>>>({});
   readonly isOpen = model(false);
 
   protected readonly company = COMPANY;
+  protected readonly testId = (label: string) => `nav-${label.toLowerCase().replaceAll(' ', '-')}`;
   protected readonly office = computed(() => {
     const location = this.session.user()?.workLocation ?? '';
     return location.startsWith('Hulhumalé') ? 'Hulhumalé, Maldives' : 'Malé, Maldives';

@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { click, employee, manager, respond, setupHttp, settle, text, texts } from '../../../testing/fixtures';
+import { SavedChanges } from '../saved-changes';
 import { Session } from '../session';
 import { Shell } from './shell';
 
@@ -58,6 +59,30 @@ describe('app shell', () => {
     expect(navLabels(page)).toEqual(['Overview', 'People', 'Attendance', 'Leave 3', 'Calendar']);
     expect(page.querySelector('[data-testid=view-team]')?.getAttribute('aria-pressed')).toBe('true');
     expect(text(page.querySelector('.profile-button small') as HTMLElement)).toBe('Operations Manager');
+  });
+
+  it('gives HR the company nav with waiting leave and open inbox counts', async () => {
+    session.user.set(employee({ fullName: 'Aishath Shifa', designation: 'HR Manager', roles: ['EMPLOYEE', 'HR'] }));
+    const page = await render('/hr', {
+      '/api/hr/leave-requests?status=pending': [{ id: 'LR-1' }],
+      '/api/hr/corrections?status=pending': [{ id: 'AC-1' }],
+      '/api/hr/change-requests': [{ id: 'CR-1', status: 'open' }, { id: 'CR-2', status: 'done' }],
+    });
+
+    expect(navLabels(page)).toEqual(['Overview', 'People', 'Leave 2', 'Calendar', 'Visas', 'Inbox 1', 'Announcements', 'Leave policy']);
+    expect([...page.querySelectorAll('.role-switch button')].map((button) => text(button))).toEqual(['Employee', 'HR']);
+    expect(page.querySelector('[data-testid=view-hr]')?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('refreshes the counts after anything is saved', async () => {
+    session.user.set(manager());
+    const page = await render('/team', { '/api/team/leave-requests?status=pending': [{ id: 'LR-1' }], '/api/team/corrections?status=pending': [] });
+    expect(navLabels(page)).toContain('Leave 1');
+
+    TestBed.inject(SavedChanges).count.update((count) => count + 1);
+    await respond(http, { '/api/team/leave-requests?status=pending': [], '/api/team/corrections?status=pending': [] });
+
+    expect(navLabels(page)).toContain('Leave');
   });
 
   it('switches view through the session', async () => {
@@ -140,6 +165,19 @@ describe('app shell', () => {
     await settle();
     expect(TestBed.inject(Router).url).toBe('/team/OPR-0021');
     expect(input.value).toBe('');
+  });
+
+  it('lets HR search everyone and opens their HR page', async () => {
+    session.user.set(employee({ roles: ['EMPLOYEE', 'HR'] }));
+    const page = await render('/hr');
+    const input = page.querySelector('[data-testid=search-input]') as HTMLInputElement;
+
+    input.value = 'priya';
+    input.dispatchEvent(new Event('input'));
+    TestBed.tick();
+    await respond(http, { '/api/hr/employees': [employee({ id: 'OPR-0015', fullName: 'Priya Nair' })] });
+
+    expect(page.querySelector('[data-testid=search-results] a')?.getAttribute('href')).toBe('/hr/people/OPR-0015');
   });
 
   it('says when nothing matches, and focuses search with ⌘K', async () => {

@@ -46,8 +46,8 @@ const isManager = (person: EmployeeSummary) => person.roles.includes('MANAGER');
                   </span>
                   @if (signingInAs() === person.id) {
                     <span class="text-sm text-soft">Signing in…</span>
-                  } @else if (isManager(person)) {
-                    <app-status-pill tone="sea">Manager</app-status-pill>
+                  } @else if (roleLabel(person); as label) {
+                    <app-status-pill tone="sea">{{ label }}</app-status-pill>
                   }
                 </button>
               </li>
@@ -67,11 +67,11 @@ export class LoginPage {
 
   protected readonly people = httpResource<EmployeeSummary[]>(() => '/api/session/users', { defaultValue: [] });
   protected readonly sortedPeople = computed(() =>
-    [...valueOr(this.people, [])].sort((first, second) => Number(isManager(second)) - Number(isManager(first))),
+    [...valueOr(this.people, [])].sort((first, second) => Number(this.roleLabel(second) !== undefined) - Number(this.roleLabel(first) !== undefined)),
   );
   protected readonly signingInAs = signal<string | undefined>(undefined);
   protected readonly signInFailed = signal(false);
-  protected readonly isManager = isManager;
+  protected readonly roleLabel = (person: EmployeeSummary) => (person.roles.includes('HR') ? 'HR' : isManager(person) ? 'Manager' : undefined);
 
   protected async signIn(employeeId: string) {
     this.signingInAs.set(employeeId);

@@ -4,7 +4,8 @@ import { Dismiss } from '../../shared/ui/dismiss';
 import { Icon } from '../../shared/ui/icon';
 import { valueOr } from '../../shared/utils/resource';
 import { TeamApi } from '../../features/team/team-api';
-import { Session } from '../session';
+import { HrApi } from '../../features/hr/hr-api';
+import { PortalView, Session } from '../session';
 import { NavItem } from './nav-items';
 
 interface SearchResult {
@@ -64,22 +65,27 @@ export class PortalSearch {
   private readonly box = viewChild.required<ElementRef<HTMLInputElement>>('box');
 
   readonly items = input.required<readonly NavItem[]>();
+  readonly view = input<PortalView>('mine');
 
   protected readonly query = signal('');
   protected readonly isOpen = signal(false);
   private readonly closeOnDismiss = inject(Dismiss).dismissed.subscribe(() => this.isOpen.set(false));
   private readonly needle = computed(() => this.query().trim().toLowerCase());
-  // People only load once a manager actually types, so search costs nothing until used.
-  private readonly people = inject(TeamApi).members({ isEnabled: () => this.session.isManager() && this.needle() !== '' });
+  // People only load once someone types, so search costs nothing until used. HR searches everyone, managers their team.
+  private readonly teamPeople = inject(TeamApi).members({ isEnabled: () => this.view() === 'team' && this.session.isManager() && this.needle() !== '' });
+  private readonly everyone = inject(HrApi).employees({ isEnabled: () => this.view() === 'hr' && this.session.isHr() && this.needle() !== '' });
 
   protected readonly results = computed<SearchResult[]>(() => {
     const needle = this.needle();
     const pages = this.items()
       .filter(({ label }) => label.toLowerCase().includes(needle))
       .map(({ label, path }) => ({ label, path, kind: 'Page' as const }));
-    const people = valueOr(this.people, [])
+    const people = [
+      ...valueOr(this.teamPeople, []).map(({ fullName, id }) => ({ fullName, path: `/team/${id}` })),
+      ...valueOr(this.everyone, []).map(({ fullName, id }) => ({ fullName, path: `/hr/people/${id}` })),
+    ]
       .filter(({ fullName }) => fullName.toLowerCase().includes(needle))
-      .map(({ fullName, id }) => ({ label: fullName, path: `/team/${id}`, kind: 'Person' as const }));
+      .map(({ fullName, path }) => ({ label: fullName, path, kind: 'Person' as const }));
     return [...pages, ...people].slice(0, MAX_RESULTS);
   });
   protected readonly showsResults = computed(() => this.isOpen() && this.needle() !== '');

@@ -5,14 +5,14 @@ import { ModalHeading } from '../../shared/ui/modal-heading';
   selector: 'app-decline-form',
   imports: [ModalHeading],
   template: `
-    <app-modal-heading eyebrow="TEAM MANAGEMENT" [heading]="'Decline ' + firstName() + '’s request?'" intro="Tell them why, so they can plan around it." />
+    <app-modal-heading [eyebrow]="eyebrow()" [heading]="'Decline ' + firstName() + '’s request?'" intro="Tell them why, so they know what to do next." />
     <form novalidate (submit)="send($event)">
       <label>
         Reason
-        <textarea #noteBox placeholder="Two others are off that week. Could you move it by a few days?" [attr.aria-invalid]="showsError()" aria-describedby="decline-error" (input)="note.set(noteBox.value)" data-testid="decision-note"></textarea>
+        <textarea #noteBox [placeholder]="placeholder()" [attr.aria-invalid]="showsError()" aria-describedby="decline-error" (input)="note.set(noteBox.value)" data-testid="decision-note"></textarea>
       </label>
       @if (showsError()) {
-        <p class="field-error" id="decline-error">Give a short reason so they can plan around it.</p>
+        <p class="field-error" id="decline-error">Give a short reason so they know what to do next.</p>
       }
       <div class="modal-actions">
         <button type="button" class="secondary-button" (click)="cancelled.emit()">Cancel</button>
@@ -25,6 +25,8 @@ import { ModalHeading } from '../../shared/ui/modal-heading';
 })
 export class DeclineForm {
   readonly name = input.required<string>();
+  readonly eyebrow = input('TEAM MANAGEMENT');
+  readonly placeholder = input('Two others are off that week. Could you move it by a few days?');
   readonly declined = output<string>();
   readonly cancelled = output();
 

@@ -5,10 +5,11 @@ import { firstValueFrom } from 'rxjs';
 import { Employee } from '../models/employee';
 import { readPreference, savePreference } from '../shared/utils/preference';
 
-export type PortalView = 'mine' | 'team';
+export type PortalView = 'mine' | 'team' | 'hr';
 
 const VIEW_KEY = 'opro.view';
-const VIEWS: readonly PortalView[] = ['mine', 'team'];
+const VIEWS: readonly PortalView[] = ['mine', 'team', 'hr'];
+const VIEW_HOME: Record<PortalView, string> = { mine: '/', team: '/team', hr: '/hr' };
 
 @Injectable({ providedIn: 'root' })
 export class Session {
@@ -17,6 +18,7 @@ export class Session {
 
   readonly user = signal<Employee | undefined>(undefined);
   readonly isManager = computed(() => this.user()?.roles.includes('MANAGER') ?? false);
+  readonly isHr = computed(() => this.user()?.roles.includes('HR') ?? false);
 
   async restore() {
     if (this.user()) {
@@ -35,8 +37,9 @@ export class Session {
   async signIn(employeeId: string) {
     await firstValueFrom(this.http.post<void>('/api/session/login', { employeeId }));
     await this.restore();
-    const startsInTeam = this.isManager() && readPreference(VIEW_KEY, VIEWS, 'mine') === 'team';
-    await this.router.navigateByUrl(startsInTeam ? '/team' : '/');
+    const saved = readPreference(VIEW_KEY, VIEWS, 'mine');
+    const isAllowed = (saved === 'team' && this.isManager()) || (saved === 'hr' && this.isHr());
+    await this.router.navigateByUrl(isAllowed ? VIEW_HOME[saved] : '/');
   }
 
   async signOut() {
@@ -49,7 +52,7 @@ export class Session {
 
   async switchView(view: PortalView) {
     savePreference(VIEW_KEY, view);
-    await this.router.navigateByUrl(view === 'team' ? '/team' : '/');
+    await this.router.navigateByUrl(VIEW_HOME[view]);
   }
 
   clear() {

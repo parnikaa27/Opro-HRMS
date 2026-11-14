@@ -17,14 +17,17 @@ const db = {
   leaveTypes: load('leave-types'),
   leaveBalances: load('leave-balances'),
   leaveRequests: load('leave-requests'),
-  holidays: load('holidays'),
+  holidays: load('holidays').map((holiday, index) => ({ id: `HD-${index + 1}`, ...holiday })),
   events: load('events'),
   corrections: load('corrections'),
   announcements: load('announcements'),
   notifications: load('notifications'),
+  changeRequests: load('change-requests'),
+  adjustments: load('balance-adjustments'),
 };
 db.attendance = buildAttendance(db);
 
+const longDate = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 const sessions = new Map();
 const SENT = Symbol('sent');
 const MINUTE_MS = 60_000;
@@ -70,9 +73,52 @@ const requireManager = (user) => {
 const byStatus = (status) => (item) => !status || item.status === status;
 const inMonth = (month) => (record) => !month || record.date.startsWith(month);
 
-const decide = (collection, user, id, { decision, note }) => {
+const requireHr = (user) => {
+  if (!user.roles.includes('HR')) {
+    throw new HttpError(403, 'HR only');
+  }
+};
+
+const managerScope = (user) => {
   const reportIds = requireManager(user);
-  const item = db[collection].find((entry) => entry.id === id && reportIds.has(entry.employeeId));
+  return (entry) => reportIds.has(entry.employeeId);
+};
+
+const hrScope = (user) => {
+  requireHr(user);
+  return () => true;
+};
+
+const notifyEveryone = (kind, text) => {
+  db.notifications = [
+    ...db.employees.map(({ id }) => ({ id: `NT-${randomUUID().slice(0, 6)}`, employeeId: id, kind, text, createdOn: today(), isRead: false })),
+    ...db.notifications,
+  ];
+};
+
+const findOr404 = (collection, id, what) => {
+  const item = db[collection].find((entry) => entry.id === id);
+  if (!item) {
+    throw new HttpError(404, `${what} not found`);
+  }
+  return item;
+};
+
+const replaceIn = (collection, updated) => {
+  db[collection] = db[collection].map((entry) => (entry.id === updated.id ? updated : entry));
+  return updated;
+};
+
+const removeFrom = (collection, id, what) => {
+  findOr404(collection, id, what);
+  db[collection] = db[collection].filter((entry) => entry.id !== id);
+  return undefined;
+};
+
+const pick = (body, keys) => Object.fromEntries(keys.filter((key) => body[key] !== undefined).map((key) => [key, body[key]]));
+
+const decide = (collection, user, id, { decision, note }, inScope = managerScope(user)) => {
+  const item = db[collection].find((entry) => entry.id === id && inScope(entry));
   if (!item) {
     throw new HttpError(404, 'Request not found');
   }
@@ -103,7 +149,11 @@ const routes = [
   }],
 
   ['GET', /^\/api\/me$/, ({ user }) => withVisa(user)],
-  ['POST', /^\/api\/profile\/change-requests$/, () => ({ status: 'received' })],
+  ['POST', /^\/api\/profile\/change-requests$/, ({ user, body }) => {
+    const request = { id: `CR-${randomUUID().slice(0, 6)}`, employeeId: user.id, field: String(body.field), details: String(body.details), status: 'open', raisedOn: today() };
+    db.changeRequests = [request, ...db.changeRequests];
+    return request;
+  }],
 
   ['GET', /^\/api\/attendance$/, ({ user, query }) => db.attendance.filter((record) => record.employeeId === user.id).filter(inMonth(query.get('month')))],
   ['GET', /^\/api\/attendance\/corrections$/, ({ user }) => db.corrections.filter(({ employeeId }) => employeeId === user.id).map(withName)],
@@ -174,6 +224,152 @@ const routes = [
     return db.corrections.filter((entry) => reportIds.has(entry.employeeId)).filter(byStatus(query.get('status'))).map(withName);
   }],
   ['POST', /^\/api\/team\/corrections\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => decide('corrections', user, id, body)],
+  ['GET', /^\/api\/hr\/employees$/, ({ user }) => {
+    requireHr(user);
+    return db.employees.map((employee) => ({ ...withVisa(employee), today: db.attendance.find((record) => record.employeeId === employee.id && record.date === today()) }));
+  }],
+  ['GET', /^\/api\/hr\/employees\/([\w-]+)$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    const employee = findOr404('employees', id, 'Employee');
+    return {
+      ...withVisa(employee),
+      leaveBalances: db.leaveBalances[id] ?? [],
+      adjustments: db.adjustments.filter(({ employeeId }) => employeeId === id).map((entry) => ({ ...entry, byName: nameOf(entry.by) })),
+    };
+  }],
+  ['PUT', /^\/api\/hr\/employees\/([\w-]+)\/visa$/, ({ user, params: [id], body }) => {
+    requireHr(user);
+    findOr404('employees', id, 'Employee');
+    // Only the last 4 passport digits are ever stored or sent.
+    const visa = { employeeId: id, ...pick(body, ['workPermitNumber', 'visaNumber', 'visaIssuedOn', 'visaExpiry', 'passportExpiry']), passportLast4: String(body.passportLast4 ?? '').slice(-4) };
+    db.visas = [...db.visas.filter(({ employeeId }) => employeeId !== id), visa];
+    return visa;
+  }],
+  ['GET', /^\/api\/hr\/attendance$/, ({ user, query }) => {
+    requireHr(user);
+    const employeeId = query.get('employeeId');
+    return db.attendance.filter((record) => !employeeId || record.employeeId === employeeId).filter(inMonth(query.get('month'))).map(withName);
+  }],
+  ['GET', /^\/api\/hr\/leave-requests$/, ({ user, query }) => {
+    requireHr(user);
+    return db.leaveRequests.filter(byStatus(query.get('status'))).map(withName);
+  }],
+  ['POST', /^\/api\/hr\/leave-requests$/, ({ user, body }) => {
+    requireHr(user);
+    findOr404('employees', body.employeeId, 'Employee');
+    // Recorded by HR on someone's behalf, so it starts approved.
+    const request = {
+      id: `LR-${randomUUID().slice(0, 6)}`, employeeId: body.employeeId, type: body.type, from: body.from, to: body.to, ...(body.halfDay && { halfDay: body.halfDay }),
+      days: body.days, reason: body.reason, status: 'approved', appliedOn: today(), decidedBy: user.id, decidedOn: today(), recordedByHr: true,
+    };
+    db.leaveRequests = [request, ...db.leaveRequests];
+    return withName(request);
+  }],
+  ['POST', /^\/api\/hr\/leave-requests\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => decide('leaveRequests', user, id, body, hrScope(user))],
+  ['GET', /^\/api\/hr\/corrections$/, ({ user, query }) => {
+    requireHr(user);
+    return db.corrections.filter(byStatus(query.get('status'))).map(withName);
+  }],
+  ['POST', /^\/api\/hr\/corrections\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => decide('corrections', user, id, body, hrScope(user))],
+  ['POST', /^\/api\/hr\/balance-adjustments$/, ({ user, body }) => {
+    requireHr(user);
+    findOr404('employees', body.employeeId, 'Employee');
+    const days = Number(body.days);
+    if (!Number.isFinite(days) || days === 0 || !String(body.reason ?? '').trim()) {
+      throw new HttpError(400, 'An adjustment needs a number of days and a reason');
+    }
+    const adjustment = { id: `BA-${randomUUID().slice(0, 6)}`, employeeId: body.employeeId, type: body.type, days, reason: String(body.reason).trim(), by: user.id, on: today() };
+    db.adjustments = [adjustment, ...db.adjustments];
+    const balances = db.leaveBalances[body.employeeId] ?? [];
+    const existing = balances.find(({ type }) => type === body.type);
+    db.leaveBalances = {
+      ...db.leaveBalances,
+      [body.employeeId]: existing
+        ? balances.map((balance) => (balance.type === body.type ? { ...balance, entitled: balance.entitled + days } : balance))
+        : [...balances, { type: body.type, entitled: days, taken: 0, pending: 0 }],
+    };
+    return { ...adjustment, byName: user.fullName };
+  }],
+  ['PUT', /^\/api\/hr\/leave-types\/([\w-]+)$/, ({ user, params: [code], body }) => {
+    requireHr(user);
+    const type = db.leaveTypes.find((entry) => entry.code === code);
+    if (!type) {
+      throw new HttpError(404, 'Leave type not found');
+    }
+    const updated = { ...type, ...pick(body, ['name', 'allowsHalfDay', 'defaultEntitlement', 'documentRequiredAfterDays']) };
+    db.leaveTypes = db.leaveTypes.map((entry) => (entry.code === code ? updated : entry));
+    return updated;
+  }],
+  ['POST', /^\/api\/hr\/holidays$/, ({ user, body }) => {
+    requireHr(user);
+    const holiday = { id: `HD-${randomUUID().slice(0, 6)}`, date: body.date, name: body.name, isTentative: Boolean(body.isTentative) };
+    db.holidays = [...db.holidays, holiday];
+    return holiday;
+  }],
+  ['POST', /^\/api\/hr\/holidays\/start-year$/, ({ user, body }) => {
+    requireHr(user);
+    // Civil holidays fall on the same date every year. Islamic ones move with the moon, so HR adds those by hand.
+    const fixed = [['01-01', "New Year's Day"], ['07-26', 'Independence Day'], ['11-03', 'Victory Day'], ['11-11', 'Republic Day']];
+    const added = fixed
+      .map(([monthDay, name]) => ({ id: `HD-${randomUUID().slice(0, 6)}`, date: `${body.year}-${monthDay}`, name, isTentative: false }))
+      .filter(({ date }) => !db.holidays.some((holiday) => holiday.date === date));
+    db.holidays = [...db.holidays, ...added];
+    return added;
+  }],
+  ['PUT', /^\/api\/hr\/holidays\/([\w-]+)$/, ({ user, params: [id], body }) => {
+    requireHr(user);
+    const holiday = findOr404('holidays', id, 'Holiday');
+    const updated = { ...holiday, ...pick(body, ['date', 'name', 'isTentative']) };
+    if (holiday.isTentative && updated.isTentative === false) {
+      notifyEveryone('holiday', `${updated.name} is confirmed for ${longDate.format(new Date(`${updated.date}T00:00:00Z`))}`);
+    }
+    return replaceIn('holidays', updated);
+  }],
+  ['DELETE', /^\/api\/hr\/holidays\/([\w-]+)$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    return removeFrom('holidays', id, 'Holiday');
+  }],
+  ['POST', /^\/api\/hr\/events$/, ({ user, body }) => {
+    requireHr(user);
+    const event = { id: `EV-${randomUUID().slice(0, 6)}`, date: body.date, name: body.name };
+    db.events = [...db.events, event];
+    return event;
+  }],
+  ['PUT', /^\/api\/hr\/events\/([\w-]+)$/, ({ user, params: [id], body }) => {
+    requireHr(user);
+    return replaceIn('events', { ...findOr404('events', id, 'Event'), ...pick(body, ['date', 'name']) });
+  }],
+  ['DELETE', /^\/api\/hr\/events\/([\w-]+)$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    return removeFrom('events', id, 'Event');
+  }],
+  ['GET', /^\/api\/hr\/change-requests$/, ({ user }) => {
+    requireHr(user);
+    return db.changeRequests.map(withName);
+  }],
+  ['POST', /^\/api\/hr\/change-requests\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => {
+    requireHr(user);
+    const request = findOr404('changeRequests', id, 'Change request');
+    if (request.status !== 'open' || !['done', 'declined'].includes(body.decision)) {
+      throw new HttpError(409, 'This request has already been handled');
+    }
+    return withName(replaceIn('changeRequests', { ...request, status: body.decision, decidedBy: user.id, decidedOn: today(), ...(body.note && { decisionNote: String(body.note) }) }));
+  }],
+  ['POST', /^\/api\/hr\/announcements$/, ({ user, body }) => {
+    requireHr(user);
+    const announcement = { id: `AN-${randomUUID().slice(0, 6)}`, title: String(body.title), body: String(body.body), publishedOn: today() };
+    db.announcements = [announcement, ...db.announcements];
+    notifyEveryone('announcement', announcement.title);
+    return announcement;
+  }],
+  ['PUT', /^\/api\/hr\/announcements\/([\w-]+)$/, ({ user, params: [id], body }) => {
+    requireHr(user);
+    return replaceIn('announcements', { ...findOr404('announcements', id, 'Announcement'), ...pick(body, ['title', 'body']) });
+  }],
+  ['DELETE', /^\/api\/hr\/announcements\/([\w-]+)$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    return removeFrom('announcements', id, 'Announcement');
+  }],
   ['GET', /^\/api\/team\/([\w-]+)$/, ({ user, params: [id] }) => {
     const employee = reportsOf(user).find((report) => report.id === id);
     if (!employee) {

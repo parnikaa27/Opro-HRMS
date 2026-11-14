@@ -33,6 +33,17 @@ describe('PeoplePage', () => {
     expect(text(root)).toContain('Nobody matches “nobody”.');
   });
 
+  it('shows everyone at Opro for HR, linking to the HR person page', async () => {
+    const fixture = TestBed.createComponent(PeoplePage);
+    fixture.componentRef.setInput('scope', 'hr');
+    await respond(http, { '/api/hr/employees': MEMBERS });
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(text(root.querySelector('.page-title') as HTMLElement)).toContain('Everyone at Opro and where they are today.');
+    expect(root.querySelector('[data-testid=person-card] a')?.getAttribute('href')).toBe('/hr/people/A');
+    http.expectNone('/api/team');
+  });
+
   it('has an empty state and an error state', async () => {
     const empty = TestBed.createComponent(PeoplePage);
     await respond(http, { '/api/team': [] });

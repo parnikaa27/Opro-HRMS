@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { Icon } from '../../shared/ui/icon';
 import { PortalView, Session } from '../session';
 import { NavItem } from './nav-items';
@@ -9,6 +9,7 @@ import { ProfileMenu } from './profile-menu';
 const VIEW_OPTIONS: readonly { value: PortalView; label: string }[] = [
   { value: 'mine', label: 'Employee' },
   { value: 'team', label: 'Manager' },
+  { value: 'hr', label: 'HR' },
 ];
 
 @Component({
@@ -19,11 +20,11 @@ const VIEW_OPTIONS: readonly { value: PortalView; label: string }[] = [
       <button type="button" class="mobile-menu" aria-label="Open navigation" (click)="menuOpened.emit()" data-testid="open-menu">
         <app-icon name="menu" [size]="22" />
       </button>
-      <app-portal-search [items]="navItems()" />
+      <app-portal-search [items]="navItems()" [view]="view()" />
       <div class="top-actions">
-        @if (session.isManager()) {
+        @if (viewOptions().length > 1) {
           <div class="role-switch" role="group" aria-label="Switch view">
-            @for (option of viewOptions; track option.value) {
+            @for (option of viewOptions(); track option.value) {
               <button
                 type="button"
                 [class.active]="view() === option.value"
@@ -46,7 +47,10 @@ const VIEW_OPTIONS: readonly { value: PortalView; label: string }[] = [
 })
 export class TopBar {
   protected readonly session = inject(Session);
-  protected readonly viewOptions = VIEW_OPTIONS;
+  // Everyone has their own view. Managers and HR get theirs on top.
+  protected readonly viewOptions = computed(() =>
+    VIEW_OPTIONS.filter(({ value }) => value === 'mine' || (value === 'team' && this.session.isManager()) || (value === 'hr' && this.session.isHr())),
+  );
   readonly view = input.required<PortalView>();
   readonly navItems = input.required<readonly NavItem[]>();
   readonly menuOpened = output();

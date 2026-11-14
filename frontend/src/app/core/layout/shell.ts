@@ -1,11 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { valueOr } from '../../shared/utils/resource';
-import { TeamApi } from '../../features/team/team-api';
+import { HrApi } from '../../features/hr/hr-api';
+import { RequestScope, TeamApi } from '../../features/team/team-api';
+import { SavedChanges } from '../saved-changes';
 import { PortalView, Session } from '../session';
-import { EMPLOYEE_NAV, MANAGER_NAV } from './nav-items';
+import { BadgeKey, EMPLOYEE_NAV, HR_NAV, MANAGER_NAV } from './nav-items';
 import { Sidebar } from './sidebar';
 import { SiteFooter } from './site-footer';
 import { TopBar } from './top-bar';
@@ -18,7 +20,7 @@ import { TopBar } from './top-bar';
       Skip to content
     </button>
     <div class="app-shell">
-      <app-sidebar [items]="navItems()" [pendingCount]="pendingCount()" [(isOpen)]="isNavOpen" />
+      <app-sidebar [items]="navItems()" [badges]="badges()" [(isOpen)]="isNavOpen" />
       <div class="app-content">
         <app-top-bar [view]="view()" [navItems]="navItems()" (menuOpened)="isNavOpen.set(true)" />
         <main #main id="main" tabindex="-1" class="outline-none">
@@ -34,6 +36,7 @@ export class Shell {
   private readonly router = inject(Router);
   private readonly session = inject(Session);
   private readonly team = inject(TeamApi);
+  private readonly hr = inject(HrApi);
 
   private readonly url = toSignal(
     this.router.events.pipe(
@@ -43,11 +46,28 @@ export class Shell {
     { initialValue: this.router.url },
   );
 
-  protected readonly view = computed<PortalView>(() => (this.url().startsWith('/team') ? 'team' : 'mine'));
-  protected readonly navItems = computed(() => (this.view() === 'team' ? MANAGER_NAV : EMPLOYEE_NAV));
+  protected readonly view = computed<PortalView>(() => (this.url().startsWith('/team') ? 'team' : this.url().startsWith('/hr') ? 'hr' : 'mine'));
+  protected readonly navItems = computed(() => ({ mine: EMPLOYEE_NAV, team: MANAGER_NAV, hr: HR_NAV })[this.view()]);
   protected readonly isNavOpen = signal(false);
 
-  private readonly pendingLeave = this.team.leaveRequests({ status: 'pending', isEnabled: this.session.isManager });
-  private readonly pendingFixes = this.team.corrections({ status: 'pending', isEnabled: this.session.isManager });
-  protected readonly pendingCount = computed(() => valueOr(this.pendingLeave, []).length + valueOr(this.pendingFixes, []).length);
+  // Counts follow the view: a manager's own team, or the whole company for HR.
+  private readonly scope = computed<RequestScope>(() => (this.view() === 'hr' ? 'hr' : 'team'));
+  private readonly countsWaiting = computed(() => (this.view() === 'hr' ? this.session.isHr() : this.session.isManager()));
+  private readonly pendingLeave = this.team.leaveRequests({ status: 'pending', isEnabled: this.countsWaiting, scope: this.scope });
+  private readonly pendingFixes = this.team.corrections({ status: 'pending', isEnabled: this.countsWaiting, scope: this.scope });
+  private readonly changeRequests = this.hr.changeRequests({ isEnabled: () => this.view() === 'hr' && this.session.isHr() });
+  protected readonly badges = computed<Partial<Record<BadgeKey, number>>>(() => ({
+    approvals: valueOr(this.pendingLeave, []).length + valueOr(this.pendingFixes, []).length,
+    inbox: valueOr(this.changeRequests, []).filter(({ status }) => status === 'open').length,
+  }));
+
+  constructor() {
+    const saves = inject(SavedChanges).count;
+    const seen = saves();
+    effect(() => {
+      if (saves() !== seen) {
+        untracked(() => [this.pendingLeave, this.pendingFixes, this.changeRequests].forEach((counts) => counts.reload()));
+      }
+    });
+  }
 }

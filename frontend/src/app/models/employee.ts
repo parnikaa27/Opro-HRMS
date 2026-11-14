@@ -1,4 +1,4 @@
-export type Role = 'EMPLOYEE' | 'MANAGER';
+export type Role = 'EMPLOYEE' | 'MANAGER' | 'HR';
 
 export interface EmergencyContact {
   name: string;

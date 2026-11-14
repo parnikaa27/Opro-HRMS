@@ -20,14 +20,18 @@ export interface TeamMemberDetail extends Employee {
   leaveBalances: LeaveBalance[];
 }
 
+export type RequestScope = 'team' | 'hr';
+
 interface ListOptions {
   status?: DecisionStatus;
+  // Managers see their reports, HR sees everyone. Same shapes either way.
+  scope?: () => RequestScope;
   // Lets shared widgets skip the call entirely for people who aren't managers.
   isEnabled?: () => boolean;
 }
 
-const listRequest = (url: string, { status, isEnabled = () => true }: ListOptions) => (): HttpResourceRequest | undefined =>
-  isEnabled() ? { url, ...(status && { params: { status } }) } : undefined;
+const listRequest = (path: string, { status, isEnabled = () => true, scope = () => 'team' }: ListOptions) => (): HttpResourceRequest | undefined =>
+  isEnabled() ? { url: `/api/${scope()}/${path}`, ...(status && { params: { status } }) } : undefined;
 
 @Injectable({ providedIn: 'root' })
 export class TeamApi {
@@ -40,12 +44,12 @@ export class TeamApi {
     httpResource<AttendanceDay[]>(() => ({ url: '/api/team/attendance', params: { month: month() } }), { defaultValue: [] });
 
   leaveRequests = (options: ListOptions = {}) =>
-    httpResource<LeaveRequest[]>(listRequest('/api/team/leave-requests', options), { defaultValue: [] });
+    httpResource<LeaveRequest[]>(listRequest('leave-requests', options), { defaultValue: [] });
   corrections = (options: ListOptions = {}) =>
-    httpResource<CorrectionRequest[]>(listRequest('/api/team/corrections', options), { defaultValue: [] });
+    httpResource<CorrectionRequest[]>(listRequest('corrections', options), { defaultValue: [] });
 
-  decideLeave = (id: string, decision: Decision) =>
-    firstValueFrom(this.http.post<LeaveRequest>(`/api/team/leave-requests/${encodeURIComponent(id)}/decision`, decision));
-  decideCorrection = (id: string, decision: Decision) =>
-    firstValueFrom(this.http.post<CorrectionRequest>(`/api/team/corrections/${encodeURIComponent(id)}/decision`, decision));
+  decideLeave = (id: string, decision: Decision, scope: RequestScope = 'team') =>
+    firstValueFrom(this.http.post<LeaveRequest>(`/api/${scope}/leave-requests/${encodeURIComponent(id)}/decision`, decision));
+  decideCorrection = (id: string, decision: Decision, scope: RequestScope = 'team') =>
+    firstValueFrom(this.http.post<CorrectionRequest>(`/api/${scope}/corrections/${encodeURIComponent(id)}/decision`, decision));
 }

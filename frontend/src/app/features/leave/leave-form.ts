@@ -28,7 +28,7 @@ interface LeaveDraft {
         Leave type
         <select [formField]="leaveForm.type" data-testid="leave-type" [attr.aria-invalid]="leaveForm.type().touched() && leaveForm.type().invalid()" aria-describedby="leave-type-error">
           @for (type of offeredTypes(); track type.code) {
-            <option [value]="type.code">{{ type.name }}</option>
+            <option [value]="type.code" [selected]="type.code === draft().type">{{ type.name }}</option>
           }
         </select>
       </label>

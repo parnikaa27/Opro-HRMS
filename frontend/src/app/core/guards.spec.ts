@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { CanMatchFn, Router, UrlTree } from '@angular/router';
 import { employee, manager, setupHttp } from '../../testing/fixtures';
-import { isManager, isSignedIn } from './guards';
+import { isHr, isManager, isSignedIn } from './guards';
 import { Session } from './session';
 
 // The guards ignore the route snapshot, so an empty stand in is enough.
@@ -32,5 +32,14 @@ describe('route guards', () => {
 
     session.user.set(manager());
     expect(run(isManager)).toBe(true);
+  });
+
+  it('only lets HR into HR pages', () => {
+    const session = TestBed.inject(Session);
+    session.user.set(manager());
+    expect(TestBed.inject(Router).serializeUrl(run(isHr) as UrlTree)).toBe('/');
+
+    session.user.set(employee({ roles: ['EMPLOYEE', 'HR'] }));
+    expect(run(isHr)).toBe(true);
   });
 });
