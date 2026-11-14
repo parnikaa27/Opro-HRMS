@@ -41,10 +41,19 @@ public class AttendanceService {
     }
 
     public List<AttendanceDay> month(Employee employee, YearMonth month) {
+        return between(employee, month.atDay(1), month.atEndOfMonth());
+    }
+
+    public List<AttendanceDay> today(Employee employee) {
+        LocalDate today = LocalDate.now(clock);
+        return between(employee, today, today);
+    }
+
+    private List<AttendanceDay> between(Employee employee, LocalDate first, LocalDate last) {
         LocalDate today = LocalDate.now(clock);
         // Only days they worked here, and none still to come.
-        LocalDate from = latest(month.atDay(1), employee.getJoinedOn());
-        LocalDate to = earliest(month.atEndOfMonth(), today, employee.getLastDay());
+        LocalDate from = latest(first, employee.getJoinedOn());
+        LocalDate to = earliest(last, today, employee.getLastDay());
         if (from.isAfter(to)) {
             return List.of();
         }

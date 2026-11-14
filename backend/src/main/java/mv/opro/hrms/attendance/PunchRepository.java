@@ -8,5 +8,7 @@ interface PunchRepository extends JpaRepository<Punch, Long> {
 
     List<Punch> findByEmployeeIdAndPunchedAtGreaterThanEqualAndPunchedAtLessThanOrderByPunchedAt(String employeeId, OffsetDateTime from, OffsetDateTime to);
 
+    boolean existsByEmployeeIdAndPunchedAt(String employeeId, OffsetDateTime punchedAt);
+
     boolean existsByEmployeeIdAndPunchedAtGreaterThanEqualAndPunchedAtLessThan(String employeeId, OffsetDateTime from, OffsetDateTime to);
 }

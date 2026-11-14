@@ -34,7 +34,7 @@ final class DayCalculator {
                 .toList();
 
         if (live.isEmpty()) {
-            return new AttendanceDay(employeeId, date, emptyStatus(date, today, offDay), views, null, null, 0, 0, null, null, isCorrected);
+            return new AttendanceDay(employeeId, null, date, emptyStatus(date, today, offDay), views, null, null, 0, 0, null, null, isCorrected);
         }
 
         boolean isComplete = live.size() % 2 == 0;
@@ -53,7 +53,7 @@ final class DayCalculator {
         } else {
             status = isLate ? "late" : "present";
         }
-        return new AttendanceDay(employeeId, date, status, views, firstIn, lastOut, worked, overtime,
+        return new AttendanceDay(employeeId, null, date, status, views, firstIn, lastOut, worked, overtime,
                 firstIn.plusMinutes(rules.shiftMinutes()), rules.shiftMinutes(), isCorrected);
     }
 

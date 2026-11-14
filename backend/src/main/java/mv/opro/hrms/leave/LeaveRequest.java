@@ -59,6 +59,17 @@ public class LeaveRequest {
         status = CANCELLED;
     }
 
+    void decide(String decision, String by, LocalDate on, String note) {
+        status = decision;
+        decidedBy = by;
+        decidedOn = on;
+        decisionNote = note;
+    }
+
+    boolean isPending() {
+        return PENDING.equals(status);
+    }
+
     public String getId() {
         return id;
     }

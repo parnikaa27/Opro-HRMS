@@ -3,15 +3,19 @@ package mv.opro.hrms.leave;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import mv.opro.hrms.common.ApiException;
 import mv.opro.hrms.common.Ids;
+import mv.opro.hrms.common.Wording;
 import mv.opro.hrms.employee.Employee;
 import mv.opro.hrms.employee.EmployeeRepository;
 import mv.opro.hrms.holiday.Holidays;
+import mv.opro.hrms.notification.Notification;
+import mv.opro.hrms.notification.Notifications;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,20 +29,24 @@ public class LeaveService {
 
     public record Application(String type, LocalDate from, LocalDate to, String halfDay, String reason) {}
 
+    public record Decision(String decision, String note) {}
+
     private final LeaveTypeRepository types;
     private final LeaveEntitlementRepository entitlements;
     private final LeaveRequestRepository requests;
     private final EmployeeRepository employees;
     private final Holidays holidays;
+    private final Notifications notifications;
     private final Clock clock;
 
     LeaveService(LeaveTypeRepository types, LeaveEntitlementRepository entitlements, LeaveRequestRepository requests, EmployeeRepository employees,
-            Holidays holidays, Clock clock) {
+            Holidays holidays, Notifications notifications, Clock clock) {
         this.types = types;
         this.entitlements = entitlements;
         this.requests = requests;
         this.employees = employees;
         this.holidays = holidays;
+        this.notifications = notifications;
         this.clock = clock;
     }
 
@@ -48,6 +56,34 @@ public class LeaveService {
 
     public List<LeaveRequest> requestsOf(String employeeId) {
         return requests.findByEmployeeIdOrderByFromDateDesc(employeeId);
+    }
+
+    // A manager's reports, or later everyone for HR. No status means all of them.
+    public List<LeaveRequest> requestsOf(Collection<String> employeeIds, String status) {
+        return status == null
+                ? requests.findByEmployeeIdInOrderByFromDateDesc(employeeIds)
+                : requests.findByEmployeeIdInAndStatusOrderByFromDateDesc(employeeIds, status);
+    }
+
+    // Decide a pending request for someone in scope. Declining needs a reason, so they can plan around it.
+    @Transactional
+    public LeaveRequest decide(Employee decider, String id, Collection<String> inScope, Decision decision) {
+        LeaveRequest request = requests.findById(id)
+                .filter(found -> inScope.contains(found.getEmployeeId()))
+                .orElseThrow(() -> refused(HttpStatus.NOT_FOUND, "Request not found"));
+        if (!request.isPending()) {
+            throw refused(HttpStatus.CONFLICT, "This request has already been decided.");
+        }
+        String note = decision.note() == null || decision.note().isBlank() ? null : decision.note().strip();
+        boolean isApproved = LeaveRequest.APPROVED.equals(decision.decision());
+        if (!isApproved && note == null) {
+            throw refused(HttpStatus.BAD_REQUEST, "Give a short reason so they know what to do next.");
+        }
+        request.decide(decision.decision(), decider.getId(), today(), note);
+        String what = "Your " + typeName(request.getType()) + " for " + Wording.dates(request.getFromDate(), request.getToDate());
+        notifications.tell(request.getEmployeeId(), Notification.Kind.LEAVE,
+                isApproved ? what + " was approved." : what + " was declined: " + Wording.sentence(note));
+        return request;
     }
 
     // This leave year's balances, in the policy's order. Unlimited types have none.
@@ -97,6 +133,10 @@ public class LeaveService {
         }
         LeaveRequest request = LeaveRequest.apply(Ids.next("LR"), employee.getId(), type.getCode(), from, to, application.halfDay(), days,
                 application.reason().strip(), today());
+        if (employee.getManagerId() != null) {
+            notifications.tell(employee.getManagerId(), Notification.Kind.APPROVAL,
+                    employee.getFullName() + " asked for " + Wording.days(days) + " of " + type.getName().toLowerCase() + " " + Wording.when(from, to));
+        }
         return requests.save(request);
     }
 
@@ -130,6 +170,10 @@ public class LeaveService {
         BigDecimal approved = requests.daysIn(employeeId, entitlement.getType(), LeaveRequest.APPROVED, start, end);
         BigDecimal pending = requests.daysIn(employeeId, entitlement.getType(), LeaveRequest.PENDING, start, end);
         return new Balance(entitlement.getType(), entitlement.getEntitled(), entitlement.getTakenBefore().add(approved), pending);
+    }
+
+    private String typeName(String code) {
+        return types.findById(code).map(type -> type.getName().toLowerCase()).orElse(code);
     }
 
     private LocalDate today() {

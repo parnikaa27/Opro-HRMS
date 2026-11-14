@@ -18,6 +18,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, String> {
     @Query("select e from Employee e where e.id = :id")
     Optional<Employee> lockById(String id);
 
+    @Query("select e from Employee e where e.managerId = :managerId and (e.lastDay is null or e.lastDay >= :day) order by e.fullName")
+    List<Employee> findActiveReports(String managerId, LocalDate day);
+
     @Query("select count(e) > 0 from Employee e where e.managerId = :managerId and (e.lastDay is null or e.lastDay >= :day)")
     boolean hasActiveReports(String managerId, LocalDate day);
 }

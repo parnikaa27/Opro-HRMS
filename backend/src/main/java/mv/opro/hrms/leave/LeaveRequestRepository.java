@@ -2,6 +2,7 @@ package mv.opro.hrms.leave;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -9,6 +10,10 @@ import org.springframework.data.jpa.repository.Query;
 interface LeaveRequestRepository extends JpaRepository<LeaveRequest, String> {
 
     List<LeaveRequest> findByEmployeeIdOrderByFromDateDesc(String employeeId);
+
+    List<LeaveRequest> findByEmployeeIdInOrderByFromDateDesc(Collection<String> employeeIds);
+
+    List<LeaveRequest> findByEmployeeIdInAndStatusOrderByFromDateDesc(Collection<String> employeeIds, String status);
 
     @Query("""
             select count(r) > 0 from LeaveRequest r

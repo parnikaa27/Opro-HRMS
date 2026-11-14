@@ -36,6 +36,10 @@ public class People {
         return employees.findById(id).filter(employee -> employee.isActiveOn(today()));
     }
 
+    public List<Employee> reportsOf(String managerId) {
+        return employees.findActiveReports(managerId, today());
+    }
+
     // Names for a handful of ids, such as who decided a request.
     public Map<String, String> namesOf(Collection<String> ids) {
         return employees.findAllById(ids).stream().collect(Collectors.toMap(Employee::getId, Employee::getFullName));

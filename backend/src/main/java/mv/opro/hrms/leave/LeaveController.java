@@ -36,18 +36,6 @@ class LeaveController {
     record LeaveTypeResponse(String code, String name, boolean allowsHalfDay, boolean isUnlimited, BigDecimal defaultEntitlement,
             Integer documentRequiredAfterDays) {}
 
-    record LeaveRequestResponse(String id, String employeeId, String employeeName, String type, LocalDate from, LocalDate to, String halfDay,
-            BigDecimal days, String reason, String status, LocalDate appliedOn, String decidedBy, String decidedByName, LocalDate decidedOn,
-            String decisionNote, boolean recordedByHr, boolean hasCertificate) {
-
-        static LeaveRequestResponse of(LeaveRequest request, Employee employee, Map<String, String> names) {
-            return new LeaveRequestResponse(request.getId(), request.getEmployeeId(), employee.getFullName(), request.getType(),
-                    request.getFromDate(), request.getToDate(), request.getHalfDay(), request.getDays(), request.getReason(), request.getStatus(),
-                    request.getAppliedOn(), request.getDecidedBy(), request.getDecidedBy() == null ? null : names.get(request.getDecidedBy()), request.getDecidedOn(),
-                    request.getDecisionNote(), request.isRecordedByHr(), request.hasCertificate());
-        }
-    }
-
     private final LeaveService leave;
     private final CurrentUser currentUser;
     private final People people;
@@ -76,19 +64,19 @@ class LeaveController {
         Employee me = currentUser.get();
         List<LeaveRequest> requests = leave.requestsOf(me.getId());
         Map<String, String> deciders = people.namesOf(requests.stream().map(LeaveRequest::getDecidedBy).filter(Objects::nonNull).collect(Collectors.toSet()));
-        return requests.stream().map(request -> LeaveRequestResponse.of(request, me, deciders)).toList();
+        return requests.stream().map(request -> LeaveRequestResponse.of(request, me.getFullName(), deciders)).toList();
     }
 
     @PostMapping("/api/leave/requests")
     LeaveRequestResponse apply(@Valid @RequestBody ApplyLeave body) {
         Employee me = currentUser.get();
         LeaveRequest request = leave.apply(me, new LeaveService.Application(body.type(), body.from(), body.to(), body.halfDay(), body.reason()));
-        return LeaveRequestResponse.of(request, me, Map.of());
+        return LeaveRequestResponse.of(request, me.getFullName(), Map.of());
     }
 
     @PostMapping("/api/leave/requests/{id}/cancel")
     LeaveRequestResponse cancel(@PathVariable String id) {
         Employee me = currentUser.get();
-        return LeaveRequestResponse.of(leave.cancel(me, id), me, Map.of());
+        return LeaveRequestResponse.of(leave.cancel(me, id), me.getFullName(), Map.of());
     }
 }

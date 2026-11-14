@@ -63,7 +63,9 @@ HRMS/
       employee/            Employees and visas, and roles worked out from reporting lines
       holiday/             The holiday calendar, used by attendance and leave
       attendance/          Punches, days worked out by DayCalculator, punch fix requests, devices, and the dev punch seeder
-      leave/               Leave types, balances, applying and cancelling, the working day count
+      leave/               Leave types, balances, applying, cancelling and deciding, the working day count
+      notification/        The notifications panel, and the service every feature uses to tell people things
+      team/                The manager's view: TeamAccess limits everything to their own active direct reports
       session/             Who is signed in, /api/me, and the dev only pick a user sign in
       security/            Session cookie, XSRF check, JSON errors instead of redirects
       common/              Error shape ({"message": ...}) shared by every endpoint
@@ -119,7 +121,13 @@ Then the frontend, from `frontend/`:
 USE_MOCK_BACKEND=false npm start
 ```
 
-That sends `/api` to Spring on `http://localhost:8080` instead. Nothing else changes. So far Spring has sign in, sign out, `/api/me`, holidays, attendance and leave, so the Overview, Attendance and Leave pages work end to end. Team, HR, calendar events, documents, notifications and the profile pages still only work against the mock.
+That sends `/api` to Spring on `http://localhost:8080` instead. Nothing else changes. So far Spring has sign in, sign out, `/api/me`, holidays and events, attendance, leave, notifications and the manager's team view, so the employee and manager pages work end to end. HR, documents, announcements and profile change requests still only work against the mock.
+
+Unlike the mock, Spring keeps what you do in the database. To start again from the seed data, run this inside `backend/` (it removes only the `opro-hrms` project's volume):
+
+```bash
+docker compose down -v && docker compose up -d
+```
 
 To see a working day on a weekend, pin Spring's clock the way `MOCK_NOW` pins the mock's: add `-Dspring-boot.run.jvmArguments="-Dopro.fixed-time=2026-11-12T10:30:00+05:00"`.
 

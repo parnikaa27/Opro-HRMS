@@ -10,7 +10,7 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 | `frontend/` | Angular 22, Tailwind CSS v4, Vitest, Playwright | Employee, manager and HR views built. Employee and manager pages match the Figma design; HR pages reuse its classes |
 | `design/figma-make/` | `App.tsx` and `index.css` copied from the Figma Make file "Opro HRMS Portal" | The visual source of truth |
 | `frontend/dev-server/` | Plain Node mock API serving JSON fixtures | In progress |
-| `backend/` | Java 25, Spring Boot 4.1, PostgreSQL 18, Flyway, Maven | Session, `/api/me`, holidays, attendance (days, punch fix requests, devices) and leave (types, balances, apply, cancel) are live. The rest of the API moves over feature by feature |
+| `backend/` | Java 25, Spring Boot 4.1, PostgreSQL 18, Flyway, Maven | Session, `/api/me`, holidays and events, attendance, leave, notifications and the manager's team view (reports, team attendance, leave and punch fix decisions) are live. HR, documents, announcements and profile change requests still run on the mock only |
 
 ---
 
@@ -137,7 +137,8 @@ Sidebar: Overview, People, Leave (count waiting), Calendar, Visas, Inbox (count 
 - Weekends and public holidays inside a leave range do not count.
 - The apply form only offers types the person has a balance for, plus types the policy marks `isUnlimited`. A missing balance never means "no cap".
 - Sick leave longer than `documentRequiredAfterDays` asks for a medical certificate: PDF, JPG or PNG up to 5 MB, attached when applying or later from the request history. It is health data: the employee and HR can open it, managers only see that one is attached. The server checks the file's first bytes, not just its type, and serves it with `nosniff` and a `sandbox` policy.
-- Single level approval by the direct manager.
+- Single level approval by the direct manager. A manager decides only for their active direct reports, never their own leave (that goes to their own manager). Declining needs a reason, enforced on the server.
+- Decisions tell the employee in plain words, new requests and punch fixes tell the manager. An approved punch fix adds a manual punch linked to its request.
 - Statuses: `pending`, `approved`, `rejected`, `cancelled`.
 - The backend owns day counts and balances. The frontend may preview a count but the server's number wins: Spring ignores any `days` the client sends.
 - Balances are never stored as totals. Taken is leave used before Opro HRMS (`taken_before`) plus approved requests in the year; pending is pending requests. Applying locks the person's record, so two requests sent at once can't spend the same days.

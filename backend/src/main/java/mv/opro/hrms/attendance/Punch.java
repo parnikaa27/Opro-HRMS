@@ -19,6 +19,7 @@ public class Punch {
     private String deviceId;
     private String source;
     private OffsetDateTime voidedAt;
+    private String correctionRequestId;
 
     protected Punch() {}
 
@@ -28,6 +29,16 @@ public class Punch {
         punch.punchedAt = punchedAt;
         punch.deviceId = deviceId;
         punch.source = "device";
+        return punch;
+    }
+
+    // Added by hand because a manager approved a punch fix. It points back at that request.
+    static Punch fromApprovedFix(String employeeId, OffsetDateTime punchedAt, String correctionRequestId) {
+        Punch punch = new Punch();
+        punch.employeeId = employeeId;
+        punch.punchedAt = punchedAt;
+        punch.source = "manual";
+        punch.correctionRequestId = correctionRequestId;
         return punch;
     }
 
