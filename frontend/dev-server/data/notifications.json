@@ -1,0 +1,9 @@
+[
+  { "id": "NT-501", "employeeId": "OPR-0004", "kind": "approval", "text": "Rahim Uddin asked for half a day of family responsibility leave on 18 November", "createdOn": "2026-11-12", "isRead": false },
+  { "id": "NT-500", "employeeId": "OPR-0004", "kind": "approval", "text": "Priya Nair asked for 8 days of annual leave from 20 December", "createdOn": "2026-11-11", "isRead": false },
+  { "id": "NT-499", "employeeId": "OPR-0004", "kind": "visa", "text": "Rahim Uddin's visa expired on 2 November", "createdOn": "2026-11-03", "isRead": true },
+  { "id": "NT-498", "employeeId": "OPR-0027", "kind": "leave", "text": "Your leave on 26 November was not approved", "createdOn": "2026-11-07", "isRead": false },
+  { "id": "NT-497", "employeeId": "OPR-0027", "kind": "visa", "text": "Your passport expires on 10 January 2027. Start the renewal now", "createdOn": "2026-11-11", "isRead": false },
+  { "id": "NT-496", "employeeId": "OPR-0018", "kind": "visa", "text": "Your visa expires on 20 December. Send your documents to HR", "createdOn": "2026-10-21", "isRead": false },
+  { "id": "NT-495", "employeeId": "OPR-0018", "kind": "correction", "text": "Your punch correction for 5 November was approved", "createdOn": "2026-11-05", "isRead": true }
+]

@@ -1,0 +1,43 @@
+{
+  "OPR-0001": [
+    { "type": "annual", "entitled": 30, "taken": 14, "pending": 0 },
+    { "type": "sick", "entitled": 30, "taken": 2, "pending": 0 },
+    { "type": "family", "entitled": 10, "taken": 0, "pending": 0 }
+  ],
+  "OPR-0004": [
+    { "type": "annual", "entitled": 30, "taken": 11, "pending": 5 },
+    { "type": "sick", "entitled": 30, "taken": 3, "pending": 0 },
+    { "type": "family", "entitled": 10, "taken": 1, "pending": 0 }
+  ],
+  "OPR-0011": [
+    { "type": "annual", "entitled": 30, "taken": 15, "pending": 3 },
+    { "type": "sick", "entitled": 30, "taken": 4, "pending": 0 },
+    { "type": "family", "entitled": 10, "taken": 2, "pending": 0 }
+  ],
+  "OPR-0015": [
+    { "type": "annual", "entitled": 30, "taken": 9, "pending": 8 },
+    { "type": "sick", "entitled": 30, "taken": 1, "pending": 0 },
+    { "type": "family", "entitled": 10, "taken": 0, "pending": 0 }
+  ],
+  "OPR-0018": [
+    { "type": "annual", "entitled": 30, "taken": 18, "pending": 0 },
+    { "type": "sick", "entitled": 30, "taken": 6, "pending": 0 },
+    { "type": "family", "entitled": 10, "taken": 3, "pending": 0 },
+    { "type": "paternity", "entitled": 3, "taken": 0, "pending": 0 }
+  ],
+  "OPR-0021": [
+    { "type": "annual", "entitled": 30, "taken": 22, "pending": 0 },
+    { "type": "sick", "entitled": 30, "taken": 2, "pending": 0 },
+    { "type": "family", "entitled": 10, "taken": 4, "pending": 0.5 }
+  ],
+  "OPR-0023": [
+    { "type": "annual", "entitled": 30, "taken": 20, "pending": 0 },
+    { "type": "sick", "entitled": 30, "taken": 0, "pending": 0 },
+    { "type": "family", "entitled": 10, "taken": 1, "pending": 0 }
+  ],
+  "OPR-0027": [
+    { "type": "annual", "entitled": 30, "taken": 6, "pending": 0 },
+    { "type": "sick", "entitled": 30, "taken": 1, "pending": 0 },
+    { "type": "family", "entitled": 10, "taken": 0, "pending": 0 }
+  ]
+}

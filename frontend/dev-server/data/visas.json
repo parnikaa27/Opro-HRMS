@@ -1,0 +1,6 @@
+[
+  { "employeeId": "OPR-0015", "workPermitNumber": "WP-2022-118344", "visaNumber": "MV-EV-551902", "passportLast4": "4821", "passportExpiry": "2031-06-30", "visaIssuedOn": "2025-08-15", "visaExpiry": "2027-08-14" },
+  { "employeeId": "OPR-0018", "workPermitNumber": "WP-2023-204117", "visaNumber": "MV-EV-602388", "passportLast4": "7730", "passportExpiry": "2028-02-11", "visaIssuedOn": "2024-12-21", "visaExpiry": "2026-12-20" },
+  { "employeeId": "OPR-0021", "workPermitNumber": "WP-2020-087215", "visaNumber": "MV-EV-489150", "passportLast4": "1196", "passportExpiry": "2029-09-04", "visaIssuedOn": "2024-11-03", "visaExpiry": "2026-11-02" },
+  { "employeeId": "OPR-0027", "workPermitNumber": "WP-2024-231560", "visaNumber": "MV-EV-640071", "passportLast4": "3058", "passportExpiry": "2027-01-10", "visaIssuedOn": "2025-03-31", "visaExpiry": "2027-03-30" }
+]

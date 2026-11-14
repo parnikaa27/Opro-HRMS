@@ -1,0 +1,8 @@
+[
+  { "code": "annual", "name": "Annual leave", "allowsHalfDay": true },
+  { "code": "sick", "name": "Sick leave", "allowsHalfDay": true, "documentRequiredAfterDays": 2 },
+  { "code": "family", "name": "Family responsibility leave", "allowsHalfDay": true },
+  { "code": "maternity", "name": "Maternity leave", "allowsHalfDay": false },
+  { "code": "paternity", "name": "Paternity leave", "allowsHalfDay": false },
+  { "code": "unpaid", "name": "Unpaid leave", "allowsHalfDay": true, "isUnlimited": true }
+]

@@ -1,0 +1,11 @@
+[
+  { "id": "LR-1042", "employeeId": "OPR-0011", "type": "annual", "from": "2026-11-22", "to": "2026-11-24", "days": 3, "reason": "Family trip to Addu", "status": "pending", "appliedOn": "2026-11-10" },
+  { "id": "LR-1043", "employeeId": "OPR-0015", "type": "annual", "from": "2026-12-20", "to": "2026-12-31", "days": 8, "reason": "Going home to Kochi for the holidays", "status": "pending", "appliedOn": "2026-11-11" },
+  { "id": "LR-1044", "employeeId": "OPR-0021", "type": "family", "from": "2026-11-18", "to": "2026-11-18", "halfDay": "first", "days": 0.5, "reason": "Parent meeting at my son's school", "status": "pending", "appliedOn": "2026-11-12" },
+  { "id": "LR-1045", "employeeId": "OPR-0004", "type": "annual", "from": "2026-12-06", "to": "2026-12-10", "days": 5, "reason": "Umrah", "status": "pending", "appliedOn": "2026-11-12" },
+  { "id": "LR-1031", "employeeId": "OPR-0018", "type": "sick", "from": "2026-11-04", "to": "2026-11-04", "days": 1, "reason": "Fever", "status": "approved", "appliedOn": "2026-11-04", "decidedBy": "OPR-0004", "decidedOn": "2026-11-04" },
+  { "id": "LR-1027", "employeeId": "OPR-0023", "type": "annual", "from": "2026-10-12", "to": "2026-10-15", "days": 4, "reason": "Brother's wedding", "status": "approved", "appliedOn": "2026-09-28", "decidedBy": "OPR-0004", "decidedOn": "2026-09-29" },
+  { "id": "LR-1029", "employeeId": "OPR-0011", "type": "sick", "from": "2026-10-21", "to": "2026-10-21", "days": 1, "reason": "Migraine", "status": "approved", "appliedOn": "2026-10-21", "decidedBy": "OPR-0004", "decidedOn": "2026-10-21" },
+  { "id": "LR-1036", "employeeId": "OPR-0027", "type": "annual", "from": "2026-11-26", "to": "2026-11-26", "days": 1, "reason": "Long weekend", "status": "rejected", "appliedOn": "2026-11-06", "decidedBy": "OPR-0004", "decidedOn": "2026-11-07", "decisionNote": "That's the year end audit week. Could you take it in December instead?" },
+  { "id": "LR-1033", "employeeId": "OPR-0004", "type": "sick", "from": "2026-11-02", "to": "2026-11-02", "days": 1, "reason": "Dentist", "status": "cancelled", "appliedOn": "2026-10-30" }
+]

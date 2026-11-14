@@ -1,0 +1,20 @@
+[
+  { "date": "2026-01-01", "name": "New Year's Day", "isTentative": false },
+  { "date": "2026-02-18", "name": "First day of Ramadan", "isTentative": true },
+  { "date": "2026-03-20", "name": "Eid al Fitr", "isTentative": true },
+  { "date": "2026-03-21", "name": "Eid al Fitr holiday", "isTentative": true },
+  { "date": "2026-03-22", "name": "Eid al Fitr holiday", "isTentative": true },
+  { "date": "2026-05-26", "name": "Hajj Day", "isTentative": true },
+  { "date": "2026-05-27", "name": "Eid al Adha", "isTentative": true },
+  { "date": "2026-05-28", "name": "Eid al Adha holiday", "isTentative": true },
+  { "date": "2026-05-29", "name": "Eid al Adha holiday", "isTentative": true },
+  { "date": "2026-05-30", "name": "Eid al Adha holiday", "isTentative": true },
+  { "date": "2026-06-16", "name": "Islamic New Year", "isTentative": true },
+  { "date": "2026-07-26", "name": "Independence Day", "isTentative": false },
+  { "date": "2026-08-14", "name": "National Day", "isTentative": true },
+  { "date": "2026-08-25", "name": "Mawlid al Nabi", "isTentative": true },
+  { "date": "2026-09-12", "name": "The Day Maldives Embraced Islam", "isTentative": true },
+  { "date": "2026-11-03", "name": "Victory Day", "isTentative": false },
+  { "date": "2026-11-11", "name": "Republic Day", "isTentative": false },
+  { "date": "2027-01-01", "name": "New Year's Day", "isTentative": false }
+]
