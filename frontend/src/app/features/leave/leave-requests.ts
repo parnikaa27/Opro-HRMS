@@ -3,7 +3,7 @@ import { LeaveRequest, LeaveStatus, LeaveType } from '../../models/leave';
 import { Icon } from '../../shared/ui/icon';
 import { StatusPill, Tone } from '../../shared/ui/status-pill';
 import { maldivesToday } from '../../shared/utils/date-time';
-import { LeaveApi } from './leave-api';
+import { CERTIFICATE_ACCEPT, certificateProblem, LeaveApi, needsCertificate } from './leave-api';
 import { describeDates, describeLength } from './leave-format';
 
 const STATUS: Record<LeaveStatus, { label: string; tone: Tone }> = {
@@ -41,8 +41,23 @@ const STATUS: Record<LeaveStatus, { label: string; tone: Tone }> = {
                 <span class="row-actions"><button type="button" class="text-link" (click)="confirming.set(request.id)" data-testid="cancel-request">Cancel request</button></span>
               }
             }
+            @if (request.hasCertificate) {
+              <span class="row-actions" data-testid="certificate">
+                Medical certificate attached
+                @if (certificatePath(); as path) {
+                  <a class="text-link" [href]="path + '/' + request.id + '/certificate'" target="_blank" rel="noopener" data-testid="view-certificate">View</a>
+                }
+              </span>
+            } @else if (!isReadOnly() && isMissingCertificate(request)) {
+              <span class="row-actions">
+                <label class="text-link">
+                  Add medical certificate
+                  <input type="file" class="sr-only" [accept]="certificateAccept" (change)="attach(request.id, $event)" data-testid="attach-certificate" />
+                </label>
+              </span>
+            }
             @if (failedId() === request.id) {
-              <span class="row-error" role="alert">Couldn't cancel it. Try again in a moment.</span>
+              <span class="row-error" role="alert">{{ problem() }}</span>
             }
           </div>
           <span>{{ length(request) }}</span>
@@ -63,14 +78,20 @@ export class LeaveRequests {
   readonly types = input.required<readonly LeaveType[]>();
   readonly isReadOnly = input(false);
   readonly heading = input('My leave requests');
+  // Where this reader can open certificates from. Managers get none: they only see that one is attached.
+  readonly certificatePath = input<string>();
   readonly changed = output();
 
   protected readonly sorted = computed(() => [...this.requests()].sort((first, second) => second.from.localeCompare(first.from)));
   protected readonly confirming = signal<string | undefined>(undefined);
   protected readonly failedId = signal<string | undefined>(undefined);
+  protected readonly problem = signal('');
+  protected readonly certificateAccept = CERTIFICATE_ACCEPT;
   protected readonly status = STATUS;
 
   protected readonly nameOf = (code: string) => this.types().find((type) => type.code === code)?.name ?? code;
+  protected readonly isMissingCertificate = (request: LeaveRequest) =>
+    (request.status === 'pending' || request.status === 'approved') && needsCertificate(this.types().find(({ code }) => code === request.type), request.days);
   protected readonly canCancel = ({ status, from }: LeaveRequest) => status === 'pending' || (status === 'approved' && from > this.today);
   protected readonly dates = describeDates;
   protected readonly length = describeLength;
@@ -83,6 +104,29 @@ export class LeaveRequests {
       this.changed.emit();
     } catch (error) {
       console.error('Cancelling leave failed', error);
+      this.problem.set("Couldn't cancel it. Try again in a moment.");
+      this.failedId.set(id);
+    }
+  }
+
+  protected async attach(id: string, event: Event) {
+    const file = event.target instanceof HTMLInputElement ? event.target.files?.[0] : undefined;
+    if (!file) {
+      return;
+    }
+    this.failedId.set(undefined);
+    const problem = certificateProblem(file);
+    if (problem) {
+      this.problem.set(problem);
+      this.failedId.set(id);
+      return;
+    }
+    try {
+      await this.api.attachCertificate(id, file);
+      this.changed.emit();
+    } catch (error) {
+      console.error('Attaching a certificate failed', error);
+      this.problem.set("The certificate didn't upload. Try again in a moment.");
       this.failedId.set(id);
     }
   }

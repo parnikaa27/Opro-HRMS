@@ -39,15 +39,15 @@ import { ListSkeleton } from '../../shared/ui/list-skeleton';
       } @else if (requests.isLoading() && requestList().length === 0) {
         <app-list-skeleton />
       } @else {
-        <app-leave-requests [requests]="requestList()" [types]="typeList()" (changed)="refresh()" />
+        <app-leave-requests [requests]="requestList()" [types]="typeList()" certificatePath="/api/leave/requests" (changed)="refresh()" />
       }
     </div>
 
     <app-dialog heading="Request leave" [(isOpen)]="isApplying">
       @if (wasApplied()) {
-        <app-success-state heading="Request submitted" body="Your manager has been notified. You can track the status from the Leave page." (done)="closeForm()" />
+        <app-success-state heading="Request submitted" [body]="isCertificateMissing() ? 'Your manager has been notified. Add your medical certificate from your request history when you have it.' : 'Your manager has been notified. You can track the status from the Leave page.'" (done)="closeForm()" />
       } @else {
-        <app-leave-form [types]="typeList()" [balances]="balanceList()" [holidays]="holidayDates()" (applied)="onApplied()" (cancelled)="closeForm()" />
+        <app-leave-form [types]="typeList()" [balances]="balanceList()" [holidays]="holidayDates()" (applied)="onApplied($event)" (cancelled)="closeForm()" />
       }
     </app-dialog>
   `,
@@ -80,8 +80,10 @@ export class LeavePage {
   }
 
   protected readonly wasApplied = signal(false);
+  protected readonly isCertificateMissing = signal(false);
 
-  protected onApplied() {
+  protected onApplied(isCertificateMissing: boolean) {
+    this.isCertificateMissing.set(isCertificateMissing);
     this.wasApplied.set(true);
     this.refresh();
   }

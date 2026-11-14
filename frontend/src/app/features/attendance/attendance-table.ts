@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { StatusPill, Tone } from '../../shared/ui/status-pill';
 
 export interface AttendanceRow {
@@ -9,6 +9,7 @@ export interface AttendanceRow {
   punchOut: string;
   hours: string;
   status: { label: string; tone: Tone };
+  isEdited: boolean;
 }
 
 @Component({
@@ -24,6 +25,9 @@ export interface AttendanceRow {
             <th scope="col">PUNCH OUT</th>
             <th scope="col">WORK HOURS</th>
             <th scope="col">STATUS</th>
+            @if (isEditable()) {
+              <th scope="col"><span class="sr-only">Actions</span></th>
+            }
           </tr>
         </thead>
         <tbody>
@@ -36,11 +40,19 @@ export interface AttendanceRow {
               <td>{{ row.punchIn }}</td>
               <td>{{ row.punchOut }}</td>
               <td><b>{{ row.hours }}</b></td>
-              <td><app-status-pill [tone]="row.status.tone">{{ row.status.label }}</app-status-pill></td>
+              <td>
+                <app-status-pill [tone]="row.status.tone">{{ row.status.label }}</app-status-pill>
+                @if (row.isEdited) {
+                  <span class="edited-note" data-testid="edited-by-hr">Edited by HR</span>
+                }
+              </td>
+              @if (isEditable()) {
+                <td><button type="button" class="text-link" (click)="edit.emit(row.date)" data-testid="edit-punches">Fix punches</button></td>
+              }
             </tr>
           } @empty {
             <tr>
-              <td colspan="5">No punches recorded yet.</td>
+              <td [attr.colspan]="isEditable() ? 6 : 5">No punches recorded yet.</td>
             </tr>
           }
         </tbody>
@@ -51,4 +63,7 @@ export interface AttendanceRow {
 })
 export class AttendanceTable {
   readonly rows = input.required<readonly AttendanceRow[]>();
+  // HR fixes punches from one person's page. Everyone else reads.
+  readonly isEditable = input(false);
+  readonly edit = output<string>();
 }

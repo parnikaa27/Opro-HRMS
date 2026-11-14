@@ -17,4 +17,12 @@ describe('IdCard', () => {
         'In an emergency Dilani Perera, spouse +94 77 120 1018 If found, please return to Opro, Malé, Republic of Maldives.',
     );
   });
+
+  it('prints their photo on the front when there is one', async () => {
+    const fixture = TestBed.createComponent(IdCard);
+    fixture.componentRef.setInput('employee', employee({ photoUrl: '/api/employees/OPR-0018/photo?v=1' }));
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.querySelector('[data-testid=id-card-photo]')?.getAttribute('src')).toBe('/api/employees/OPR-0018/photo?v=1');
+  });
 });

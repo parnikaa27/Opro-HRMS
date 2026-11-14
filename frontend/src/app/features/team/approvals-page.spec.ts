@@ -132,6 +132,18 @@ describe('ApprovalsPage', () => {
     expect(text(root)).toContain('No punch fixes waiting for you.');
   });
 
+  it('tells a manager a certificate is attached, but only HR gets to open it', async () => {
+    const sick = [leave({ id: 'LR-7', type: 'sick', hasCertificate: true })];
+    const manager = await render(sick);
+    expect(text(manager.querySelector('[data-testid=certificate]') as HTMLElement)).toBe('Medical certificate attached');
+
+    const fixture = TestBed.createComponent(ApprovalsPage);
+    fixture.componentRef.setInput('scope', 'hr');
+    await respond(http, { '/api/hr/leave-requests': sick, '/api/hr/corrections': [], '/api/leave/types': [] });
+    const hr = fixture.nativeElement as HTMLElement;
+    expect(hr.querySelector('[data-testid=certificate] a')?.getAttribute('href')).toBe('/api/hr/leave-requests/LR-7/certificate');
+  });
+
   it('explains when requests fail to load', async () => {
     const fixture = TestBed.createComponent(ApprovalsPage);
     await fail(http, '/api/team/leave-requests');

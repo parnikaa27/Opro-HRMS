@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { ChangeRequest } from '../../models/company';
 import { Avatar } from '../../shared/ui/avatar';
 import { Dialog } from '../../shared/ui/dialog';
@@ -22,14 +23,14 @@ const TABS: { value: Status; label: string; empty: string }[] = [
 
 @Component({
   selector: 'app-hr-inbox-page',
-  imports: [Avatar, DeclineForm, Dialog, Icon, ListSkeleton, StatusPill],
+  imports: [Avatar, DeclineForm, Dialog, Icon, ListSkeleton, RouterLink, StatusPill],
   template: `
     <div class="page-view">
       <div class="page-title">
         <div>
           <span class="eyebrow">PEOPLE &amp; CULTURE</span>
           <h1>Inbox</h1>
-          <p>Personal detail changes people asked for from their profile. Update the record, then mark it done.</p>
+          <p>Personal detail changes people asked for from their profile. Open the person, edit their details, then mark the request done.</p>
         </div>
       </div>
 
@@ -54,7 +55,7 @@ const TABS: { value: Status; label: string; empty: string }[] = [
             <div class="large-request inbox-request" data-testid="change-row">
               <app-avatar [name]="request.employeeName ?? ''" />
               <div>
-                <strong>{{ request.employeeName }}</strong>
+                <a [routerLink]="['/hr/people', request.employeeId]" class="person-cell"><strong>{{ request.employeeName }}</strong></a>
                 <span>{{ request.field }} · {{ submittedAgo(request.raisedOn) }}</span>
               </div>
               <div><small>{{ request.decisionNote ? 'YOUR NOTE' : 'WHAT TO CHANGE' }}</small><strong>{{ request.decisionNote ?? request.details }}</strong></div>

@@ -48,9 +48,9 @@ describe('LeavePage', () => {
     const root = fixture.nativeElement as HTMLElement;
     click(root, 'apply-leave');
 
-    fixture.debugElement.query(By.directive(LeaveForm)).componentInstance.applied.emit();
+    fixture.debugElement.query(By.directive(LeaveForm)).componentInstance.applied.emit(false);
     TestBed.tick();
-    expect(text(root.querySelector('[data-testid=success-state]') as HTMLElement)).toContain('Request submitted');
+    expect(text(root.querySelector('[data-testid=success-state]') as HTMLElement)).toContain('Request submitted Your manager has been notified. You can track the status');
     expect(http.match('/api/leave/requests')).toHaveLength(1);
     expect(http.match('/api/leave/balances')).toHaveLength(1);
 
@@ -62,6 +62,17 @@ describe('LeavePage', () => {
     fixture.debugElement.query(By.directive(LeaveForm)).componentInstance.cancelled.emit();
     await settle();
     expect((root.querySelector('dialog') as HTMLDialogElement).open).toBe(false);
+  });
+
+  it('reminds them to add a missing certificate later', async () => {
+    const fixture = await render();
+    const root = fixture.nativeElement as HTMLElement;
+    click(root, 'apply-leave');
+
+    fixture.debugElement.query(By.directive(LeaveForm)).componentInstance.applied.emit(true);
+    TestBed.tick();
+
+    expect(text(root.querySelector('[data-testid=success-state]') as HTMLElement)).toContain('Add your medical certificate from your request history');
   });
 
   it('opens the form straight away when linked with ?apply', async () => {

@@ -87,6 +87,14 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
                 @if (request.status === 'pending' && othersOff(request); as others) {
                   <span class="overlap" data-testid="overlap">Also off then: {{ others }}</span>
                 }
+                @if (request.hasCertificate) {
+                  <span class="certificate-note" data-testid="certificate">
+                    Medical certificate attached
+                    @if (scope() === 'hr') {
+                      · <a [href]="'/api/hr/leave-requests/' + request.id + '/certificate'" target="_blank" rel="noopener" class="text-link">View</a>
+                    }
+                  </span>
+                }
               </div>
               <div><small>DATES</small><strong>{{ describeDates(request) }}</strong></div>
               <div><small>DURATION</small><strong>{{ describeLength(request) }}</strong></div>

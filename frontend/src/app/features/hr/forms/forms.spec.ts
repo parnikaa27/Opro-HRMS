@@ -1,9 +1,14 @@
 import { HttpTestingController } from '@angular/common/http/testing';
-import { OutputEmitterRef, Type } from '@angular/core';
+import { OutputRef, Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { LeaveType } from '../../../models/leave';
-import { fill, NOW, settle, setupHttp, text } from '../../../../testing/fixtures';
+import { fill, NOW, pickFile, settle, setupHttp, text } from '../../../../testing/fixtures';
+import { employee } from '../../../../testing/fixtures';
 import { AdjustBalanceForm } from './adjust-balance-form';
+import { EmployeeForm } from './employee-form';
+import { LeavingForm } from './leaving-form';
+import { PhotoForm } from './photo-form';
+import { ScheduleForm } from './schedule-form';
 import { AnnouncementForm } from './announcement-form';
 import { EventForm } from './event-form';
 import { HolidayForm } from './holiday-form';
@@ -31,7 +36,7 @@ describe('HR forms', () => {
     vi.restoreAllMocks();
   });
 
-  const render = async <T extends { saved: OutputEmitterRef<void>; cancelled: OutputEmitterRef<void> }>(component: Type<T>, inputs: Record<string, unknown> = {}) => {
+  const render = async <T extends { saved: OutputRef<unknown>; cancelled: OutputRef<void> }>(component: Type<T>, inputs: Record<string, unknown> = {}) => {
     const fixture = TestBed.createComponent(component);
     Object.entries(inputs).forEach(([name, value]) => fixture.componentRef.setInput(name, value));
     await fixture.whenStable();
@@ -269,6 +274,245 @@ describe('HR forms', () => {
       await submit(root);
 
       expect(http.expectOne('/api/hr/leave-types/unpaid').request.body).toEqual({ name: 'Unpaid leave', allowsHalfDay: false });
+    });
+  });
+
+  describe('ScheduleForm', () => {
+    const CURRENT = { id: 'WS-1', effectiveFrom: '2024-01-01', shiftStart: '09:00', shiftEnd: '17:00', graceMinutes: 15, halfDayMinutes: 240, ramadanStart: '09:00', ramadanEnd: '14:00', reason: 'x', setBy: 'H', setOn: '2023-12-10' };
+
+    it('starts from the rules in force and only accepts sensible changes', async () => {
+      const { root } = await render(ScheduleForm, { current: CURRENT });
+      expect((root.querySelector('[data-testid=schedule-half]') as HTMLInputElement).value).toBe('4');
+
+      fill(root, 'schedule-from', '2026-11-12');
+      fill(root, 'schedule-end', '08:00');
+      fill(root, 'schedule-ramadan-end', '08:00');
+      fill(root, 'schedule-grace', '90');
+      await submit(root);
+
+      expect(errors(root)).toEqual([
+        'Changes can only start after today.',
+        'The shift has to end after it starts.',
+        'Keep grace to 60 minutes or less.',
+        'A half day has to be shorter than the shift.',
+        'Ramadan hours have to end after they start.',
+        'Say why, so the change makes sense later.',
+      ]);
+    });
+
+    it('saves a new version from a future date', async () => {
+      const { root, saved } = await render(ScheduleForm, { current: CURRENT });
+      fill(root, 'schedule-from', '2026-12-01');
+      fill(root, 'schedule-start', '08:30');
+      fill(root, 'schedule-end', '16:30');
+      fill(root, 'schedule-half', '3.5');
+      fill(root, 'schedule-reason', ' Earlier start ');
+
+      await submit(root);
+      const request = http.expectOne('/api/hr/schedules');
+      expect(request.request.body).toEqual({ effectiveFrom: '2026-12-01', shiftStart: '08:30', shiftEnd: '16:30', graceMinutes: 15, halfDayMinutes: 210, ramadanStart: '09:00', ramadanEnd: '14:00', reason: 'Earlier start' });
+      request.flush({});
+      await settle();
+
+      expect(saved).toHaveBeenCalled();
+    });
+
+    it('has defaults when nothing is in force yet', async () => {
+      const { root } = await render(ScheduleForm);
+
+      expect((root.querySelector('[data-testid=schedule-start]') as HTMLInputElement).value).toBe('09:00');
+    });
+  });
+
+  describe('EmployeeForm', () => {
+    const PEOPLE = [
+      employee({ id: 'OPR-0001', fullName: 'Hassan Waheed', department: 'Operations', managerId: undefined }),
+      employee({ id: 'OPR-0004', fullName: 'Ibrahim Rasheed', managerId: 'OPR-0001' }),
+      employee({ id: 'OPR-0018', fullName: 'Kasun Perera', department: 'Site', managerId: 'OPR-0004' }),
+    ];
+    const NEW_PERSON = {
+      'employee-name': 'Fathimath Nazra', 'employee-designation': 'Accounts Officer', 'employee-department': 'Finance', 'employee-email': 'nazra@opro.mv',
+      'employee-joined': '2026-11-15', 'employee-phone': '+960 777 1030', 'employee-nationality': 'Maldivian', 'employee-manager': 'OPR-0001',
+      'employee-contact-name': 'Ali Nazir', 'employee-contact-relation': 'Father', 'employee-contact-phone': '+960 777 2030',
+    };
+
+    it('names every missing field and needs a manager for a new person', async () => {
+      const { root } = await render(EmployeeForm, { people: PEOPLE });
+      await submit(root);
+
+      expect(errors(root)).toEqual([
+        'Enter their full name.', 'Enter their job title.', 'Enter their department.', 'Pick who they report to.', 'Enter their work email.', 'Pick the day they start.',
+        'Enter their phone number.', 'Enter their nationality.', 'Enter who to call in an emergency.', 'Say how they’re related.', 'Enter a number to call.',
+      ]);
+      expect([...root.querySelectorAll('#departments option')].map((option) => option.getAttribute('value'))).toEqual(['Operations', 'Site']);
+    });
+
+    it('adds a person and shows the server’s reason when it says no', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const { root, saved } = await render(EmployeeForm, { people: PEOPLE });
+      Object.entries(NEW_PERSON).forEach(([testId, value]) => fill(root, testId, value));
+
+      await submit(root);
+      http.expectOne('/api/hr/employees').flush({ message: 'That email is already in use' }, { status: 409, statusText: 'Conflict' });
+      await settle();
+      expect(text(root.querySelector('[role=alert]') as HTMLElement)).toBe('That email is already in use');
+
+      await submit(root);
+      const request = http.expectOne('/api/hr/employees');
+      expect(request.request.body).toEqual({
+        fullName: 'Fathimath Nazra', designation: 'Accounts Officer', department: 'Finance', workLocation: 'Malé office', employmentType: 'Full-time', email: 'nazra@opro.mv',
+        joinedOn: '2026-11-15', phone: '+960 777 1030', nationality: 'Maldivian', bloodGroup: 'A+', managerId: 'OPR-0001',
+        emergencyContact: { name: 'Ali Nazir', relation: 'Father', phone: '+960 777 2030' },
+      });
+      request.flush({ id: 'OPR-0028' });
+      await settle();
+      expect(saved).toHaveBeenCalledWith({ id: 'OPR-0028' });
+    });
+
+    it('edits a person, never offering them or their reports as manager', async () => {
+      const { root } = await render(EmployeeForm, { people: PEOPLE, employee: PEOPLE[1] });
+
+      expect([...root.querySelectorAll('[data-testid=employee-manager] option')].map((option) => text(option))).toEqual(['Pick their manager', 'Hassan Waheed, Site Engineer']);
+      expect((root.querySelector('[data-testid=employee-name]') as HTMLInputElement).value).toBe('Ibrahim Rasheed');
+      await submit(root);
+      expect(http.expectOne('/api/hr/employees/OPR-0004').request.method).toBe('PUT');
+    });
+
+    it('lets the person at the top stay without a manager, and says when saving fails', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const { root } = await render(EmployeeForm, { people: PEOPLE, employee: PEOPLE[0] });
+      expect(text(root.querySelector('[data-testid=employee-manager] option') as HTMLElement)).toBe('Nobody, they lead the company');
+
+      await submit(root);
+      const request = http.expectOne('/api/hr/employees/OPR-0001');
+      expect(request.request.body.managerId).toBeUndefined();
+      request.flush('', { status: 500, statusText: 'Server Error' });
+      await settle();
+      expect(text(root.querySelector('[role=alert]') as HTMLElement)).toBe("That didn't save. Try again in a moment.");
+    });
+  });
+
+  describe('LeavingForm', () => {
+    const inputs = { employeeId: 'OPR-0021', name: 'Rahim Uddin', joinedOn: '2024-04-01', reports: [] };
+
+    it('needs a last day after they joined and a reason', async () => {
+      const { root } = await render(LeavingForm, inputs);
+      fill(root, 'leaving-date', '2024-01-01');
+      await submit(root);
+
+      expect(errors(root)).toEqual(['That’s before they joined.', 'Say why, for their record.']);
+    });
+
+    it('saves the last day, and shows why the server refused', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const { root, saved } = await render(LeavingForm, inputs);
+      fill(root, 'leaving-date', '2026-12-31');
+      fill(root, 'leaving-reason', ' Moving abroad ');
+
+      await submit(root);
+      http.expectOne('/api/hr/employees/OPR-0021/leaving').flush({ message: 'Move their 2 reports to another manager first' }, { status: 409, statusText: 'Conflict' });
+      await settle();
+      expect(text(root.querySelector('[role=alert]') as HTMLElement)).toBe('Move their 2 reports to another manager first');
+
+      await submit(root);
+      const request = http.expectOne('/api/hr/employees/OPR-0021/leaving');
+      expect(request.request.body).toEqual({ lastDay: '2026-12-31', reason: 'Moving abroad' });
+      request.flush({});
+      await settle();
+      expect(saved).toHaveBeenCalled();
+    });
+
+    it('asks to move reports first, in the right number', async () => {
+      const { root, cancelled } = await render(LeavingForm, { ...inputs, reports: [employee(), employee({ id: 'B', fullName: 'Priya Nair' })] });
+
+      expect(text(root.querySelector('[data-testid=move-reports]') as HTMLElement)).toContain('2 people report to Rahim.');
+      expect(root.querySelector('form')).toBeNull();
+      (root.querySelector('.secondary-button') as HTMLButtonElement).click();
+      expect(cancelled).toHaveBeenCalled();
+    });
+  });
+
+  describe('PhotoForm', () => {
+    const inputs = { employeeId: 'OPR-0021', name: 'Rahim Uddin' };
+    const photo = new File(['x'], 'face.png', { type: 'image/png' });
+    let drawImage: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      drawImage = vi.fn();
+      vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 800, height: 600, close: vi.fn() })));
+      // jsdom has no canvas. The form only ever calls drawImage on it.
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => ({ drawImage }) as unknown as CanvasRenderingContext2D);
+      vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((done) => done(new Blob(['jpeg'], { type: 'image/jpeg' })));
+    });
+
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('crops a picked photo to the card, centred, and uploads a JPEG', async () => {
+      const { root, saved } = await render(PhotoForm, inputs);
+      expect((root.querySelector('[data-testid=photo-submit]') as HTMLButtonElement).disabled).toBe(true);
+
+      pickFile(root, 'photo-file', photo);
+      await settle();
+      // 800 by 600 scaled to cover 480 by 600 is 800 by 600, so it shifts left by 160.
+      expect(drawImage).toHaveBeenCalledWith(expect.anything(), -160, 0, 800, 600);
+
+      (root.querySelector('[data-testid=photo-submit]') as HTMLButtonElement).click();
+      await settle();
+      const request = http.expectOne('/api/hr/employees/OPR-0021/photo');
+      expect(request.request.method).toBe('PUT');
+      expect((request.request.body as Blob).type).toBe('image/jpeg');
+      request.flush({});
+      await settle();
+      expect(saved).toHaveBeenCalled();
+    });
+
+    it('turns away files that aren’t photos, or can’t be read', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const { root } = await render(PhotoForm, inputs);
+
+      pickFile(root, 'photo-file', new File(['x'], 'cv.pdf', { type: 'application/pdf' }));
+      expect(text(root.querySelector('[role=alert]') as HTMLElement)).toBe('Pick a JPG, PNG or WebP photo under 10 MB.');
+
+      vi.stubGlobal('createImageBitmap', vi.fn(async () => Promise.reject(new Error('broken'))));
+      pickFile(root, 'photo-file', photo);
+      await settle();
+      expect(text(root.querySelector('[role=alert]') as HTMLElement)).toBe("That file isn't a photo we can read. Try another one.");
+    });
+
+    it('says when saving fails', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const { root } = await render(PhotoForm, inputs);
+      pickFile(root, 'photo-file', photo);
+      await settle();
+
+      (root.querySelector('[data-testid=photo-submit]') as HTMLButtonElement).click();
+      await settle();
+      http.expectOne('/api/hr/employees/OPR-0021/photo').flush('', { status: 500, statusText: 'Server Error' });
+      await settle();
+
+      expect(text(root.querySelector('[role=alert]') as HTMLElement)).toBe("That didn't save. Try again in a moment.");
+    });
+
+    it('shows the current photo and can go back to initials', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const { root, saved } = await render(PhotoForm, { ...inputs, photoUrl: '/api/employees/OPR-0021/photo?v=1' });
+      expect(root.querySelector('.photo-picker img')?.getAttribute('src')).toBe('/api/employees/OPR-0021/photo?v=1');
+
+      (root.querySelector('[data-testid=remove-photo]') as HTMLButtonElement).click();
+      TestBed.tick();
+      (root.querySelector('[data-testid=confirm-yes]') as HTMLButtonElement).click();
+      await settle();
+      http.expectOne('/api/hr/employees/OPR-0021/photo').flush('', { status: 500, statusText: 'Server Error' });
+      await settle();
+      expect(root.querySelector('[role=alert]')).not.toBeNull();
+
+      (root.querySelector('[data-testid=remove-photo]') as HTMLButtonElement).click();
+      TestBed.tick();
+      (root.querySelector('[data-testid=confirm-yes]') as HTMLButtonElement).click();
+      await settle();
+      http.expectOne('/api/hr/employees/OPR-0021/photo').flush(null);
+      await settle();
+      expect(saved).toHaveBeenCalled();
     });
   });
 

@@ -12,8 +12,7 @@
     "workLocation": "Malé office",
     "employmentType": "Full-time",
     "roles": [
-      "EMPLOYEE",
-      "MANAGER"
+      "EMPLOYEE"
     ],
     "emergencyContact": {
       "name": "Aminath Hassan",
@@ -58,8 +57,7 @@
     "employmentType": "Full-time",
     "managerId": "OPR-0001",
     "roles": [
-      "EMPLOYEE",
-      "MANAGER"
+      "EMPLOYEE"
     ],
     "emergencyContact": {
       "name": "Fathimath Rasheed",

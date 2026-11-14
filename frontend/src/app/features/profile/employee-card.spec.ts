@@ -12,4 +12,13 @@ describe('EmployeeCard', () => {
       'O EMPLOYEE KP Kasun Perera Site Engineer OPR-0018 kasun.perera@opro.mv +960 777 1018 Operations · Contract Active employee OPRO · MALDIVES',
     );
   });
+
+  it('shows their photo in place of initials once HR adds one', async () => {
+    const fixture = TestBed.createComponent(EmployeeCard);
+    fixture.componentRef.setInput('employee', employee({ photoUrl: '/api/employees/OPR-0018/photo?v=1' }));
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.querySelector('[data-testid=staff-photo]')?.getAttribute('src')).toBe('/api/employees/OPR-0018/photo?v=1');
+    expect(fixture.nativeElement.querySelector('.portrait-initials')).toBeNull();
+  });
 });

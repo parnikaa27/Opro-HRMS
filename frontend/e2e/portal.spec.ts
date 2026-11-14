@@ -79,3 +79,14 @@ test('an employee downloads a document', async ({ page }) => {
 
   expect((await download).suggestedFilename()).toBe('contract.txt');
 });
+
+test('dark mode can be chosen from the name menu and sticks after a reload', async ({ page }) => {
+  await signInAs(page, 'OPR-0011');
+
+  await page.getByTestId('account-button').click();
+  await page.getByTestId('theme-dark').click();
+  await page.reload();
+
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(10, 21, 29)');
+});

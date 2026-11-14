@@ -5,6 +5,7 @@ import { Icon } from '../../shared/ui/icon';
 import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { StatusPill } from '../../shared/ui/status-pill';
 import { ATTENDANCE_STATUS } from '../../shared/utils/attendance-status';
+import { formatCompactDate, maldivesToday } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { HrApi } from '../hr/hr-api';
 import { RequestScope, TeamApi, TeamMember } from './team-api';
@@ -20,11 +21,19 @@ import { RequestScope, TeamApi, TeamMember } from './team-api';
           <h1>People</h1>
           <p>{{ scope() === 'hr' ? 'Everyone at Opro and where they are today.' : 'Your team members and their current work status.' }}</p>
         </div>
-        <div class="header-search people-search">
-          <app-icon name="search" [size]="17" />
-          <input #box placeholder="Search employee" aria-label="Search employee" [value]="query()" (input)="query.set(box.value)" data-testid="people-search" />
+        <div class="title-actions">
+          <div class="header-search people-search">
+            <app-icon name="search" [size]="17" />
+            <input #box placeholder="Search employee" aria-label="Search employee" [value]="query()" (input)="query.set(box.value)" data-testid="people-search" />
+          </div>
+          @if (scope() === 'hr') {
+            <a class="primary-button compact" routerLink="/hr/people/new" data-testid="add-person"><app-icon name="plus" [size]="17" /> Add person</a>
+          }
         </div>
       </div>
+      @if (scope() === 'hr') {
+        <label class="filter-check"><input #former type="checkbox" [checked]="showsFormer()" (change)="showsFormer.set(former.checked)" data-testid="show-former" /> Show people who've left</label>
+      }
       @if (members().error()) {
         <p class="attendance-off">Your team didn't load. Refresh the page to try again.</p>
       } @else if (members().isLoading() && list().length === 0) {
@@ -33,7 +42,7 @@ import { RequestScope, TeamApi, TeamMember } from './team-api';
         <div class="people-grid">
           @for (person of shown(); track person.id) {
             <div class="card person-card" data-testid="person-card">
-              <app-avatar [name]="person.fullName" [isLarge]="true" />
+              <app-avatar [name]="person.fullName" [photoUrl]="person.photoUrl" [isLarge]="true" />
               <app-status-pill [tone]="statusOf(person).tone">{{ statusOf(person).label }}</app-status-pill>
               <h3>{{ person.fullName }}</h3>
               <p>{{ person.designation }}</p>
@@ -57,7 +66,9 @@ export class PeoplePage {
   readonly scope = input<RequestScope>('team');
 
   private readonly team = inject(TeamApi).members({ isEnabled: () => this.scope() === 'team' });
-  private readonly everyone = inject(HrApi).employees({ isEnabled: () => this.scope() === 'hr' });
+  protected readonly showsFormer = signal(false);
+  private readonly everyone = inject(HrApi).employees({ isEnabled: () => this.scope() === 'hr', includesFormer: this.showsFormer });
+  private readonly today = maldivesToday();
   protected readonly members = computed(() => (this.scope() === 'hr' ? this.everyone : this.team));
   protected readonly query = signal('');
   protected readonly list = computed(() => [...valueOr(this.members(), [])].sort((first, second) => first.fullName.localeCompare(second.fullName)));
@@ -67,5 +78,6 @@ export class PeoplePage {
     return this.list().filter(({ fullName, designation }) => `${fullName} ${designation}`.toLowerCase().includes(needle));
   });
 
-  protected readonly statusOf = (person: TeamMember) => ATTENDANCE_STATUS[person.today?.status ?? 'not-in-yet'];
+  protected readonly statusOf = (person: TeamMember) =>
+    person.lastDay && person.lastDay < this.today ? { label: `Left ${formatCompactDate(person.lastDay)}`, tone: 'neutral' as const } : ATTENDANCE_STATUS[person.today?.status ?? 'not-in-yet'];
 }

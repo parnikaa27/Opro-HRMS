@@ -1,3 +1,4 @@
+import { NgOptimizedImage } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { Employee } from '../../models/employee';
 import { Icon } from '../../shared/ui/icon';
@@ -7,7 +8,7 @@ import { initialsOf } from '../../shared/utils/initials';
 // The dark staff card from the design. The printable two sided card lives in IdCard.
 @Component({
   selector: 'app-employee-card',
-  imports: [Icon, Logo],
+  imports: [Icon, Logo, NgOptimizedImage],
   template: `
     <section class="id-card" aria-label="Staff card" data-testid="employee-card">
       <div class="id-top">
@@ -16,7 +17,11 @@ import { initialsOf } from '../../shared/utils/initials';
       </div>
       <div class="id-profile">
         <div class="portrait-wrap">
-          <div class="portrait-initials" aria-hidden="true">{{ initials() }}</div>
+          @if (employee().photoUrl; as photo) {
+            <img [ngSrc]="photo" width="132" height="146" alt="" data-testid="staff-photo" />
+          } @else {
+            <div class="portrait-initials" aria-hidden="true">{{ initials() }}</div>
+          }
           <i></i>
         </div>
         <div>

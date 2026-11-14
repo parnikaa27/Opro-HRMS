@@ -33,6 +33,8 @@ export const dayOfMonth = (date: string) => dateOnly(date).getUTCDate();
 
 // 12 hour clock the way the design shows it: "08:56 AM".
 export const formatClock = (iso: string) => clockFormat.format(new Date(iso));
+// A time of day like "09:00" from the schedule, shown on the design's 12 hour clock.
+export const formatTimeOfDay = (time: string) => formatClock(`2000-01-01T${time}:00+05:00`);
 export const formatWeekday = (date: string) => weekdayFormat.format(dateOnly(date));
 // "Wednesday, 24 September"
 export const formatBannerDate = (date: string) => `${formatWeekday(date)}, ${dayMonthFormat.format(dateOnly(date))}`;
@@ -69,7 +71,6 @@ export const formatHours = (minutes: number) =>
   `${String(Math.floor(minutes / MINUTES_PER_HOUR)).padStart(TWO_DIGITS, '0')}h ${String(minutes % MINUTES_PER_HOUR).padStart(TWO_DIGITS, '0')}m`;
 
 export const minutesAgo = (iso: string, now = new Date()) => minutesBetween(iso, now);
-export const addMinutes = (iso: string, minutes: number) => new Date(new Date(iso).getTime() + minutes * MS_PER_MINUTE).toISOString();
 
 // Completed in and out pairs, plus the running stretch when the last punch is an "in".
 export const minutesWorkedSoFar = (punches: Punch[], now = new Date()) =>

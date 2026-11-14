@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
-import { buildAttendance, clockNow, maldivesNow } from './attendance.mjs';
+import { buildAttendance, clockNow, maldivesNow, rebuildDay, toMinutes } from './attendance.mjs';
 
 const PORT = Number(process.env.MOCK_PORT ?? 4300);
 const MAX_BODY_BYTES = 10_000;
@@ -24,6 +24,11 @@ const db = {
   notifications: load('notifications'),
   changeRequests: load('change-requests'),
   adjustments: load('balance-adjustments'),
+  schedules: load('schedules'),
+  punchEdits: load('punch-edits'),
+  // Uploaded files live in memory like everything else, keyed by employee or request.
+  photos: new Map(),
+  certificates: new Map(),
 };
 db.attendance = buildAttendance(db);
 
@@ -60,8 +65,18 @@ class HttpError extends Error {
 const today = () => maldivesNow().date;
 const nameOf = (employeeId) => db.employees.find(({ id }) => id === employeeId)?.fullName;
 const withName = (item) => ({ ...item, employeeName: nameOf(item.employeeId), ...(item.decidedBy && { decidedByName: nameOf(item.decidedBy) }) });
-const withVisa = (employee) => ({ ...employee, visa: db.visas.find(({ employeeId }) => employeeId === employee.id) });
-const reportsOf = (user) => db.employees.filter(({ managerId }) => managerId === user.id);
+// Photos are versioned in the URL, so a new one is never hidden behind a cached old one.
+const profileOf = (employee) => ({
+  ...employee,
+  visa: db.visas.find(({ employeeId }) => employeeId === employee.id),
+  ...(db.photos.has(employee.id) && { photoUrl: `/api/employees/${employee.id}/photo?v=${db.photos.get(employee.id).version}` }),
+});
+// Someone past their last day keeps their records but drops out of every live list.
+const isActive = (employee) => !employee.lastDay || employee.lastDay >= today();
+const activeEmployees = () => db.employees.filter(isActive);
+const reportsOf = (user) => activeEmployees().filter(({ managerId }) => managerId === user.id);
+// Manager access follows from having reports, so changing a reporting line updates it.
+const withRoles = (employee) => ({ ...employee, roles: [...employee.roles.filter((role) => role !== 'MANAGER'), ...(reportsOf(employee).length ? ['MANAGER'] : [])] });
 
 const requireManager = (user) => {
   if (!user.roles.includes('MANAGER')) {
@@ -91,7 +106,7 @@ const hrScope = (user) => {
 
 const notifyEveryone = (kind, text) => {
   db.notifications = [
-    ...db.employees.map(({ id }) => ({ id: `NT-${randomUUID().slice(0, 6)}`, employeeId: id, kind, text, createdOn: today(), isRead: false })),
+    ...activeEmployees().map(({ id }) => ({ id: `NT-${randomUUID().slice(0, 6)}`, employeeId: id, kind, text, createdOn: today(), isRead: false })),
     ...db.notifications,
   ];
 };
@@ -117,6 +132,79 @@ const removeFrom = (collection, id, what) => {
 
 const pick = (body, keys) => Object.fromEntries(keys.filter((key) => body[key] !== undefined).map((key) => [key, body[key]]));
 
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_GRACE_MINUTES = 60;
+const MAX_REASON = 300;
+
+const requireReason = (body) => {
+  const reason = String(body.reason ?? '').trim();
+  if (!reason || reason.length > MAX_REASON) {
+    throw new HttpError(400, 'A short reason is required');
+  }
+  return reason;
+};
+
+// The same checks Spring would run on a new schedule version.
+const validSchedule = (body) => {
+  const times = ['shiftStart', 'shiftEnd', 'ramadanStart', 'ramadanEnd'];
+  if (!times.every((key) => TIME.test(String(body[key] ?? '')))) {
+    throw new HttpError(400, 'Times must look like 09:00');
+  }
+  const shiftLength = toMinutes(body.shiftEnd) - toMinutes(body.shiftStart);
+  const grace = Number(body.graceMinutes);
+  const halfDay = Number(body.halfDayMinutes);
+  if (shiftLength <= 0 || toMinutes(body.ramadanEnd) <= toMinutes(body.ramadanStart)) {
+    throw new HttpError(400, 'A shift has to end after it starts');
+  }
+  if (!Number.isInteger(grace) || grace < 0 || grace > MAX_GRACE_MINUTES || !Number.isInteger(halfDay) || halfDay <= 0 || halfDay >= shiftLength) {
+    throw new HttpError(400, 'Grace or half day is out of range');
+  }
+  if (!DATE.test(String(body.effectiveFrom)) || body.effectiveFrom <= today()) {
+    throw new HttpError(400, 'A new schedule can only start after today');
+  }
+  return { ...pick(body, ['effectiveFrom', ...times]), graceMinutes: grace, halfDayMinutes: halfDay };
+};
+
+const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const EMPLOYEE_ID_PREFIX = 'OPR-';
+const EMPLOYEE_ID_DIGITS = 4;
+const MAX_FIELD = 120;
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
+// The fields HR can set. Anything else in the body is ignored, the way a Spring DTO would.
+const validEmployee = (body, id) => {
+  const text = (value) => String(value ?? '').trim();
+  const fields = ['fullName', 'designation', 'department', 'email', 'phone', 'nationality', 'workLocation', 'employmentType'];
+  const details = Object.fromEntries(fields.map((key) => [key, text(body[key])]));
+  const contact = { name: text(body.emergencyContact?.name), relation: text(body.emergencyContact?.relation), phone: text(body.emergencyContact?.phone) };
+  if ([...Object.values(details), ...Object.values(contact)].some((value) => !value || value.length > MAX_FIELD)) {
+    throw new HttpError(400, 'Every field is needed');
+  }
+  if (!EMAIL.test(details.email) || db.employees.some((employee) => employee.email.toLowerCase() === details.email.toLowerCase() && employee.id !== id)) {
+    throw new HttpError(409, 'That email is already in use');
+  }
+  if (!DATE.test(String(body.joinedOn)) || !BLOOD_GROUPS.includes(body.bloodGroup)) {
+    throw new HttpError(400, 'Check the joining date and blood group');
+  }
+  return { ...details, joinedOn: body.joinedOn, bloodGroup: body.bloodGroup, emergencyContact: contact, ...(body.managerId && { managerId: String(body.managerId) }) };
+};
+
+// A manager has to be someone active, and never the person or anyone below them.
+const checkManager = (employee, managerId) => {
+  if (!managerId) {
+    return;
+  }
+  const below = (id) => db.employees.filter((entry) => entry.managerId === id).flatMap((entry) => [entry.id, ...below(entry.id)]);
+  const manager = activeEmployees().find(({ id }) => id === managerId);
+  if (!manager || managerId === employee.id || below(employee.id).includes(managerId)) {
+    throw new HttpError(400, 'Pick a manager who is active and not one of their reports');
+  }
+};
+
+const punchMinutesOf = (record) => record.punches.map(({ at }) => toMinutes(at.slice(11, 16)));
+const withByName = (item) => ({ ...item, byName: nameOf(item.by) });
+
 const decide = (collection, user, id, { decision, note }, inScope = managerScope(user)) => {
   const item = db[collection].find((entry) => entry.id === id && inScope(entry));
   if (!item) {
@@ -130,10 +218,54 @@ const decide = (collection, user, id, { decision, note }, inScope = managerScope
   return withName(decided);
 };
 
+const MEGABYTE = 1024 * 1024;
+// Files are checked by their first bytes, not just the type the browser claims.
+const SIGNATURES = {
+  'image/jpeg': [0xff, 0xd8, 0xff],
+  'image/png': [0x89, 0x50, 0x4e, 0x47],
+  'application/pdf': [0x25, 0x50, 0x44, 0x46],
+};
+const PHOTO_UPLOAD = { maxBytes: MEGABYTE, types: ['image/jpeg'] };
+const CERTIFICATE_UPLOAD = { maxBytes: 5 * MEGABYTE, types: ['image/jpeg', 'image/png', 'application/pdf'] };
+const EXTENSIONS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'application/pdf': 'pdf' };
+
+const readUpload = async (req, { maxBytes, types }) => {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > maxBytes) {
+      throw new HttpError(413, `Files can be up to ${maxBytes / MEGABYTE} MB`);
+    }
+    chunks.push(chunk);
+  }
+  const bytes = Buffer.concat(chunks);
+  const type = String(req.headers['content-type'] ?? '').split(';')[0].trim();
+  const signature = SIGNATURES[type];
+  if (!types.includes(type) || !signature || !signature.every((byte, index) => bytes[index] === byte)) {
+    throw new HttpError(415, 'That file type isn\'t accepted');
+  }
+  return { bytes, type };
+};
+
+// Served with a sandbox so a file can never run as a page on our origin.
+const sendFile = (res, { bytes, type }, name) => {
+  res.writeHead(200, {
+    'Content-Type': type,
+    'Content-Length': bytes.length,
+    'Content-Disposition': `inline; filename="${name}.${EXTENSIONS[type]}"`,
+    'X-Content-Type-Options': 'nosniff',
+    'Content-Security-Policy': 'sandbox',
+    'Cache-Control': 'private, max-age=31536000, immutable',
+  });
+  res.end(bytes);
+  return SENT;
+};
+
 const routes = [
-  ['GET', /^\/api\/session\/users$/, () => db.employees.map(({ id, fullName, designation, roles }) => ({ id, fullName, designation, roles })), { isPublic: true }],
+  ['GET', /^\/api\/session\/users$/, () => activeEmployees().map(withRoles).map(({ id, fullName, designation, roles }) => ({ id, fullName, designation, roles })), { isPublic: true }],
   ['POST', /^\/api\/session\/login$/, ({ body, res }) => {
-    if (!db.employees.some(({ id }) => id === body.employeeId)) {
+    if (!activeEmployees().some(({ id }) => id === body.employeeId)) {
       throw new HttpError(400, 'Unknown employee');
     }
     const token = randomUUID();
@@ -148,7 +280,7 @@ const routes = [
     return undefined;
   }],
 
-  ['GET', /^\/api\/me$/, ({ user }) => withVisa(user)],
+  ['GET', /^\/api\/me$/, ({ user }) => profileOf(user)],
   ['POST', /^\/api\/profile\/change-requests$/, ({ user, body }) => {
     const request = { id: `CR-${randomUUID().slice(0, 6)}`, employeeId: user.id, field: String(body.field), details: String(body.details), status: 'open', raisedOn: today() };
     db.changeRequests = [request, ...db.changeRequests];
@@ -206,7 +338,7 @@ const routes = [
   ['GET', /^\/api\/team$/, ({ user }) => {
     requireManager(user);
     return reportsOf(user).map((employee) => ({
-      ...withVisa(employee),
+      ...profileOf(employee),
       today: db.attendance.find((record) => record.employeeId === employee.id && record.date === today()),
     }));
   }],
@@ -224,18 +356,110 @@ const routes = [
     return db.corrections.filter((entry) => reportIds.has(entry.employeeId)).filter(byStatus(query.get('status'))).map(withName);
   }],
   ['POST', /^\/api\/team\/corrections\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => decide('corrections', user, id, body)],
-  ['GET', /^\/api\/hr\/employees$/, ({ user }) => {
+  ['GET', /^\/api\/hr\/employees$/, ({ user, query }) => {
     requireHr(user);
-    return db.employees.map((employee) => ({ ...withVisa(employee), today: db.attendance.find((record) => record.employeeId === employee.id && record.date === today()) }));
+    const people = query.get('include') === 'former' ? db.employees : activeEmployees();
+    return people.map((employee) => ({ ...profileOf(withRoles(employee)), today: db.attendance.find((record) => record.employeeId === employee.id && record.date === today()) }));
+  }],
+  ['POST', /^\/api\/hr\/employees$/, ({ user, body }) => {
+    requireHr(user);
+    const details = validEmployee(body);
+    const next = Math.max(...db.employees.map(({ id }) => Number(id.slice(EMPLOYEE_ID_PREFIX.length)))) + 1;
+    const employee = { id: `${EMPLOYEE_ID_PREFIX}${String(next).padStart(EMPLOYEE_ID_DIGITS, '0')}`, ...details, roles: ['EMPLOYEE'] };
+    checkManager(employee, details.managerId);
+    db.employees = [...db.employees, employee];
+    // New starters get the yearly types in full. Maternity and paternity are granted when they apply.
+    db.leaveBalances = {
+      ...db.leaveBalances,
+      [employee.id]: db.leaveTypes.filter(({ code, isUnlimited }) => !isUnlimited && !['maternity', 'paternity'].includes(code)).map(({ code, defaultEntitlement }) => ({ type: code, entitled: defaultEntitlement ?? 0, taken: 0, pending: 0 })),
+    };
+    return withRoles(employee);
+  }],
+  ['PUT', /^\/api\/hr\/employees\/([\w-]+)$/, ({ user, params: [id], body }) => {
+    requireHr(user);
+    const employee = findOr404('employees', id, 'Employee');
+    const details = validEmployee(body, id);
+    checkManager(employee, details.managerId);
+    const { managerId, ...rest } = employee;
+    return withRoles(replaceIn('employees', { ...rest, ...details }));
+  }],
+  ['POST', /^\/api\/hr\/employees\/([\w-]+)\/leaving$/, ({ user, params: [id], body }) => {
+    requireHr(user);
+    const employee = findOr404('employees', id, 'Employee');
+    const lastDay = String(body.lastDay ?? '');
+    if (!DATE.test(lastDay) || lastDay < employee.joinedOn) {
+      throw new HttpError(400, 'Pick a last day after they joined');
+    }
+    const reports = reportsOf(employee);
+    if (reports.length) {
+      throw new HttpError(409, `Move their ${reports.length} reports to another manager first`);
+    }
+    // Leave after the last day can't be taken, so it's cancelled with them.
+    db.leaveRequests = db.leaveRequests.map((leave) =>
+      leave.employeeId === id && leave.from > lastDay && ['pending', 'approved'].includes(leave.status) ? { ...leave, status: 'cancelled' } : leave,
+    );
+    return withRoles(replaceIn('employees', { ...employee, lastDay, leavingReason: requireReason(body) }));
+  }],
+  ['DELETE', /^\/api\/hr\/employees\/([\w-]+)\/leaving$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    const employee = findOr404('employees', id, 'Employee');
+    if (!employee.lastDay || employee.lastDay < today()) {
+      throw new HttpError(409, 'They have already left');
+    }
+    const { lastDay, leavingReason, ...staying } = employee;
+    return withRoles(replaceIn('employees', staying));
   }],
   ['GET', /^\/api\/hr\/employees\/([\w-]+)$/, ({ user, params: [id] }) => {
     requireHr(user);
     const employee = findOr404('employees', id, 'Employee');
     return {
-      ...withVisa(employee),
+      ...profileOf(withRoles(employee)),
       leaveBalances: db.leaveBalances[id] ?? [],
       adjustments: db.adjustments.filter(({ employeeId }) => employeeId === id).map((entry) => ({ ...entry, byName: nameOf(entry.by) })),
     };
+  }],
+  // Health data: the employee and HR can open a certificate. Managers only learn that one is attached.
+  ['PUT', /^\/api\/leave\/requests\/([\w-]+)\/certificate$/, ({ user, params: [id], body }) => {
+    const request = db.leaveRequests.find((entry) => entry.id === id && entry.employeeId === user.id);
+    if (!request || request.type !== 'sick' || ['rejected', 'cancelled'].includes(request.status)) {
+      throw new HttpError(404, 'No sick leave request to attach it to');
+    }
+    db.certificates.set(id, body);
+    return replaceIn('leaveRequests', { ...request, hasCertificate: true });
+  }, { upload: CERTIFICATE_UPLOAD }],
+  ['GET', /^\/api\/leave\/requests\/([\w-]+)\/certificate$/, ({ user, params: [id], res }) => {
+    const certificate = db.leaveRequests.some((entry) => entry.id === id && entry.employeeId === user.id) && db.certificates.get(id);
+    if (!certificate) {
+      throw new HttpError(404, 'No certificate');
+    }
+    return sendFile(res, certificate, `certificate-${id}`);
+  }],
+  ['GET', /^\/api\/hr\/leave-requests\/([\w-]+)\/certificate$/, ({ user, params: [id], res }) => {
+    requireHr(user);
+    const certificate = db.certificates.get(id);
+    if (!certificate) {
+      throw new HttpError(404, 'No certificate');
+    }
+    return sendFile(res, certificate, `certificate-${id}`);
+  }],
+  ['GET', /^\/api\/employees\/([\w-]+)\/photo$/, ({ params: [id], res }) => {
+    const photo = db.photos.get(id);
+    if (!photo) {
+      throw new HttpError(404, 'No photo');
+    }
+    return sendFile(res, photo, `${id}-photo`);
+  }],
+  ['PUT', /^\/api\/hr\/employees\/([\w-]+)\/photo$/, ({ user, params: [id], body }) => {
+    requireHr(user);
+    const employee = findOr404('employees', id, 'Employee');
+    db.photos.set(id, { ...body, version: randomUUID().slice(0, 8) });
+    return profileOf(withRoles(employee));
+  }, { upload: PHOTO_UPLOAD }],
+  ['DELETE', /^\/api\/hr\/employees\/([\w-]+)\/photo$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    findOr404('employees', id, 'Employee');
+    db.photos.delete(id);
+    return undefined;
   }],
   ['PUT', /^\/api\/hr\/employees\/([\w-]+)\/visa$/, ({ user, params: [id], body }) => {
     requireHr(user);
@@ -370,12 +594,64 @@ const routes = [
     requireHr(user);
     return removeFrom('announcements', id, 'Announcement');
   }],
+  ['GET', /^\/api\/hr\/schedules$/, ({ user }) => {
+    requireHr(user);
+    return [...db.schedules].sort((first, second) => second.effectiveFrom.localeCompare(first.effectiveFrom)).map((version) => ({ ...version, setByName: nameOf(version.setBy) }));
+  }],
+  ['POST', /^\/api\/hr\/schedules$/, ({ user, body }) => {
+    requireHr(user);
+    const version = { id: `WS-${randomUUID().slice(0, 6)}`, ...validSchedule(body), reason: requireReason(body), setBy: user.id, setOn: today() };
+    if (db.schedules.some(({ effectiveFrom }) => effectiveFrom === version.effectiveFrom)) {
+      throw new HttpError(409, 'A schedule already starts on that date');
+    }
+    db.schedules = [...db.schedules, version];
+    return { ...version, setByName: user.fullName };
+  }],
+  ['DELETE', /^\/api\/hr\/schedules\/([\w-]+)$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    if (findOr404('schedules', id, 'Schedule').effectiveFrom <= today()) {
+      throw new HttpError(409, 'A schedule already in force can only be replaced, not removed');
+    }
+    return removeFrom('schedules', id, 'Schedule');
+  }],
+  ['GET', /^\/api\/hr\/punch-edits$/, ({ user, query }) => {
+    requireHr(user);
+    const employeeId = query.get('employeeId');
+    return db.punchEdits.filter((edit) => !employeeId || edit.employeeId === employeeId).filter(inMonth(query.get('month'))).map(withByName);
+  }],
+  // Device punches are never overwritten: HR adds a missing one or voids a wrong one, and every change is logged.
+  ['POST', /^\/api\/hr\/punch-edits$/, ({ user, body }) => {
+    requireHr(user);
+    const reason = requireReason(body);
+    const record = db.attendance.find(({ employeeId, date }) => employeeId === body.employeeId && date === body.date);
+    if (!record || body.date > today()) {
+      throw new HttpError(404, 'No attendance for that day');
+    }
+    const minutes = punchMinutesOf(record);
+    const time = String(body.time ?? '');
+    if (!TIME.test(time) || !['add', 'void'].includes(body.action)) {
+      throw new HttpError(400, 'Say which punch time to add or void');
+    }
+    const minute = toMinutes(time);
+    if (body.action === 'add' && minutes.includes(minute)) {
+      throw new HttpError(409, 'There is already a punch at that time');
+    }
+    if (body.action === 'void' && !minutes.includes(minute)) {
+      throw new HttpError(404, 'No punch at that time');
+    }
+    const next = body.action === 'add' ? [...minutes, minute] : minutes.filter((entry) => entry !== minute);
+    const rebuilt = rebuildDay({ record, punchMinutes: next, schedules: db.schedules });
+    db.attendance = db.attendance.map((entry) => (entry === record ? rebuilt : entry));
+    const edit = { id: `PE-${randomUUID().slice(0, 6)}`, employeeId: record.employeeId, date: record.date, action: body.action, time, reason, by: user.id, on: today() };
+    db.punchEdits = [edit, ...db.punchEdits];
+    return withByName(edit);
+  }],
   ['GET', /^\/api\/team\/([\w-]+)$/, ({ user, params: [id] }) => {
     const employee = reportsOf(user).find((report) => report.id === id);
     if (!employee) {
       throw new HttpError(404, 'Not one of your reports');
     }
-    return { ...withVisa(employee), leaveBalances: db.leaveBalances[id] ?? [] };
+    return { ...profileOf(employee), leaveBalances: db.leaveBalances[id] ?? [] };
   }],
 ];
 
@@ -426,12 +702,13 @@ createServer(async (req, res) => {
     }
 
     const token = cookies[SESSION_COOKIE];
-    const user = db.employees.find(({ id }) => id === sessions.get(token));
+    const found = activeEmployees().find(({ id }) => id === sessions.get(token));
+    const user = found && withRoles(found);
     if (!user && !options.isPublic) {
       throw new HttpError(401, 'Please sign in');
     }
 
-    const body = method === 'GET' ? {} : await readBody(req);
+    const body = method === 'GET' ? {} : options.upload ? await readUpload(req, options.upload) : await readBody(req);
     const params = url.pathname.match(pattern).slice(1);
     const result = await handler({ user, body, params, query: url.searchParams, token, res });
     if (result !== SENT) {

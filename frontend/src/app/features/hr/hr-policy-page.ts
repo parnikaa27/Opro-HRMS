@@ -6,17 +6,18 @@ import { valueOr } from '../../shared/utils/resource';
 import { plural } from '../../shared/utils/text';
 import { PolicyForm } from './forms/policy-form';
 import { HrApi } from './hr-api';
+import { WorkScheduleCard } from './work-schedule-card';
 
 @Component({
   selector: 'app-hr-policy-page',
-  imports: [Dialog, ListSkeleton, PolicyForm],
+  imports: [Dialog, ListSkeleton, PolicyForm, WorkScheduleCard],
   template: `
     <div class="page-view">
       <div class="page-title">
         <div>
           <span class="eyebrow">PEOPLE &amp; CULTURE</span>
-          <h1>Leave policy</h1>
-          <p>What each person gets a year. A new entitlement applies from the next leave year. To change one person's balance now, adjust it from their page.</p>
+          <h1>Policies</h1>
+          <p>Leave each person gets a year, and the hours everyone works. A new entitlement applies from the next leave year. To change one person's balance now, adjust it from their page.</p>
         </div>
       </div>
       @if (types.error()) {
@@ -44,6 +45,7 @@ import { HrApi } from './hr-api';
           </div>
         </section>
       }
+      <app-work-schedule-card />
     </div>
 
     <app-dialog heading="Leave type" [isOpen]="editing() !== undefined" (isOpenChange)="$event || editing.set(undefined)">

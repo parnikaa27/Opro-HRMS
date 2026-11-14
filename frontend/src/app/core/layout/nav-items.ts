@@ -34,5 +34,5 @@ export const HR_NAV: readonly NavItem[] = [
   { label: 'Visas', path: '/hr/visas', icon: 'globe' },
   { label: 'Inbox', path: '/hr/inbox', icon: 'mail', badge: 'inbox' },
   { label: 'Announcements', path: '/hr/announcements', icon: 'sparkles' },
-  { label: 'Leave policy', path: '/hr/policy', icon: 'file' },
+  { label: 'Policies', path: '/hr/policy', icon: 'file' },
 ];

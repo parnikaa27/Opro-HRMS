@@ -5,7 +5,7 @@ import { FieldError } from '../../shared/ui/field-error';
 import { Icon } from '../../shared/ui/icon';
 import { ModalHeading } from '../../shared/ui/modal-heading';
 import { plural } from '../../shared/utils/text';
-import { LeaveApi } from './leave-api';
+import { CERTIFICATE_ACCEPT, certificateProblem, LeaveApi, needsCertificate } from './leave-api';
 import { countLeaveDays } from './leave-days';
 
 const MAX_REASON = 300;
@@ -72,7 +72,13 @@ interface LeaveDraft {
         </div>
       </div>
       @if (needsCertificate()) {
-        <p class="modal-intro">Sick leave longer than {{ plural(selectedType()?.documentRequiredAfterDays ?? 0, 'day') }} needs a medical certificate. Hand it to HR when you're back.</p>
+        <label>
+          Medical certificate, if you have it
+          <input type="file" [accept]="certificateAccept" (change)="pickCertificate($event)" data-testid="leave-certificate" aria-describedby="leave-certificate-note" />
+        </label>
+        <p class="modal-intro" id="leave-certificate-note">
+          {{ certificateProblem() ?? 'Sick leave longer than ' + plural(selectedType()?.documentRequiredAfterDays ?? 0, 'day') + ' needs one. Only you and HR can open it. No certificate yet? Add it later from your request history.' }}
+        </p>
       }
 
       @if (submitFailed()) {
@@ -95,7 +101,8 @@ export class LeaveForm {
   readonly types = input.required<readonly LeaveType[]>();
   readonly balances = input.required<readonly LeaveBalance[]>();
   readonly holidays = input.required<ReadonlySet<string>>();
-  readonly applied = output();
+  // True when the request went in but its certificate is still missing.
+  readonly applied = output<boolean>();
   readonly cancelled = output();
 
   protected readonly draft = signal<LeaveDraft>({ type: 'annual', from: '', to: '', halfDay: '', reason: '' });
@@ -124,10 +131,10 @@ export class LeaveForm {
     }
     return available === undefined ? 'Unpaid, so it doesn’t use a balance.' : `${plural(available - this.days(), 'day')} will remain after approval`;
   });
-  protected readonly needsCertificate = computed(() => {
-    const limit = this.selectedType()?.documentRequiredAfterDays;
-    return limit !== undefined && this.days() > limit;
-  });
+  protected readonly needsCertificate = computed(() => needsCertificate(this.selectedType(), this.days()));
+  protected readonly certificateAccept = CERTIFICATE_ACCEPT;
+  private readonly certificate = signal<File | undefined>(undefined);
+  protected readonly certificateProblem = signal<string | undefined>(undefined);
 
   protected readonly leaveForm = form(this.draft, (path) => {
     required(path.type, { message: 'Pick a type of leave.' });
@@ -156,14 +163,36 @@ export class LeaveForm {
 
   protected readonly plural = plural;
 
+  protected pickCertificate(event: Event) {
+    const file = event.target instanceof HTMLInputElement ? event.target.files?.[0] : undefined;
+    const problem = file && certificateProblem(file);
+    this.certificateProblem.set(problem);
+    this.certificate.set(problem ? undefined : file);
+  }
+
+  // The request is already in when this runs, so a failed upload doesn't undo it.
+  private async attach(id: string) {
+    const file = this.certificate();
+    if (!file) {
+      return false;
+    }
+    try {
+      await this.api.attachCertificate(id, file);
+      return true;
+    } catch (error) {
+      console.error('Attaching a certificate failed', error);
+      return false;
+    }
+  }
+
   protected async save(event: Event) {
     event.preventDefault();
     this.submitFailed.set(false);
     await submit(this.leaveForm, async () => {
       try {
         const { type, from, to, halfDay, reason } = this.draft();
-        await this.api.apply({ type, from, to, days: this.days(), reason: reason.trim(), ...(this.isHalfDay() && halfDay !== '' && { halfDay }) });
-        this.applied.emit();
+        const request = await this.api.apply({ type, from, to, days: this.days(), reason: reason.trim(), ...(this.isHalfDay() && halfDay !== '' && { halfDay }) });
+        this.applied.emit(this.needsCertificate() && !(await this.attach(request.id)));
       } catch (error) {
         console.error('Applying for leave failed', error);
         this.submitFailed.set(true);

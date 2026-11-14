@@ -4,6 +4,7 @@ import { Shell } from './core/layout/shell';
 
 const peoplePage = () => import('./features/team/people-page').then((page) => page.PeoplePage);
 const approvalsPage = () => import('./features/team/approvals-page').then((page) => page.ApprovalsPage);
+const employeePage = () => import('./features/hr/hr-employee-page').then((page) => page.HrEmployeePage);
 const calendarPage = () => import('./features/calendar/calendar-page').then((page) => page.CalendarPage);
 
 export const routes: Routes = [
@@ -30,13 +31,15 @@ export const routes: Routes = [
         children: [
           { path: '', title: 'HR · Opro HRMS', loadComponent: () => import('./features/hr/hr-overview-page').then((page) => page.HrOverviewPage) },
           { path: 'people', title: 'People · Opro HRMS', loadComponent: peoplePage, data: { scope: 'hr' } },
+          { path: 'people/new', title: 'Add a person · Opro HRMS', loadComponent: employeePage },
+          { path: 'people/:employeeId/edit', title: 'Edit details · Opro HRMS', loadComponent: employeePage },
           { path: 'people/:employeeId', title: 'Person · Opro HRMS', loadComponent: () => import('./features/hr/hr-person-page').then((page) => page.HrPersonPage) },
           { path: 'leave', title: 'All leave · Opro HRMS', loadComponent: approvalsPage, data: { scope: 'hr' } },
           { path: 'calendar', title: 'Holiday calendar · Opro HRMS', loadComponent: () => import('./features/hr/hr-calendar-page').then((page) => page.HrCalendarPage) },
           { path: 'visas', title: 'Visas · Opro HRMS', loadComponent: () => import('./features/hr/hr-visas-page').then((page) => page.HrVisasPage) },
           { path: 'inbox', title: 'Inbox · Opro HRMS', loadComponent: () => import('./features/hr/hr-inbox-page').then((page) => page.HrInboxPage) },
           { path: 'announcements', title: 'Announcements · Opro HRMS', loadComponent: () => import('./features/hr/hr-announcements-page').then((page) => page.HrAnnouncementsPage) },
-          { path: 'policy', title: 'Leave policy · Opro HRMS', loadComponent: () => import('./features/hr/hr-policy-page').then((page) => page.HrPolicyPage) },
+          { path: 'policy', title: 'Policies · Opro HRMS', loadComponent: () => import('./features/hr/hr-policy-page').then((page) => page.HrPolicyPage) },
         ],
       },
       {

@@ -33,6 +33,7 @@ export interface LeaveRequest {
   decidedOn?: string;
   decisionNote?: string;
   recordedByHr?: boolean;
+  hasCertificate?: boolean;
 }
 
 export interface BalanceAdjustment {

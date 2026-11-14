@@ -41,7 +41,7 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 | Role | Who | Can do |
 |---|---|---|
 | Employee | Everyone | Own attendance, leave, holidays, profile, ID card, visa, notifications |
-| Manager | People with direct reports | Everything an employee can, plus a **Team view** for their **direct reports only** |
+| Manager | People with direct reports | Everything an employee can, plus a **Team view** for their **direct reports only**. Not stored: anyone with an active report is a manager, so a reporting line change moves the access with it |
 | HR | HR staff, who are also employees | Everything an employee can, plus an **HR view** for the whole company (see HR below) |
 
 - A manager is also an employee. A view switch sits in the header with **Employee**, plus **Manager** for managers and **HR** for HR staff. It only renders when there is more than one option. The last chosen view is remembered per browser, and only restored if the person still has that role.
@@ -85,19 +85,20 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 
 **HR view (HR role only)**
 
-Sidebar: Overview, People, Leave (count waiting), Calendar, Visas, Inbox (count open), Announcements, Leave policy.
+Sidebar: Overview, People, Leave (count waiting), Calendar, Visas, Inbox (count open), Announcements, Policies.
 
 | Route | Contents |
 |---|---|
 | `/hr` | Welcome banner, people, waiting decisions, visas to act on and inbox counts, oldest waiting leave, visa alerts, tentative holidays in the next 60 days |
-| `/hr/people` | The People page for everyone at Opro |
-| `/hr/people/:employeeId` | One person's balances, this month's log, requests, balance change log, staff card and visa. Record leave, adjust a balance, update visa |
+| `/hr/people` | The People page for everyone at Opro, with Add person and a toggle to include people who have left |
+| `/hr/people/new`, `/hr/people/:employeeId/edit` | Add a person, or edit their details and manager. A page, not a modal, because the form is long |
+| `/hr/people/:employeeId` | One person's balances, this month's log with Fix punches on every row, requests, balance change log, staff card and visa. Record leave, adjust a balance, update visa. A More menu holds edit details, change photo and mark as leaving |
 | `/hr/leave` | The leave requests page for every request in the company, so HR can step in when a manager is away |
 | `/hr/calendar` | Holidays and events per year: add, edit, delete, confirm a tentative date, add the civil holidays to an empty year |
 | `/hr/visas` | Every expatriate, people with no record first, then soonest visa or passport expiry |
 | `/hr/inbox` | Profile change requests in tabs (Open, Done, Declined). Declining needs a reason |
 | `/hr/announcements` | Post, edit and take down notes from HR. A new one notifies everyone |
-| `/hr/policy` | Leave types with yearly days and half day rule. A new entitlement applies from the next leave year |
+| `/hr/policy` | Policies: leave types with yearly days and half day rule (a new entitlement applies from the next leave year), and the work schedule as dated versions |
 
 ### Attendance rules (placeholders, confirm with HR)
 
@@ -105,13 +106,16 @@ Sidebar: Overview, People, Leave (count waiting), Calendar, Visas, Inbox (count 
 |---|---|
 | Time zone | Maldives Time, UTC+5 (`Indian/Maldives`), single zone |
 | Work week | Sunday to Thursday. Friday and Saturday off |
-| Shift | 09:00 to 17:00 |
-| Late | First punch after 09:15 (15 minute grace) |
-| Half day | Less than 4 hours worked |
+| Shift | 09:00 to 17:00. HR changes it from Policies |
+| Late | First punch after 09:15 (15 minute grace, set by HR) |
+| Half day | Less than 4 hours worked (set by HR) |
 | Absent | No punch, no approved leave, not a holiday or weekend |
 | Ramadan hours | 09:00 to 14:00 |
 | Overtime | Minutes beyond the shift, shown only, no approval flow in v1 |
 
+- **Shift rules are dated versions.** HR sets shift start and end, grace, half day threshold and Ramadan hours from a date after today. Days already worked keep the version they were worked under. A version that hasn't started can be cancelled. Ramadan hours apply from the first day of Ramadan to the day before Eid al Fitr in the holiday calendar (backend). The work week is not editable.
+- The backend sends `expectedOut` and `scheduledMinutes` with each day, from the version in force. The frontend shows them and never works out a shift itself.
+- **Punch fixes by HR:** add a missing punch or void a wrong one, one change at a time, always with a reason. Device punches are never overwritten, every change is logged with who, when and why, and the backend works the day out again. Edited days show "Edited by HR" to everyone who sees them.
 - The biometric device (model not yet known) pushes raw punches to the backend. A day may have **many punches** (breaks). The backend pairs them and works out first in, last out, time worked and status. **The frontend only displays these values. It never calculates attendance status.**
 
 ### Leave rules (placeholders, confirm with HR against the Maldives Employment Act)
@@ -129,7 +133,7 @@ Sidebar: Overview, People, Leave (count waiting), Calendar, Visas, Inbox (count 
 - Half days allowed (first half or second half).
 - Weekends and public holidays inside a leave range do not count.
 - The apply form only offers types the person has a balance for, plus types the policy marks `isUnlimited`. A missing balance never means "no cap".
-- Sick leave longer than `documentRequiredAfterDays` shows a note to hand a medical certificate to HR. No upload in v1.
+- Sick leave longer than `documentRequiredAfterDays` asks for a medical certificate: PDF, JPG or PNG up to 5 MB, attached when applying or later from the request history. It is health data: the employee and HR can open it, managers only see that one is attached. The server checks the file's first bytes, not just its type, and serves it with `nosniff` and a `sandbox` policy.
 - Single level approval by the direct manager.
 - Statuses: `pending`, `approved`, `rejected`, `cancelled`.
 - The backend owns day counts and balances. The frontend may preview a count but the server's number wins.
@@ -143,7 +147,7 @@ Sidebar: Overview, People, Leave (count waiting), Calendar, Visas, Inbox (count 
 
 ### Virtual ID card
 
-- Front: initials (photos come later), full name, designation, department, employee ID, blood group. Back: email, phone, work location, joining date, emergency contact, a return address.
+- Front: photo (initials until HR adds one), full name, designation, department, employee ID, blood group. Back: email, phone, work location, joining date, emergency contact, a return address.
 - Both sides are sized in container units, so the same markup prints at real ID card size (85.6 × 54 mm). Printing uses `window.print()` and a print stylesheet that hides everything else. No PDF library, no QR code in v1.
 - The card is the profile's only view of personal details. Changes go to HR through a request (`POST /api/profile/change-requests` with `field` and `details`).
 
@@ -157,12 +161,15 @@ Logo, "People first, always.", "© year Opro Pvt Ltd · Malé, Republic of Maldi
 - **Holiday calendar:** add, edit and delete holidays per year. Mark an Islamic date confirmed after moon sighting, which notifies everyone. An empty year can start from the fixed civil holidays (New Year, Independence Day, Victory Day, Republic Day).
 - **Company events** on the calendar ("Office social", "Team review"), managed by HR.
 - **Leave policy:** leave types and yearly entitlements.
+- **Work schedule** and **punch fixes**, see Attendance rules.
+- **People:** add someone (ID, roles and full annual, sick and family balances come from the server), edit details and manager (never themselves or anyone below them), and mark someone as leaving. Nobody is ever deleted: after their last day they can't sign in and drop out of live lists, their records stay, and leave booked after that day is cancelled. Someone with active reports can't leave until those reports have a new manager.
+- **Photos:** HR uploads them from the person's page. The browser crops to 4:5 and re-encodes a small JPEG, which also strips location data. They show on the ID card, the staff card and avatars.
 - **Balance adjustments:** add or remove days for one person with a required reason. Every change is logged with who, when and why. Adjusting a type they don't hold yet (paternity, say) creates that balance.
 - **Leave on someone's behalf** is saved as approved and only offers types the person holds a balance for, plus unlimited ones. HR can approve or reject any request when the manager is away.
 - **Visa records:** add or update visa, work permit and passport details on renewal.
 - **Profile change requests:** an inbox for the requests employees send from their profile.
 - **Announcements:** post and edit the notes from HR.
-- Out of scope for now: adding or removing employees and reporting lines, editing raw punches, changing shift rules.
+- Out of scope for now: granting the HR role from the portal (set on the record by the backend team), changing the work week.
 
 ### Exports
 
@@ -172,7 +179,9 @@ Logo, "People first, always.", "© year Opro Pvt Ltd · Malé, Republic of Maldi
 
 - English only, but use CSS logical properties (`margin-inline-start`, not `margin-left`) so Dhivehi (right to left) can be added later without a rewrite.
 - Fully responsive. Phones are a first class target, many staff will check punches and leave on mobile.
-- Light only, because the Figma design has no dark version. Add dark mode only when a design for it exists.
+- Light and dark. The Figma design has no dark version, so dark is generated from the light stylesheets by `scripts/build-dark-theme.mjs` into `src/styles/dark.css`: light surfaces become navy tinted dark ones, text turns light, coloured text is lifted until it reads, and the parts that are dark on purpose (sidebar, staff card, welcome banner, primary buttons) stay as they are. The script reports any text under 4.5:1 against the dark card. Never edit `dark.css` by hand: change the script or the light styles and run `npm run theme:dark`. `npm run check` fails if it is stale.
+- The portal follows the device setting. Light, Dark or Auto in the name menu overrides it, remembered per browser. Printing is always light.
+- If a dark design arrives from the designer, it replaces the generated values.
 - WCAG 2.2 AA.
 - **Not indexed by search engines.** `<meta name="robots" content="noindex, nofollow">` and a `robots.txt` that disallows everything. No Open Graph, no structured data, no SEO work. Each page still gets a clear `<title>` via the router's `title` property.
 
@@ -201,7 +210,7 @@ This is a daily work tool. People open it to check a punch, apply for leave or a
 - `frontend/src/styles/portal.css` is that stylesheet, ported verbatim. Only font names differ, and sidebar rules also cover links. Don't restyle its classes. Anything the design doesn't cover (search results, our extra statuses, states the mock design only shows one version of, a phone overflow fix) goes in `src/styles.css` under a comment saying why.
 - Palette: navy `#102d3f`, aqua `#11ae9e`, aqua dark `#078e83`, page `#f3f7f6`, ink `#16313f`, muted `#71828c`, yellow `#ffc85a`, coral `#f27f68`.
 - Icons are Lucide shapes stored in `shared/ui/icon-shapes.ts`. Add new ones from Lucide the same way, not a new icon library.
-- No photos yet, so people show initials in the same frames.
+- People without a photo show initials in the same frames.
 - Status colour is never the only signal. Always pair it with text or an icon.
 
 ### Typography
@@ -244,6 +253,7 @@ HRMS/
       server.mjs
       data/            # JSON fixtures
     proxy.conf.mjs     # Sends /api to the mock or to Spring
+    scripts/build-dark-theme.mjs  # Generates src/styles/dark.css from the light styles
   backend/             # Spring Boot (later)
 ```
 
@@ -317,6 +327,15 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 | GET | `/api/hr/change-requests` | Profile change requests |
 | POST | `/api/hr/change-requests/:id/decision` | `done` or `declined` with a `note` |
 | POST / PUT / DELETE | `/api/hr/announcements`, `/api/hr/announcements/:id` | Manage announcements. A new one notifies everyone |
+| POST | `/api/hr/employees` | Add a person. The server sets the ID and roles, and seeds balances |
+| PUT | `/api/hr/employees/:id` | Edit details and `managerId` |
+| POST / DELETE | `/api/hr/employees/:id/leaving` | Set a last day with a reason / take it back before it passes. `?include=former` on the list adds people who have left |
+| PUT / DELETE | `/api/hr/employees/:id/photo` | Upload (raw JPEG body, 1 MB max) or remove a photo |
+| GET | `/api/employees/:id/photo` | A photo, for anyone signed in. URLs carry a version, so they cache forever |
+| GET / POST / DELETE | `/api/hr/schedules`, `/api/hr/schedules/:id` | Work schedule versions / add one from a future date / cancel one not yet started |
+| GET / POST | `/api/hr/punch-edits?employeeId=&month=` | The punch fix log / add or void one punch (`action`, `time`, `reason`) |
+| PUT | `/api/leave/requests/:id/certificate` | Attach a medical certificate to own sick leave (raw body, 5 MB max) |
+| GET | `/api/leave/requests/:id/certificate`, `/api/hr/leave-requests/:id/certificate` | Open a certificate: own, or any for HR. Never for managers |
 
 ### Angular conventions
 - Standalone components only, `ChangeDetectionStrategy.OnPush`, zoneless change detection.

@@ -4,6 +4,7 @@ import { Avatar } from '../../shared/ui/avatar';
 import { Dismiss } from '../../shared/ui/dismiss';
 import { Icon } from '../../shared/ui/icon';
 import { PortalView, Session } from '../session';
+import { Theme, ThemeChoice } from '../theme';
 
 @Component({
   selector: 'app-profile-menu',
@@ -11,7 +12,7 @@ import { PortalView, Session } from '../session';
   template: `
     @if (session.user(); as user) {
       <button type="button" class="profile-button" [attr.aria-expanded]="isOpen()" aria-label="Your account" (click)="isOpen.set(!isOpen())" data-testid="account-button">
-        <app-avatar [name]="user.fullName" />
+        <app-avatar [name]="user.fullName" [photoUrl]="user.photoUrl" />
         <span>
           <strong>{{ user.fullName }}</strong>
           <small>{{ subtitle() }}</small>
@@ -21,6 +22,16 @@ import { PortalView, Session } from '../session';
       @if (isOpen()) {
         <div class="notification-popover profile-popover">
           <a routerLink="/profile" (click)="isOpen.set(false)">Your profile and ID card</a>
+          <div class="theme-choice">
+            <span id="appearance-label">Appearance</span>
+            <div class="role-switch" role="group" aria-labelledby="appearance-label">
+              @for (option of themes; track option.value) {
+                <button type="button" [class.active]="theme.choice() === option.value" [attr.aria-pressed]="theme.choice() === option.value" (click)="theme.choose(option.value)" [attr.data-testid]="'theme-' + option.value">
+                  {{ option.label }}
+                </button>
+              }
+            </div>
+          </div>
           <button type="button" (click)="signOut()" data-testid="sign-out">Sign out</button>
         </div>
       }
@@ -32,6 +43,12 @@ import { PortalView, Session } from '../session';
 })
 export class ProfileMenu {
   protected readonly session = inject(Session);
+  protected readonly theme = inject(Theme);
+  protected readonly themes: readonly { value: ThemeChoice; label: string }[] = [
+    { value: 'light', label: 'Light' },
+    { value: 'dark', label: 'Dark' },
+    { value: 'system', label: 'Auto' },
+  ];
   readonly view = input.required<PortalView>();
   protected readonly isOpen = signal(false);
   private readonly closeOnDismiss = inject(Dismiss).dismissed.subscribe(() => this.isOpen.set(false));

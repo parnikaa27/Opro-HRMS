@@ -31,6 +31,14 @@ export interface Employee {
   roles: Role[];
   emergencyContact: EmergencyContact;
   visa?: Visa;
+  // Same origin and versioned, so a new photo replaces the cached one.
+  photoUrl?: string;
+  // Set when HR marks someone as leaving. Records stay after the last day.
+  lastDay?: string;
+  leavingReason?: string;
 }
+
+// What HR can set on a person. The ID, roles and visa come from elsewhere.
+export type EmployeeDetails = Omit<Employee, 'id' | 'roles' | 'visa' | 'photoUrl' | 'lastDay' | 'leavingReason'>;
 
 export type EmployeeSummary = Pick<Employee, 'id' | 'fullName' | 'designation' | 'roles'>;

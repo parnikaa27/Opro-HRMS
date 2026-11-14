@@ -31,12 +31,12 @@ describe('TodayAttendanceCard', () => {
   });
 
   it('shows time in the office, when they came in, when the shift ends, and the device sync', async () => {
-    const root = await render(day({ punches: [{ at: at('08:50'), direction: 'in', device: 'Front desk' }, { at: at('09:30'), direction: 'out' }, { at: at('09:40'), direction: 'in' }] }));
+    const root = await render(day({ punches: [{ at: at('08:50'), direction: 'in', device: 'Front desk' }, { at: at('09:30'), direction: 'out' }, { at: at('09:40'), direction: 'in' }], expectedOut: at('16:50'), scheduledMinutes: 480 }));
 
     expect(text(root.querySelector('[data-testid=today-heading]') as HTMLElement)).toBe('You’re in the office');
     expect(text(root.querySelector('.circle-progress') as HTMLElement)).toBe('1h 40m of 8 hours');
     expect(text(root.querySelector('[data-testid=punch-in]') as HTMLElement)).toBe('08:50 AM');
-    expect(text(root)).toContain('EXPECTED OUT 05:50 PM 7h 20m remaining');
+    expect(text(root)).toContain('EXPECTED OUT 04:50 PM 6h 20m remaining');
     expect(text(root.querySelector('[data-testid=effective-hours]') as HTMLElement)).toBe('1h 30m');
     expect(text(root.querySelector('.synced') as HTMLElement)).toBe('Biometric synced · 3 min ago');
   });
@@ -49,7 +49,7 @@ describe('TodayAttendanceCard', () => {
   });
 
   it('notices when they are past the shift', async () => {
-    const root = await render(day({ punches: [{ at: '2026-11-12T00:30:00+05:00', direction: 'in' }] }));
+    const root = await render(day({ punches: [{ at: '2026-11-12T00:30:00+05:00', direction: 'in' }], expectedOut: '2026-11-12T08:30:00+05:00', scheduledMinutes: 480 }));
 
     expect(text(root)).toContain('past your shift');
   });

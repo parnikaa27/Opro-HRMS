@@ -1,11 +1,12 @@
 import { HttpErrorResponse, HttpStatusCode } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { ConfirmButton } from '../../shared/ui/confirm-button';
 import { Dialog } from '../../shared/ui/dialog';
 import { Icon } from '../../shared/ui/icon';
 import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { SuccessState } from '../../shared/ui/success-state';
-import { formatShortDate, maldivesToday, monthOf, yearOf } from '../../shared/utils/date-time';
+import { formatFullDate, formatShortDate, maldivesToday, monthOf, yearOf } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { plural } from '../../shared/utils/text';
 import { toAttendanceRow } from '../attendance/attendance-rows';
@@ -18,20 +19,25 @@ import { EmployeeCard } from '../profile/employee-card';
 import { TeamApi } from '../team/team-api';
 import { AdjustBalanceForm } from './forms/adjust-balance-form';
 import { RecordLeaveForm } from './forms/record-leave-form';
+import { LeavingForm } from './forms/leaving-form';
+import { PhotoForm } from './forms/photo-form';
 import { VisaForm } from './forms/visa-form';
 import { HrApi } from './hr-api';
+import { PersonMenu } from './person-menu';
+import { PunchEditor } from './punch-editor';
 
-type Action = 'adjust' | 'record' | 'visa';
+type Action = 'adjust' | 'record' | 'visa' | 'leaving';
 
 const SUCCESS: Record<Action, { heading: string; body: string }> = {
   adjust: { heading: 'Balance adjusted', body: 'The change and your reason are in their log below.' },
   record: { heading: 'Leave recorded', body: 'It’s saved as approved and shows on their calendar.' },
   visa: { heading: 'Papers updated', body: 'Expiry warnings now follow the new dates.' },
+  leaving: { heading: 'Last day saved', body: 'They keep access until then. Any leave booked after that day is cancelled.' },
 };
 
 @Component({
   selector: 'app-hr-person-page',
-  imports: [AdjustBalanceForm, AttendanceTable, Dialog, EmployeeCard, Icon, LeaveBalances, LeaveRequests, ListSkeleton, RecordLeaveForm, RouterLink, SuccessState, VisaCard, VisaForm],
+  imports: [AdjustBalanceForm, AttendanceTable, ConfirmButton, Dialog, EmployeeCard, Icon, LeaveBalances, LeaveRequests, LeavingForm, ListSkeleton, PersonMenu, PhotoForm, PunchEditor, RecordLeaveForm, RouterLink, SuccessState, VisaCard, VisaForm],
   template: `
     <div class="page-view">
       <a routerLink="/hr/people" class="text-link back-link"><app-icon name="chevronLeft" [size]="15" /> People</a>
@@ -50,11 +56,25 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
             <p>{{ employee.designation }}, {{ employee.workLocation }}</p>
           </div>
           <div class="title-actions">
-            <button type="button" class="secondary-button" (click)="action.set('adjust')" data-testid="open-adjust">Adjust balance</button>
+            <!-- Both forms start from the leave types, so they wait for them rather than resetting under someone's typing. -->
+            <button type="button" class="secondary-button" [disabled]="isTypesLoading()" (click)="action.set('adjust')" data-testid="open-adjust">Adjust balance</button>
             <button type="button" class="secondary-button" (click)="action.set('visa')" data-testid="open-visa">Update visa</button>
-            <button type="button" class="primary-button compact" (click)="action.set('record')" data-testid="open-record"><app-icon name="plus" [size]="17" /> Record leave</button>
+            <button type="button" class="primary-button compact" [disabled]="isTypesLoading()" (click)="action.set('record')" data-testid="open-record"><app-icon name="plus" [size]="17" /> Record leave</button>
+            <app-person-menu [employeeId]="employee.id" [isLeaving]="employee.lastDay !== undefined" (leaving)="action.set('leaving')" (photo)="isChangingPhoto.set(true)" />
           </div>
         </div>
+        @if (employee.lastDay; as lastDay) {
+          <p class="leaving-note" data-testid="leaving-note">
+            <strong>{{ lastDay < today ? 'Left on ' + formatFullDate(lastDay) : 'Last day ' + formatFullDate(lastDay) }}</strong>
+            {{ employee.leavingReason }}
+            @if (lastDay >= today) {
+              <app-confirm-button label="They're staying" question="Cancel their leaving?" yes="Yes, they're staying" testId="cancel-leaving" (confirmed)="cancelLeaving(employee.id)" />
+            }
+            @if (cancelFailed()) {
+              <span role="alert">That didn't save. Try again in a moment.</span>
+            }
+          </p>
+        }
 
         <app-leave-balances [balances]="employee.leaveBalances" [types]="typeList()" />
 
@@ -62,9 +82,9 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
           <div class="main-column">
             <section class="card full-table">
               <div class="card-heading"><div><span class="eyebrow">THIS MONTH</span><h2>Attendance log</h2></div></div>
-              <app-attendance-table [rows]="rows()" />
+              <app-attendance-table [rows]="rows()" [isEditable]="true" (edit)="editingDate.set($event)" />
             </section>
-            <app-leave-requests [requests]="requests()" [types]="typeList()" [isReadOnly]="true" heading="Their leave requests" />
+            <app-leave-requests [requests]="requests()" [types]="typeList()" [isReadOnly]="true" heading="Their leave requests" certificatePath="/api/hr/leave-requests" />
             <section class="card request-history">
               <div class="card-heading"><div><span class="eyebrow">AUDIT LOG</span><h2>Balance changes</h2></div></div>
               @for (change of adjustments(); track change.id) {
@@ -88,6 +108,18 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
           </div>
         </div>
 
+        <app-dialog heading="Photo" [isOpen]="isChangingPhoto()" (isOpenChange)="isChangingPhoto.set($event)">
+          @if (isChangingPhoto()) {
+            <app-photo-form [employeeId]="employee.id" [name]="employee.fullName" [photoUrl]="employee.photoUrl" (saved)="photoSaved()" (cancelled)="isChangingPhoto.set(false)" />
+          }
+        </app-dialog>
+
+        <app-dialog heading="Fix punches" [isOpen]="editingDay() !== undefined" (isOpenChange)="$event || editingDate.set(undefined)">
+          @if (editingDay(); as day) {
+            <app-punch-editor [day]="day" [name]="employee.fullName" [edits]="editsFor(day.date)" (saved)="punchSaved()" (closed)="editingDate.set(undefined)" />
+          }
+        </app-dialog>
+
         <app-dialog heading="HR action" [isOpen]="action() !== undefined" (isOpenChange)="$event || close()">
           @if (done(); as finished) {
             <app-success-state [heading]="success[finished].heading" [body]="success[finished].body" (done)="close()" />
@@ -102,6 +134,9 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
               @case ('visa') {
                 <app-visa-form [employeeId]="employee.id" [name]="employee.fullName" [visa]="employee.visa" (saved)="finish('visa')" (cancelled)="close()" />
               }
+              @case ('leaving') {
+                <app-leaving-form [employeeId]="employee.id" [name]="employee.fullName" [joinedOn]="employee.joinedOn" [reports]="reports()" (saved)="finish('leaving')" (cancelled)="close()" />
+              }
             }
           }
         </app-dialog>
@@ -113,19 +148,25 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
 export class HrPersonPage {
   private readonly hr = inject(HrApi);
   private readonly holidaysApi = inject(HolidaysApi);
-  private readonly today = maldivesToday();
+  protected readonly today = maldivesToday();
 
   readonly employeeId = input.required<string>();
 
   protected readonly person = this.hr.employee(this.employeeId);
   private readonly attendance = this.hr.attendance(this.employeeId, () => monthOf(this.today));
+  private readonly punchEdits = this.hr.punchEdits(this.employeeId, () => monthOf(this.today));
   private readonly leave = inject(TeamApi).leaveRequests({ scope: () => 'hr' });
   private readonly types = this.hr.leaveTypes();
+  private readonly everyone = this.hr.employees();
   private readonly thisYear = this.holidaysApi.forYear(() => String(yearOf(this.today)));
   private readonly nextYear = this.holidaysApi.forYear(() => String(yearOf(this.today) + 1));
 
   protected readonly action = signal<Action | undefined>(undefined);
   protected readonly done = signal<Action | undefined>(undefined);
+  protected readonly editingDate = signal<string | undefined>(undefined);
+  protected readonly isChangingPhoto = signal(false);
+  protected readonly cancelFailed = signal(false);
+  protected readonly editingDay = computed(() => valueOr(this.attendance, []).find(({ date }) => date === this.editingDate()));
   protected readonly success = SUCCESS;
 
   protected readonly employee = computed(() => valueOr(this.person, undefined));
@@ -134,6 +175,7 @@ export class HrPersonPage {
     return error instanceof HttpErrorResponse && error.status === HttpStatusCode.NotFound;
   });
   protected readonly typeList = computed(() => valueOr(this.types, []));
+  protected readonly isTypesLoading = computed(() => this.types.isLoading());
   // Same rule as applying: only types they hold a balance for, plus unlimited ones.
   protected readonly recordTypes = computed(() => {
     const held = new Set(this.employee()?.leaveBalances.map(({ type }) => type));
@@ -148,17 +190,41 @@ export class HrPersonPage {
   );
   protected readonly requests = computed(() => valueOr(this.leave, []).filter(({ employeeId }) => employeeId === this.employeeId()));
   protected readonly adjustments = computed(() => this.employee()?.adjustments ?? []);
+  protected readonly reports = computed(() => valueOr(this.everyone, []).filter(({ managerId }) => managerId === this.employeeId()));
 
+  protected readonly editsFor = (date: string) => valueOr(this.punchEdits, []).filter((change) => change.date === date);
   protected readonly typeName = (code: string) => this.typeList().find((type) => type.code === code)?.name ?? code;
   protected readonly formatShortDate = formatShortDate;
+  protected readonly formatFullDate = formatFullDate;
   protected readonly plural = plural;
 
   protected finish(action: Action) {
     this.done.set(action);
     this.person.reload();
-    if (action === 'record') {
+    if (action === 'record' || action === 'leaving') {
       this.leave.reload();
     }
+  }
+
+  protected async cancelLeaving(id: string) {
+    this.cancelFailed.set(false);
+    try {
+      await this.hr.cancelLeaving(id);
+      this.person.reload();
+    } catch (error) {
+      console.error('Cancelling a leaving date failed', error);
+      this.cancelFailed.set(true);
+    }
+  }
+
+  protected photoSaved() {
+    this.isChangingPhoto.set(false);
+    this.person.reload();
+  }
+
+  protected punchSaved() {
+    this.attendance.reload();
+    this.punchEdits.reload();
   }
 
   protected close() {

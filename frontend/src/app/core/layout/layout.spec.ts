@@ -69,7 +69,7 @@ describe('app shell', () => {
       '/api/hr/change-requests': [{ id: 'CR-1', status: 'open' }, { id: 'CR-2', status: 'done' }],
     });
 
-    expect(navLabels(page)).toEqual(['Overview', 'People', 'Leave 2', 'Calendar', 'Visas', 'Inbox 1', 'Announcements', 'Leave policy']);
+    expect(navLabels(page)).toEqual(['Overview', 'People', 'Leave 2', 'Calendar', 'Visas', 'Inbox 1', 'Announcements', 'Policies']);
     expect([...page.querySelectorAll('.role-switch button')].map((button) => text(button))).toEqual(['Employee', 'HR']);
     expect(page.querySelector('[data-testid=view-hr]')?.getAttribute('aria-pressed')).toBe('true');
   });
@@ -133,6 +133,19 @@ describe('app shell', () => {
     click(page, 'notifications-button');
 
     expect(texts(page, 'notifications-panel')[0]).toContain('All caught up');
+  });
+
+  it('lets anyone pick light, dark or the device setting from the name menu', async () => {
+    session.user.set(employee());
+    const page = await render('/');
+
+    click(page, 'account-button');
+    click(page, 'theme-dark');
+
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+    expect(page.querySelector('[data-testid=theme-dark]')?.getAttribute('aria-pressed')).toBe('true');
+    click(page, 'theme-system');
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
   });
 
   it('signs out from the profile menu and from the sidebar', async () => {

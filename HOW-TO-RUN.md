@@ -21,6 +21,7 @@ HRMS/
       index.html           Page shell, carries the noindex tag
       styles.css           Tailwind, self hosted fonts (DM Sans, Manrope), tokens, and our additions to the design
       styles/portal.css    The Figma stylesheet, ported as is
+      styles/dark.css      Generated dark theme. Never edit by hand
       main.ts              Boots the app
       app/
         app.routes.ts      Every route, with the sign in, manager and HR guards
@@ -39,16 +40,18 @@ HRMS/
           holidays/        API for holidays and company events
           profile/         Two sided printable ID card, visa and work permit status, change request to HR
           team/            Manager pages: overview, people directory, leave requests with tabs, team attendance table, one person's page. People and leave requests also serve HR
-          hr/              HR pages: overview, one person with record leave, adjust balance and update visa, holiday calendar, visas, inbox, announcements, leave policy
+          hr/              HR pages: overview, one person (record leave, adjust balance, visa, punch fixes, photo, leaving), add and edit a person, holiday calendar, visas, inbox, announcements, policies with the work schedule
             forms/         The HR dialogs' forms
       testing/             Test helpers, fixtures and setup.ts (a dialog shim, since jsdom has none). Never shipped
     public/                Static files served as is (favicon, robots.txt)
     e2e/                   Playwright tests
     dev-server/            Mock API that stands in for Spring
       server.mjs           Routes, sessions, XSRF check. Node built ins only
-      attendance.mjs       Generates the last 62 days of punches relative to today
-      data/                JSON fixtures: employees, visas, leave, holidays, events, corrections, announcements, notifications
+      attendance.mjs       Generates the last 62 days of punches relative to today, and works a day out again after an HR punch fix, using the schedule in force
+      data/                JSON fixtures: employees, visas, leave, holidays, events, corrections, announcements, notifications, change requests, balance adjustments, work schedules, punch edits. Uploaded photos and certificates stay in memory until restart
     proxy.conf.mjs         Sends /api to the mock or to Spring
+    scripts/
+      build-dark-theme.mjs Writes src/styles/dark.css from portal.css and styles.css (see theme:dark)
     playwright.config.ts   Starts the mock and the app, then runs e2e tests in Chrome
     eslint.config.js       Lint rules
     .postcssrc.json        Plugs Tailwind into the Angular build
@@ -96,11 +99,13 @@ That sends `/api` to Spring on `http://localhost:8080` instead. Nothing else cha
 | `npm run mock` | Mock API on port 4300 |
 | `npm run build` | Production build into `dist/` |
 | `npm run lint` / `lint:fix` | ESLint for TypeScript and templates |
+| `npm run theme:dark` | Regenerates the dark theme after changing colours in `portal.css` or `styles.css`, and lists any text under 4.5:1 contrast |
+| `npm run theme:check` | Fails if `dark.css` is out of date. Part of `npm run check` |
 | `npm run check:type` | Type checks app code, templates, unit tests and e2e tests |
 | `npm run test:unit` / `test:unit:watch` | Vitest |
 | `npm run test:coverage` | Vitest with coverage. Fails under 80% |
 | `npm run test:e2e` | Playwright. Starts its own fresh mock on 4310 and app on 4210, so it never clashes with your dev servers or their state |
-| `npm run check` | Lint, types, coverage and e2e in one go |
+| `npm run check` | Dark theme freshness, lint, types, coverage and e2e in one go |
 
 In CI, run `npx playwright install chromium` and drop `channel: 'chrome'` from `playwright.config.ts`, since CI machines won't have Chrome installed.
 

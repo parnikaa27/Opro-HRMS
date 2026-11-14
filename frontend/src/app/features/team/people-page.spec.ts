@@ -1,6 +1,6 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { employee, fail, fill, respond, setupHttp, text, texts } from '../../../testing/fixtures';
+import { click, employee, fail, fill, respond, setupHttp, text, texts } from '../../../testing/fixtures';
 import { PeoplePage } from './people-page';
 
 const MEMBERS = [
@@ -41,7 +41,20 @@ describe('PeoplePage', () => {
 
     expect(text(root.querySelector('.page-title') as HTMLElement)).toContain('Everyone at Opro and where they are today.');
     expect(root.querySelector('[data-testid=person-card] a')?.getAttribute('href')).toBe('/hr/people/A');
+    expect(root.querySelector('[data-testid=add-person]')?.getAttribute('href')).toBe('/hr/people/new');
     http.expectNone('/api/team');
+  });
+
+  it('lets HR include people who have left, marked as such', async () => {
+    const fixture = TestBed.createComponent(PeoplePage);
+    fixture.componentRef.setInput('scope', 'hr');
+    await respond(http, { '/api/hr/employees': MEMBERS });
+    const root = fixture.nativeElement as HTMLElement;
+
+    click(root, 'show-former');
+    await respond(http, { '/api/hr/employees?include=former': [...MEMBERS, employee({ id: 'G', fullName: 'Grace Mendoza', lastDay: '2026-11-01' })] });
+
+    expect(texts(root, 'person-card').find((card) => card.includes('Grace'))).toContain('Left 01 Nov 2026');
   });
 
   it('has an empty state and an error state', async () => {

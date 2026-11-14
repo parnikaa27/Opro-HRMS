@@ -2,16 +2,17 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { interval, map } from 'rxjs';
-import { BREAK_MINUTES, SHIFT_MINUTES } from '../../core/config';
 import { CompanyApi } from '../../core/company-api';
 import { AttendanceDay, AttendanceStatus } from '../../models/attendance';
 import { CircleProgress } from '../../shared/ui/circle-progress';
 import { Icon } from '../../shared/ui/icon';
-import { addMinutes, formatClock, formatDuration, minutesAgo, minutesWorkedSoFar } from '../../shared/utils/date-time';
+import { formatClock, formatDuration, minutesAgo, minutesWorkedSoFar } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
+import { plural } from '../../shared/utils/text';
 
 const TICK_MS = 60_000;
 const PERCENT = 100;
+const MINUTES_PER_HOUR = 60;
 
 const OFF_DAY: Partial<Record<AttendanceStatus, { title: string; body: string }>> = {
   weekend: { title: 'Enjoy your weekend', body: 'Friday and Saturday are off. See you on Sunday.' },
@@ -39,7 +40,7 @@ const OFF_DAY: Partial<Record<AttendanceStatus, { title: string; body: string }>
         <p class="attendance-off"><strong>{{ message.title }}</strong>{{ message.body }}</p>
       } @else if (firstIn(); as first) {
         <div class="attendance-body">
-          <app-circle-progress [percent]="percent()" [label]="formatDuration(elapsed())" sub="of 8 hours" />
+          <app-circle-progress [percent]="percent()" [label]="formatDuration(elapsed())" [sub]="shiftLabel()" />
           <div class="punch-timeline">
             <div class="timeline-line"><i></i><i></i></div>
             <div>
@@ -53,10 +54,10 @@ const OFF_DAY: Partial<Record<AttendanceStatus, { title: string; body: string }>
                 <strong>{{ formatClock(out.at) }}</strong>
                 <small>{{ out.device ?? 'Biometric' }} device</small>
               </div>
-            } @else {
+            } @else if (day()?.expectedOut; as expected) {
               <div>
                 <span>EXPECTED OUT</span>
-                <strong>{{ formatClock(expectedOut()) }}</strong>
+                <strong>{{ formatClock(expected) }}</strong>
                 <small>{{ remainingLabel() }}</small>
               </div>
             }
@@ -113,10 +114,12 @@ export class TodayAttendanceCard {
     return first ? minutesAgo(first.at, end ? new Date(end) : this.now()) : 0;
   });
   protected readonly effective = computed(() => minutesWorkedSoFar(this.day()?.punches ?? [], this.now()));
-  protected readonly percent = computed(() => (this.elapsed() / SHIFT_MINUTES) * PERCENT);
-  protected readonly expectedOut = computed(() => addMinutes(this.firstIn()?.at ?? this.now().toISOString(), SHIFT_MINUTES + BREAK_MINUTES));
+  // The backend sends the shift that applied that day, so a schedule change shows up without a frontend release.
+  private readonly shiftMinutes = computed(() => this.day()?.scheduledMinutes ?? 0);
+  protected readonly percent = computed(() => (this.shiftMinutes() ? (this.elapsed() / this.shiftMinutes()) * PERCENT : 0));
+  protected readonly shiftLabel = computed(() => (this.shiftMinutes() ? `of ${plural(this.shiftMinutes() / MINUTES_PER_HOUR, 'hour')}` : ''));
   protected readonly remainingLabel = computed(() => {
-    const left = Math.round((new Date(this.expectedOut()).getTime() - this.now().getTime()) / TICK_MS);
+    const left = Math.round((new Date(this.day()?.expectedOut ?? this.now()).getTime() - this.now().getTime()) / TICK_MS);
     return left > 0 ? `${formatDuration(left)} remaining` : `${formatDuration(-left)} past your shift`;
   });
 

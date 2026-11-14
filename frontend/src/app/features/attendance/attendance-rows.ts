@@ -22,5 +22,6 @@ export const toAttendanceRow = (day: AttendanceDay, today: string, now = new Dat
     punchOut: last?.direction === 'out' ? formatClock(last.at) : EMPTY,
     hours: day.punches.length === 0 ? EMPTY : formatHours(day.date === today ? minutesWorkedSoFar(day.punches, now) : day.workedMinutes),
     status: isInOffice ? { label: 'In office', tone: 'ok' } : ATTENDANCE_STATUS[day.status],
+    isEdited: day.isEditedByHr ?? false,
   };
 };

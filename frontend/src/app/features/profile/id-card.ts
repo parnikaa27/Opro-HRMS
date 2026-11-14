@@ -1,3 +1,4 @@
+import { NgOptimizedImage } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { COMPANY } from '../../core/config';
 import { Employee } from '../../models/employee';
@@ -13,6 +14,7 @@ interface IdCardRow {
 // Both sides are sized in cqw, so the same markup prints at real ID card size (85.6 × 54 mm).
 @Component({
   selector: 'app-id-card',
+  imports: [NgOptimizedImage],
   template: `
     <div class="grid justify-items-start gap-5 @3xl:grid-cols-2 print:grid-cols-1 print:gap-6">
       <article class="id-side" aria-label="ID card front" data-testid="id-card-front">
@@ -21,9 +23,13 @@ interface IdCardRow {
           <span class="text-[2.6cqw] tracking-[0.12em] uppercase">Staff ID</span>
         </header>
         <div class="flex flex-1 items-center gap-[4.5cqw] px-[5cqw]">
-          <span class="grid size-[19cqw] shrink-0 place-items-center rounded-full bg-coral-soft text-[6.5cqw] font-medium text-coral" aria-hidden="true">
-            {{ initials() }}
-          </span>
+          @if (employee().photoUrl; as photo) {
+            <img [ngSrc]="photo" width="192" height="240" alt="" class="h-[24cqw] w-[19cqw] shrink-0 rounded-[2cqw] object-cover" data-testid="id-card-photo" />
+          } @else {
+            <span class="grid size-[19cqw] shrink-0 place-items-center rounded-full bg-coral-soft text-[6.5cqw] font-medium text-coral" aria-hidden="true">
+              {{ initials() }}
+            </span>
+          }
           <div class="min-w-0">
             <p class="font-display text-[6.2cqw] leading-tight font-bold">{{ employee().fullName }}</p>
             <p class="mt-[0.8cqw] text-[3.4cqw]">{{ employee().designation }}</p>

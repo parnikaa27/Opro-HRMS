@@ -14,6 +14,7 @@ import { WelcomeBanner } from './welcome-banner';
   template: `
     <app-avatar name="Mariyam  Nisha Ali" />
     <app-avatar name="Big Face" [isLarge]="true" data-testid="large-avatar" />
+    <app-avatar name="Has Photo" photoUrl="/api/employees/E/photo?v=1" data-testid="photo-avatar" />
     <app-status-pill tone="late">Late</app-status-pill>
     <app-status-pill tone="neutral" data-testid="neutral-pill">Weekend</app-status-pill>
     <app-icon name="bell" data-testid="paths" />
@@ -43,6 +44,7 @@ describe('shared UI', () => {
     expect(text(element.querySelector('app-avatar') as HTMLElement)).toBe('MN');
     expect(element.querySelector('app-avatar')?.classList).toContain('avatar');
     expect(element.querySelector('[data-testid=large-avatar]')?.classList).toContain('large');
+    expect(element.querySelector('[data-testid=photo-avatar] img')?.getAttribute('src')).toBe('/api/employees/E/photo?v=1');
   });
 
   it('maps tones onto the design’s pill colours', async () => {

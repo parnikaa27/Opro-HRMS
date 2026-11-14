@@ -25,6 +25,37 @@ export interface AttendanceDay {
   lastOut?: string;
   workedMinutes: number;
   overtimeMinutes: number;
+  // Set by the backend from the schedule in force that day.
+  expectedOut?: string;
+  scheduledMinutes?: number;
+  isEditedByHr?: boolean;
+}
+
+export interface WorkSchedule {
+  id: string;
+  effectiveFrom: string;
+  shiftStart: string;
+  shiftEnd: string;
+  graceMinutes: number;
+  halfDayMinutes: number;
+  ramadanStart: string;
+  ramadanEnd: string;
+  reason: string;
+  setBy: string;
+  setByName?: string;
+  setOn: string;
+}
+
+export interface PunchEdit {
+  id: string;
+  employeeId: string;
+  date: string;
+  action: 'add' | 'void';
+  time: string;
+  reason: string;
+  by: string;
+  byName?: string;
+  on: string;
 }
 
 export interface CorrectionRequest {
