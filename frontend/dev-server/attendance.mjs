@@ -105,7 +105,8 @@ export const rebuildDay = ({ record, punchMinutes, schedules }) => {
   const isToday = record.date === maldivesNow().date;
   return {
     ...toRecord({ employeeId: record.employeeId, date: record.date, status: statusFor(sorted, rules, isToday), punchMinutes: sorted, device: record.punches[0]?.device ?? 'Front desk', rules }),
-    isEditedByHr: true,
+    // Someone changed the punches by hand: HR, or a manager approving a punch fix.
+    isCorrected: true,
   };
 };
 

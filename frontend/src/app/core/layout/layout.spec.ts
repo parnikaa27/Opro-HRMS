@@ -126,6 +126,21 @@ describe('app shell', () => {
     expect(page.querySelector('[data-testid=notifications-panel] [role=alert]')).not.toBeNull();
   });
 
+  it('titles notifications about changes to someone’s record and to working hours', async () => {
+    session.user.set(employee());
+    const page = await render('/', {
+      '/api/notifications': [
+        { id: 'NT-3', kind: 'record', text: 'HR added a punch at 8:52 AM on Wednesday 11 November.', createdOn: '2026-11-12', isRead: false },
+        { id: 'NT-4', kind: 'schedule', text: 'From Tuesday 1 December, the working day is 8:30 AM to 4:30 PM.', createdOn: '2026-11-12', isRead: false },
+      ],
+    });
+
+    click(page, 'notifications-button');
+
+    expect(texts(page, 'notifications-panel')[0]).toContain('Your record changed HR added a punch');
+    expect(texts(page, 'notifications-panel')[0]).toContain('Working hours From Tuesday 1 December');
+  });
+
   it('has a calm empty state for notifications', async () => {
     session.user.set(employee());
     const page = await render('/', { '/api/notifications': [] });

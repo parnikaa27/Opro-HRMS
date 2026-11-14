@@ -27,7 +27,7 @@ test('HR changes the work schedule from a future date, then takes it back', asyn
   await expect(change).toHaveCount(0);
 });
 
-test('HR adds a missing punch with a reason, and the day says it was edited', async ({ page }) => {
+test('HR adds a missing punch with a reason, and the day says it was corrected', async ({ page }) => {
   await signInAs(page, 'OPR-0002');
   await page.goto('/hr/people/OPR-0023');
 
@@ -38,7 +38,7 @@ test('HR adds a missing punch with a reason, and the day says it was edited', as
   await expect(page.getByTestId('punch-log')).toContainText('Late shift at the port');
   await page.getByRole('button', { name: 'Done' }).click();
 
-  await expect(page.getByTestId('attendance-row').first()).toContainText('Edited by HR');
+  await expect(page.getByTestId('attendance-row').first()).toContainText('Corrected');
 });
 
 test('HR adds a person, gives them a photo, and marks them as leaving', async ({ page }) => {
@@ -110,4 +110,41 @@ test('a sick note goes up with the request, and only HR can open it', async ({ p
   const href = await asHr.getByTestId('certificate').getByRole('link', { name: 'View' }).getAttribute('href');
   const file = await page.request.get(href ?? '');
   expect(file.headers()['content-type']).toBe('application/pdf');
+});
+
+// The latest day before today that falls Sunday to Thursday, as YYYY-MM-DD in Maldives time.
+const lastWorkday = () => {
+  const day = new Date(Date.now() + 5 * 60 * 60 * 1000);
+  do {
+    day.setUTCDate(day.getUTCDate() - 1);
+  } while ([5, 6].includes(day.getUTCDay()));
+  return day.toISOString().slice(0, 10);
+};
+
+test('an approved punch fix lands on the record, and the employee is told', async ({ page }) => {
+  // Three sign ins in a row.
+  test.slow();
+  await signInAs(page, 'OPR-0023');
+  await page.getByTestId('nav-attendance').click();
+  await page.getByTestId('open-fix').click();
+  await page.getByTestId('fix-date').fill(lastWorkday());
+  await page.getByTestId('fix-kind').selectOption('missed-in');
+  await page.getByTestId('fix-time').fill('06:05');
+  await page.getByTestId('fix-reason').fill('Came in early for the stock count');
+  await page.getByTestId('fix-submit').click();
+  await page.getByTestId('success-state').getByRole('button', { name: 'Done' }).click();
+
+  await page.getByTestId('sidebar-sign-out').click();
+  await signInAs(page, 'OPR-0004');
+  await page.goto('/team/approvals');
+  await page.getByTestId('tab-fixes').click();
+  await page.getByTestId('pending-fix').filter({ hasText: 'Came in early for the stock count' }).getByTestId('approve').click();
+  await expect(page.getByTestId('pending-fix').filter({ hasText: 'Came in early for the stock count' })).toHaveCount(0);
+
+  await page.getByTestId('sidebar-sign-out').click();
+  await signInAs(page, 'OPR-0023');
+  await page.getByTestId('notifications-button').click();
+  await expect(page.getByTestId('notifications-panel')).toContainText('The 6:05 AM punch is now on your record.');
+  await page.getByTestId('nav-attendance').click();
+  await expect(page.getByTestId('attendance-row').filter({ hasText: '06:05 AM' })).toContainText('Corrected');
 });

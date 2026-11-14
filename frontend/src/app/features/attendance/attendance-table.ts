@@ -43,7 +43,7 @@ export interface AttendanceRow {
               <td>
                 <app-status-pill [tone]="row.status.tone">{{ row.status.label }}</app-status-pill>
                 @if (row.isEdited) {
-                  <span class="edited-note" data-testid="edited-by-hr">Edited by HR</span>
+                  <span class="edited-note" data-testid="corrected">Corrected</span>
                 }
               </td>
               @if (isEditable()) {

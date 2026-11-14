@@ -435,7 +435,7 @@ dialog.modal {
   }
 }
 
-/* Days HR changed by hand say so, for the employee as much as for HR. */
+/* Days whose punches were changed by hand (by HR, or an approved punch fix) say so, for the employee as much as for HR. */
 .edited-note {
   display: block;
   margin-top: 4px;

@@ -69,7 +69,7 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 | `/leave` | Leave and time off: balance rings, other leave types, request history with cancel (pending, or approved and not started), and the Request leave modal with a working day preview and a success screen |
 | `/calendar` | Company calendar: month grid with public holidays and company events, upcoming holidays, the holiday policy. Islamic holidays are marked **tentative** until confirmed after moon sighting. `/holidays` redirects here |
 | `/profile` | Virtual ID card (printable), personal and job details, emergency contact, visa and work permit details, request a change to personal details |
-| Notifications | Header panel, not a page: leave decisions, correction decisions, visa reminders, announcements |
+| Notifications | Header panel, not a page: leave and punch fix decisions, visa reminders, announcements, every change HR makes to your record (punches, leave recorded for you, balance adjustments, visa, details, photo, a detail change request) and changes to working hours. Each says what changed and why, in plain words. Marking someone as leaving sends nothing: HR tells people in person |
 | Search | Top bar, ⌘K or Ctrl K. Finds pages, and people for managers |
 
 **Team view (managers only)**
@@ -115,7 +115,7 @@ Sidebar: Overview, People, Leave (count waiting), Calendar, Visas, Inbox (count 
 
 - **Shift rules are dated versions.** HR sets shift start and end, grace, half day threshold and Ramadan hours from a date after today. Days already worked keep the version they were worked under. A version that hasn't started can be cancelled. Ramadan hours apply from the first day of Ramadan to the day before Eid al Fitr in the holiday calendar (backend). The work week is not editable.
 - The backend sends `expectedOut` and `scheduledMinutes` with each day, from the version in force. The frontend shows them and never works out a shift itself.
-- **Punch fixes by HR:** add a missing punch or void a wrong one, one change at a time, always with a reason. Device punches are never overwritten, every change is logged with who, when and why, and the backend works the day out again. Edited days show "Edited by HR" to everyone who sees them.
+- **Punch fixes by HR:** add a missing punch or void a wrong one, one change at a time, always with a reason. Device punches are never overwritten, every change is logged with who, when and why, and the backend works the day out again. An approved punch fix request goes through the same path, logged as approved by whoever decided it. Corrected days show "Corrected" to everyone who sees them.
 - The biometric device (model not yet known) pushes raw punches to the backend. A day may have **many punches** (breaks). The backend pairs them and works out first in, last out, time worked and status. **The frontend only displays these values. It never calculates attendance status.**
 
 ### Leave rules (placeholders, confirm with HR against the Maldives Employment Act)
@@ -310,7 +310,7 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 | GET | `/api/team/leave-requests?status=` | Reports' leave requests |
 | POST | `/api/team/leave-requests/:id/decision` | Approve or reject |
 | GET | `/api/team/corrections?status=` | Reports' correction requests |
-| POST | `/api/team/corrections/:id/decision` | Approve or reject |
+| POST | `/api/team/corrections/:id/decision` | Approve or reject. Approving adds the punch to the record, the same way an HR punch fix does |
 | GET | `/api/hr/employees` | Everyone, with today's attendance and visa. HR only, like every `/api/hr` route |
 | GET | `/api/hr/employees/:id` | One person's profile, visa, leave balances and balance adjustments |
 | PUT | `/api/hr/employees/:id/visa` | Add or update visa, work permit and passport (last 4 only) |

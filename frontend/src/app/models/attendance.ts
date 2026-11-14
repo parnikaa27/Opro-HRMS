@@ -28,7 +28,8 @@ export interface AttendanceDay {
   // Set by the backend from the schedule in force that day.
   expectedOut?: string;
   scheduledMinutes?: number;
-  isEditedByHr?: boolean;
+  // Punches changed by hand: an HR fix or an approved punch fix request.
+  isCorrected?: boolean;
 }
 
 export interface WorkSchedule {

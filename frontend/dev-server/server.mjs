@@ -111,6 +111,19 @@ const notifyEveryone = (kind, text) => {
   ];
 };
 
+const notify = (employeeId, kind, text) => {
+  db.notifications = [{ id: `NT-${randomUUID().slice(0, 6)}`, employeeId, kind, text, createdOn: today(), isRead: false }, ...db.notifications];
+};
+
+// Notifications read like a person wrote them: "Tuesday 10 November", "5:20 PM", "3 days of sick leave".
+const clockFormat = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' });
+const sayTime = (time) => clockFormat.format(new Date(`2000-01-01T${time}:00Z`));
+const sayDate = (date) => longDate.format(new Date(`${date}T00:00:00Z`));
+const sayDates = ({ from, to }) => (from === to ? sayDate(from) : `${sayDate(from)} to ${sayDate(to)}`);
+const sayDays = (days) => `${Math.abs(days)} ${Math.abs(days) === 1 ? 'day' : 'days'}`;
+const typeName = (code) => db.leaveTypes.find((type) => type.code === code)?.name.toLowerCase() ?? code;
+const sentence = (text) => (/[.!?]$/.test(text) ? text : `${text}.`);
+
 const findOr404 = (collection, id, what) => {
   const item = db[collection].find((entry) => entry.id === id);
   if (!item) {
@@ -205,6 +218,51 @@ const checkManager = (employee, managerId) => {
 const punchMinutesOf = (record) => record.punches.map(({ at }) => toMinutes(at.slice(11, 16)));
 const withByName = (item) => ({ ...item, byName: nameOf(item.by) });
 
+// Device punches are never overwritten: a missing one is added or a wrong one voided, the day is worked out again,
+// and the change is logged with who, when and why.
+const editPunch = ({ employeeId, date, action, time, reason, by }) => {
+  const record = db.attendance.find((entry) => entry.employeeId === employeeId && entry.date === date);
+  if (!record || date > today()) {
+    throw new HttpError(404, 'No attendance for that day');
+  }
+  if (!TIME.test(time) || !['add', 'void'].includes(action)) {
+    throw new HttpError(400, 'Say which punch time to add or void');
+  }
+  const minutes = punchMinutesOf(record);
+  const minute = toMinutes(time);
+  if (action === 'add' && minutes.includes(minute)) {
+    throw new HttpError(409, 'There is already a punch at that time');
+  }
+  if (action === 'void' && !minutes.includes(minute)) {
+    throw new HttpError(404, 'No punch at that time');
+  }
+  const next = action === 'add' ? [...minutes, minute] : minutes.filter((entry) => entry !== minute);
+  const rebuilt = rebuildDay({ record, punchMinutes: next, schedules: db.schedules });
+  db.attendance = db.attendance.map((entry) => (entry === record ? rebuilt : entry));
+  const change = { id: `PE-${randomUUID().slice(0, 6)}`, employeeId, date, action, time, reason, by, on: today() };
+  db.punchEdits = [change, ...db.punchEdits];
+  return change;
+};
+
+const decisionText = (collection, { status, decisionNote, ...item }) => {
+  const outcome = status === 'approved' ? 'was approved.' : `was declined: ${sentence(decisionNote ?? 'no reason given')}`;
+  return collection === 'corrections'
+    ? `Your punch fix for ${sayDate(item.date)} ${outcome}${status === 'approved' ? ` The ${sayTime(item.requestedTime)} punch is now on your record.` : ''}`
+    : `Your ${typeName(item.type)} for ${sayDates(item)} ${outcome}`;
+};
+
+// An approved fix goes through the same path as one HR makes. If the punch is already there, or the day is older
+// than the mock's history, there is nothing left to change.
+const applyFix = (correction, user) => {
+  try {
+    editPunch({ employeeId: correction.employeeId, date: correction.date, action: 'add', time: correction.requestedTime, reason: `Punch fix approved: ${correction.reason}`, by: user.id });
+  } catch (error) {
+    if (!(error instanceof HttpError) || ![404, 409].includes(error.status)) {
+      throw error;
+    }
+  }
+};
+
 const decide = (collection, user, id, { decision, note }, inScope = managerScope(user)) => {
   const item = db[collection].find((entry) => entry.id === id && inScope(entry));
   if (!item) {
@@ -213,8 +271,12 @@ const decide = (collection, user, id, { decision, note }, inScope = managerScope
   if (item.status !== 'pending' || !['approved', 'rejected'].includes(decision)) {
     throw new HttpError(409, 'This request has already been decided');
   }
+  if (collection === 'corrections' && decision === 'approved') {
+    applyFix(item, user);
+  }
   const decided = { ...item, status: decision, decidedBy: user.id, decidedOn: today(), ...(note && { decisionNote: String(note) }) };
   db[collection] = db[collection].map((entry) => (entry.id === id ? decided : entry));
+  notify(item.employeeId, collection === 'corrections' ? 'correction' : 'leave', decisionText(collection, decided));
   return withName(decided);
 };
 
@@ -290,6 +352,9 @@ const routes = [
   ['GET', /^\/api\/attendance$/, ({ user, query }) => db.attendance.filter((record) => record.employeeId === user.id).filter(inMonth(query.get('month')))],
   ['GET', /^\/api\/attendance\/corrections$/, ({ user }) => db.corrections.filter(({ employeeId }) => employeeId === user.id).map(withName)],
   ['POST', /^\/api\/attendance\/corrections$/, ({ user, body }) => {
+    if (!DATE.test(String(body.date)) || body.date > today() || !TIME.test(String(body.requestedTime)) || !['missed-in', 'missed-out'].includes(body.kind)) {
+      throw new HttpError(400, 'Say which day, which punch and what time');
+    }
     const correction = { id: `AC-${randomUUID().slice(0, 6)}`, employeeId: user.id, date: body.date, kind: body.kind, requestedTime: body.requestedTime, reason: body.reason, status: 'pending', raisedOn: today() };
     db.corrections = [correction, ...db.corrections];
     return correction;
@@ -381,6 +446,11 @@ const routes = [
     const details = validEmployee(body, id);
     checkManager(employee, details.managerId);
     const { managerId, ...rest } = employee;
+    const isNewManager = details.managerId && details.managerId !== managerId;
+    notify(id, 'record', `HR updated your details.${isNewManager ? ` You now report to ${nameOf(details.managerId)}.` : ''}`);
+    if (isNewManager) {
+      notify(details.managerId, 'record', `${employee.fullName} now reports to you.`);
+    }
     return withRoles(replaceIn('employees', { ...rest, ...details }));
   }],
   ['POST', /^\/api\/hr\/employees\/([\w-]+)\/leaving$/, ({ user, params: [id], body }) => {
@@ -453,12 +523,14 @@ const routes = [
     requireHr(user);
     const employee = findOr404('employees', id, 'Employee');
     db.photos.set(id, { ...body, version: randomUUID().slice(0, 8) });
+    notify(id, 'record', 'HR added a new photo to your ID card.');
     return profileOf(withRoles(employee));
   }, { upload: PHOTO_UPLOAD }],
   ['DELETE', /^\/api\/hr\/employees\/([\w-]+)\/photo$/, ({ user, params: [id] }) => {
     requireHr(user);
     findOr404('employees', id, 'Employee');
     db.photos.delete(id);
+    notify(id, 'record', 'HR removed the photo from your ID card. It shows your initials for now.');
     return undefined;
   }],
   ['PUT', /^\/api\/hr\/employees\/([\w-]+)\/visa$/, ({ user, params: [id], body }) => {
@@ -467,6 +539,7 @@ const routes = [
     // Only the last 4 passport digits are ever stored or sent.
     const visa = { employeeId: id, ...pick(body, ['workPermitNumber', 'visaNumber', 'visaIssuedOn', 'visaExpiry', 'passportExpiry']), passportLast4: String(body.passportLast4 ?? '').slice(-4) };
     db.visas = [...db.visas.filter(({ employeeId }) => employeeId !== id), visa];
+    notify(id, 'visa', 'HR updated your visa and work permit details. Expiry reminders follow the new dates.');
     return visa;
   }],
   ['GET', /^\/api\/hr\/attendance$/, ({ user, query }) => {
@@ -487,6 +560,7 @@ const routes = [
       days: body.days, reason: body.reason, status: 'approved', appliedOn: today(), decidedBy: user.id, decidedOn: today(), recordedByHr: true,
     };
     db.leaveRequests = [request, ...db.leaveRequests];
+    notify(request.employeeId, 'leave', `HR recorded ${sayDays(request.days)} of ${typeName(request.type)} for you, ${sayDates(request)}. ${sentence(String(request.reason))}`);
     return withName(request);
   }],
   ['POST', /^\/api\/hr\/leave-requests\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => decide('leaveRequests', user, id, body, hrScope(user))],
@@ -512,6 +586,7 @@ const routes = [
         ? balances.map((balance) => (balance.type === body.type ? { ...balance, entitled: balance.entitled + days } : balance))
         : [...balances, { type: body.type, entitled: days, taken: 0, pending: 0 }],
     };
+    notify(adjustment.employeeId, 'leave', `HR ${days > 0 ? 'added' : 'removed'} ${sayDays(days)} ${days > 0 ? 'to' : 'from'} your ${typeName(adjustment.type)}. ${sentence(adjustment.reason)}`);
     return { ...adjustment, byName: user.fullName };
   }],
   ['PUT', /^\/api\/hr\/leave-types\/([\w-]+)$/, ({ user, params: [code], body }) => {
@@ -545,7 +620,7 @@ const routes = [
     const holiday = findOr404('holidays', id, 'Holiday');
     const updated = { ...holiday, ...pick(body, ['date', 'name', 'isTentative']) };
     if (holiday.isTentative && updated.isTentative === false) {
-      notifyEveryone('holiday', `${updated.name} is confirmed for ${longDate.format(new Date(`${updated.date}T00:00:00Z`))}`);
+      notifyEveryone('holiday', `${updated.name} is confirmed for ${sayDate(updated.date)}`);
     }
     return replaceIn('holidays', updated);
   }],
@@ -577,6 +652,8 @@ const routes = [
     if (request.status !== 'open' || !['done', 'declined'].includes(body.decision)) {
       throw new HttpError(409, 'This request has already been handled');
     }
+    const field = request.field.toLowerCase();
+    notify(request.employeeId, 'record', body.decision === 'done' ? `HR updated your ${field} as you asked.` : `HR couldn't change your ${field}: ${sentence(String(body.note ?? 'no reason given'))}`);
     return withName(replaceIn('changeRequests', { ...request, status: body.decision, decidedBy: user.id, decidedOn: today(), ...(body.note && { decisionNote: String(body.note) }) }));
   }],
   ['POST', /^\/api\/hr\/announcements$/, ({ user, body }) => {
@@ -605,13 +682,16 @@ const routes = [
       throw new HttpError(409, 'A schedule already starts on that date');
     }
     db.schedules = [...db.schedules, version];
+    notifyEveryone('schedule', `From ${sayDate(version.effectiveFrom)}, the working day is ${sayTime(version.shiftStart)} to ${sayTime(version.shiftEnd)}, late after ${version.graceMinutes} minutes. ${sentence(version.reason)}`);
     return { ...version, setByName: user.fullName };
   }],
   ['DELETE', /^\/api\/hr\/schedules\/([\w-]+)$/, ({ user, params: [id] }) => {
     requireHr(user);
-    if (findOr404('schedules', id, 'Schedule').effectiveFrom <= today()) {
+    const version = findOr404('schedules', id, 'Schedule');
+    if (version.effectiveFrom <= today()) {
       throw new HttpError(409, 'A schedule already in force can only be replaced, not removed');
     }
+    notifyEveryone('schedule', `The change to working hours planned for ${sayDate(version.effectiveFrom)} is off. Your hours stay as they are.`);
     return removeFrom('schedules', id, 'Schedule');
   }],
   ['GET', /^\/api\/hr\/punch-edits$/, ({ user, query }) => {
@@ -619,32 +699,11 @@ const routes = [
     const employeeId = query.get('employeeId');
     return db.punchEdits.filter((edit) => !employeeId || edit.employeeId === employeeId).filter(inMonth(query.get('month'))).map(withByName);
   }],
-  // Device punches are never overwritten: HR adds a missing one or voids a wrong one, and every change is logged.
   ['POST', /^\/api\/hr\/punch-edits$/, ({ user, body }) => {
     requireHr(user);
-    const reason = requireReason(body);
-    const record = db.attendance.find(({ employeeId, date }) => employeeId === body.employeeId && date === body.date);
-    if (!record || body.date > today()) {
-      throw new HttpError(404, 'No attendance for that day');
-    }
-    const minutes = punchMinutesOf(record);
-    const time = String(body.time ?? '');
-    if (!TIME.test(time) || !['add', 'void'].includes(body.action)) {
-      throw new HttpError(400, 'Say which punch time to add or void');
-    }
-    const minute = toMinutes(time);
-    if (body.action === 'add' && minutes.includes(minute)) {
-      throw new HttpError(409, 'There is already a punch at that time');
-    }
-    if (body.action === 'void' && !minutes.includes(minute)) {
-      throw new HttpError(404, 'No punch at that time');
-    }
-    const next = body.action === 'add' ? [...minutes, minute] : minutes.filter((entry) => entry !== minute);
-    const rebuilt = rebuildDay({ record, punchMinutes: next, schedules: db.schedules });
-    db.attendance = db.attendance.map((entry) => (entry === record ? rebuilt : entry));
-    const edit = { id: `PE-${randomUUID().slice(0, 6)}`, employeeId: record.employeeId, date: record.date, action: body.action, time, reason, by: user.id, on: today() };
-    db.punchEdits = [edit, ...db.punchEdits];
-    return withByName(edit);
+    const change = editPunch({ employeeId: body.employeeId, date: body.date, action: body.action, time: String(body.time ?? ''), reason: requireReason(body), by: user.id });
+    notify(change.employeeId, 'record', `HR ${change.action === 'add' ? 'added' : 'removed'} a punch at ${sayTime(change.time)} on ${sayDate(change.date)}. ${sentence(change.reason)}`);
+    return withByName(change);
   }],
   ['GET', /^\/api\/team\/([\w-]+)$/, ({ user, params: [id] }) => {
     const employee = reportsOf(user).find((report) => report.id === id);

@@ -12,6 +12,8 @@ const TITLES: Record<AppNotification['kind'], string> = {
   correction: 'Punch fix updated',
   holiday: 'Holiday confirmed',
   announcement: 'From HR',
+  record: 'Your record changed',
+  schedule: 'Working hours',
 };
 
 @Component({

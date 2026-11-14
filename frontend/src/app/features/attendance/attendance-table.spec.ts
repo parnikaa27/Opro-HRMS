@@ -26,10 +26,10 @@ describe('AttendanceTable', () => {
     return { root: fixture.nativeElement as HTMLElement, host: fixture.componentInstance };
   };
 
-  it('says when HR changed a day, for everyone who reads it', async () => {
+  it('says when a day was corrected by hand, for everyone who reads it', async () => {
     const { root } = await render(false);
 
-    expect(texts(root, 'attendance-row')).toEqual(['Tuesday 10 Nov, Tue 08:55 AM 05:20 PM 08h 25m Present Edited by HR']);
+    expect(texts(root, 'attendance-row')).toEqual(['Tuesday 10 Nov, Tue 08:55 AM 05:20 PM 08h 25m Present Corrected']);
     expect(root.querySelector('[data-testid=edit-punches]')).toBeNull();
   });
 
