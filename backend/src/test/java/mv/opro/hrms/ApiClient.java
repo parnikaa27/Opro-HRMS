@@ -9,29 +9,29 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 // A browser stand in: keeps cookies, and echoes the XSRF-TOKEN cookie in the header the way Angular does.
-final class ApiClient {
+public final class ApiClient {
 
     private final CookieManager cookies = new CookieManager();
     private final HttpClient http = HttpClient.newBuilder().cookieHandler(cookies).build();
     private final String base;
 
-    ApiClient(int port) {
+    public ApiClient(int port) {
         this.base = "http://localhost:" + port;
     }
 
-    HttpResponse<String> get(String path) throws IOException, InterruptedException {
+    public HttpResponse<String> get(String path) throws IOException, InterruptedException {
         return http.send(HttpRequest.newBuilder(URI.create(base + path)).GET().build(), HttpResponse.BodyHandlers.ofString());
     }
 
-    HttpResponse<String> post(String path, String json) throws IOException, InterruptedException {
+    public HttpResponse<String> post(String path, String json) throws IOException, InterruptedException {
         return send(path, json, true);
     }
 
-    HttpResponse<String> postWithoutXsrf(String path, String json) throws IOException, InterruptedException {
+    public HttpResponse<String> postWithoutXsrf(String path, String json) throws IOException, InterruptedException {
         return send(path, json, false);
     }
 
-    HttpResponse<String> signIn(String employeeId) throws IOException, InterruptedException {
+    public HttpResponse<String> signIn(String employeeId) throws IOException, InterruptedException {
         get("/api/session/users");
         return post("/api/session/login", "{\"employeeId\":\"" + employeeId + "\"}");
     }

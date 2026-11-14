@@ -1,6 +1,6 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { NOW, respond, setupHttp, text } from '../../../testing/fixtures';
+import { fail, NOW, respond, setupHttp, text } from '../../../testing/fixtures';
 import { NextHolidayCard } from './next-holiday-card';
 
 describe('NextHolidayCard', () => {
@@ -45,4 +45,16 @@ describe('NextHolidayCard', () => {
     expect(text(root)).toContain('No more holidays on the calendar yet.');
     expect(root.querySelector('.holiday-countdown')).toBeNull();
   });
+
+  it('says so when the calendar fails, and shows a skeleton while it loads, rather than "no holidays"', async () => {
+    const fixture = TestBed.createComponent(NextHolidayCard);
+    TestBed.tick();
+    expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid=list-loading]')).not.toBeNull();
+
+    await fail(http, '/api/holidays?year=2026');
+
+    expect(text(fixture.nativeElement)).toContain("The holiday calendar didn't load.");
+    expect(text(fixture.nativeElement)).not.toContain('No more holidays');
+  });
+
 });

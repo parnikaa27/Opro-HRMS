@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { RouterLink } from '@angular/router';
 import { Holiday } from '../../models/company';
 import { Icon } from '../../shared/ui/icon';
+import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { addDays, daysUntil, formatShortDate, formatWeekday, maldivesToday, weekdayOf, yearOf } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { plural } from '../../shared/utils/text';
@@ -19,7 +20,7 @@ const longWeekendStart = ({ date }: Holiday) =>
 
 @Component({
   selector: 'app-next-holiday-card',
-  imports: [Icon, RouterLink],
+  imports: [Icon, ListSkeleton, RouterLink],
   template: `
     <section class="card holiday-card">
       <div class="card-heading">
@@ -29,7 +30,11 @@ const longWeekendStart = ({ date }: Holiday) =>
         </div>
         <a routerLink="/calendar" class="small-calendar" aria-label="Open the holiday calendar"><app-icon name="calendar" [size]="18" /></a>
       </div>
-      @if (next(); as holiday) {
+      @if (thisYear.error()) {
+        <p class="attendance-off">The holiday calendar didn't load. Refresh the page to try again.</p>
+      } @else if (thisYear.isLoading() && !next()) {
+        <app-list-skeleton [count]="1" />
+      } @else if (next(); as holiday) {
         <div class="next-holiday" data-testid="next-holiday">
           <div class="date-box">
             <b>{{ dayNumber(holiday) }}</b>
@@ -58,7 +63,7 @@ const longWeekendStart = ({ date }: Holiday) =>
 export class NextHolidayCard {
   private readonly api = inject(HolidaysApi);
   private readonly today = maldivesToday();
-  private readonly thisYear = this.api.forYear(() => String(yearOf(this.today)));
+  protected readonly thisYear = this.api.forYear(() => String(yearOf(this.today)));
   private readonly nextYear = this.api.forYear(() => String(yearOf(this.today) + 1));
 
   private readonly upcoming = computed(() =>

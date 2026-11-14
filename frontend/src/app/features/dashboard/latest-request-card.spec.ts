@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { LeaveRequest } from '../../models/leave';
-import { respond, setupHttp, text } from '../../../testing/fixtures';
+import { fail, respond, setupHttp, text } from '../../../testing/fixtures';
 import { LatestRequestCard } from './latest-request-card';
 
 const request = (overrides: Partial<LeaveRequest>): LeaveRequest => ({
@@ -35,4 +35,17 @@ describe('LatestRequestCard', () => {
   it('invites a first request when there are none', async () => {
     expect(await render([])).toContain('No leave requests yet. Request leave');
   });
+
+  it('says so when requests fail to load, instead of inviting a first request', async () => {
+    const http = setupHttp();
+    const fixture = TestBed.createComponent(LatestRequestCard);
+    TestBed.tick();
+    expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid=list-loading]')).not.toBeNull();
+
+    await fail(http, '/api/leave/requests');
+
+    expect(text(fixture.nativeElement)).toContain("Your requests didn't load.");
+    expect(text(fixture.nativeElement)).not.toContain('No leave requests yet');
+  });
+
 });

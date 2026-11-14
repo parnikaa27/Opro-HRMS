@@ -60,4 +60,16 @@ describe('TodayAttendanceCard', () => {
     expect(text(await render(undefined, [{ ...DEVICES[0], isOnline: false }]))).toContain('You haven’t punched in yet Biometric device offline Not punched in yet');
     expect((await render(undefined, [])).querySelector('.synced')).toBeNull();
   });
+
+  it('shows a placeholder while today loads, not "you haven’t punched in yet"', async () => {
+    const fixture = TestBed.createComponent(TodayAttendanceCard);
+    fixture.componentRef.setInput('workLocation', 'Malé office');
+    fixture.componentRef.setInput('isLoading', true);
+    await respond(http, { '/api/devices': DEVICES });
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(root.querySelector('[data-testid=list-loading]')).not.toBeNull();
+    expect(text(root)).not.toContain('punched in');
+  });
+
 });

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { RouterLink } from '@angular/router';
 import { LeaveRequest } from '../../models/leave';
 import { Icon, IconName } from '../../shared/ui/icon';
+import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { StatusPill, Tone } from '../../shared/ui/status-pill';
 import { formatShortDate } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
@@ -18,7 +19,7 @@ const lastTouched = ({ decidedOn, appliedOn }: LeaveRequest) => decidedOn ?? app
 
 @Component({
   selector: 'app-latest-request-card',
-  imports: [Icon, RouterLink, StatusPill],
+  imports: [Icon, ListSkeleton, RouterLink, StatusPill],
   template: `
     <section class="card approval-card" data-testid="latest-request">
       <div class="card-heading">
@@ -27,7 +28,11 @@ const lastTouched = ({ decidedOn, appliedOn }: LeaveRequest) => decidedOn ?? app
           <h2>Leave approval</h2>
         </div>
       </div>
-      @if (latest(); as request) {
+      @if (requests.error()) {
+        <p class="attendance-off">Your requests didn't load. Refresh the page to try again.</p>
+      } @else if (requests.isLoading() && !latest()) {
+        <app-list-skeleton [count]="1" />
+      } @else if (latest(); as request) {
         <div class="approval-row">
           <div class="approval-icon" [class]="view(request).iconClass"><app-icon [name]="view(request).icon" [size]="22" /></div>
           <div>
@@ -49,7 +54,7 @@ const lastTouched = ({ decidedOn, appliedOn }: LeaveRequest) => decidedOn ?? app
 })
 export class LatestRequestCard {
   private readonly api = inject(LeaveApi);
-  private readonly requests = this.api.requests();
+  protected readonly requests = this.api.requests();
   private readonly types = this.api.types();
 
   protected readonly latest = computed(() =>

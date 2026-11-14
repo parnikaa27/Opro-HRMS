@@ -41,7 +41,7 @@ const DEFAULT_LINE = 'Here’s everything you need for the day.';
       <app-welcome-banner [dateLabel]="dateLabel" [heading]="greeting + ', ' + firstName() + '.'" [line]="line()" />
       <div class="employee-grid">
         <div class="main-column">
-          <app-today-attendance-card [day]="today()" [workLocation]="user.workLocation" />
+          <app-today-attendance-card [day]="today()" [workLocation]="user.workLocation" [isLoading]="thisMonth.isLoading()" [hasFailed]="!!thisMonth.error()" />
           <div class="balance-grid">
             <app-leave-balance-card />
             <app-visa-card [employee]="user" />
@@ -54,7 +54,9 @@ const DEFAULT_LINE = 'Here’s everything you need for the day.';
               </div>
               <a routerLink="/attendance" class="text-link">View report <app-icon name="arrow" [size]="15" /></a>
             </div>
-            @if (thisMonth.isLoading() && recentRows().length === 0) {
+            @if (thisMonth.error()) {
+              <p class="attendance-off">Your recent attendance didn't load. Refresh the page to try again.</p>
+            } @else if (thisMonth.isLoading() && recentRows().length === 0) {
               <app-list-skeleton [count]="4" />
             } @else {
               <app-attendance-table [rows]="recentRows()" />

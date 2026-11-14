@@ -7,6 +7,11 @@ spring:
   flyway:
     locations: classpath:db/migration,classpath:db/dev
 
+opro:
+  dev:
+    # No biometric device yet: fill recent weeks with believable punches on start up.
+    generate-punches: true
+
 server:
   servlet:
     session:

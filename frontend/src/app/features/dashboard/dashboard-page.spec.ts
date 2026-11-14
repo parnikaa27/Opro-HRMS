@@ -2,7 +2,7 @@ import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Session } from '../../core/session';
 import { AttendanceDay } from '../../models/attendance';
-import { employee, NOW, respond, setupHttp, text, texts, TODAY } from '../../../testing/fixtures';
+import { employee, fail, NOW, respond, setupHttp, text, texts, TODAY } from '../../../testing/fixtures';
 import { DashboardPage, greetingFor } from './dashboard-page';
 
 const day = (date: string, status: AttendanceDay['status'], punches: AttendanceDay['punches'] = []): AttendanceDay => ({
@@ -69,4 +69,15 @@ describe('DashboardPage', () => {
   ])('says the right greeting at %i:00', (hour, greeting) => {
     expect(greetingFor(hour)).toBe(greeting);
   });
+
+  it('says so when attendance fails to load, rather than claiming no punches', async () => {
+    const fixture = TestBed.createComponent(DashboardPage);
+    await fail(http, '/api/attendance?month=2026-11');
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(text(root.querySelector('[data-testid=today-card]') as HTMLElement)).toContain("Today Today's punches didn't load Refresh the page to try again.");
+    expect(text(root.querySelector('.recent-section') as HTMLElement)).toContain("Your recent attendance didn't load.");
+    expect(text(root)).not.toContain('No punches recorded yet');
+  });
+
 });

@@ -3,8 +3,11 @@ package mv.opro.hrms.employee;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +34,11 @@ public class People {
 
     public Optional<Employee> findActive(String id) {
         return employees.findById(id).filter(employee -> employee.isActiveOn(today()));
+    }
+
+    // Names for a handful of ids, such as who decided a request.
+    public Map<String, String> namesOf(Collection<String> ids) {
+        return employees.findAllById(ids).stream().collect(Collectors.toMap(Employee::getId, Employee::getFullName));
     }
 
     // Manager access follows reporting lines, so moving someone moves the access with them.

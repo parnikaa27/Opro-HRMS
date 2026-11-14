@@ -6,6 +6,7 @@ import { CompanyApi } from '../../core/company-api';
 import { AttendanceDay, AttendanceStatus } from '../../models/attendance';
 import { CircleProgress } from '../../shared/ui/circle-progress';
 import { Icon } from '../../shared/ui/icon';
+import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { formatClock, formatDuration, minutesAgo, minutesWorkedSoFar } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { plural } from '../../shared/utils/text';
@@ -23,7 +24,7 @@ const OFF_DAY: Partial<Record<AttendanceStatus, { title: string; body: string }>
 
 @Component({
   selector: 'app-today-attendance-card',
-  imports: [CircleProgress, Icon, RouterLink],
+  imports: [CircleProgress, Icon, ListSkeleton, RouterLink],
   template: `
     <section class="attendance-hero card" data-testid="today-card">
       <div class="card-heading">
@@ -36,7 +37,11 @@ const OFF_DAY: Partial<Record<AttendanceStatus, { title: string; body: string }>
         }
       </div>
 
-      @if (offDay(); as message) {
+      @if (hasFailed()) {
+        <p class="attendance-off"><strong>Today's punches didn't load</strong>Refresh the page to try again.</p>
+      } @else if (isLoading() && !day()) {
+        <app-list-skeleton [count]="1" />
+      } @else if (offDay(); as message) {
         <p class="attendance-off"><strong>{{ message.title }}</strong>{{ message.body }}</p>
       } @else if (firstIn(); as first) {
         <div class="attendance-body">
@@ -83,6 +88,9 @@ const OFF_DAY: Partial<Record<AttendanceStatus, { title: string; body: string }>
 export class TodayAttendanceCard {
   readonly day = input<AttendanceDay>();
   readonly workLocation = input.required<string>();
+  // Without these, a failed or slow load would read as "you haven't punched in yet", which isn't true.
+  readonly isLoading = input(false);
+  readonly hasFailed = input(false);
 
   private readonly now = toSignal(interval(TICK_MS).pipe(map(() => new Date())), { initialValue: new Date() });
   private readonly devices = inject(CompanyApi).devices();
@@ -98,6 +106,9 @@ export class TodayAttendanceCard {
   });
 
   protected readonly heading = computed(() => {
+    if (this.hasFailed() || (this.isLoading() && !this.day())) {
+      return 'Today';
+    }
     const status = this.day()?.status;
     if (status === 'weekend' || status === 'holiday' || status === 'on-leave') {
       return 'Not a working day';

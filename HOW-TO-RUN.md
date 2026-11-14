@@ -61,13 +61,16 @@ HRMS/
     pom.xml                Dependencies, pinned by Spring Boot's own version list
     src/main/java/mv/opro/hrms/
       employee/            Employees and visas, and roles worked out from reporting lines
+      holiday/             The holiday calendar, used by attendance and leave
+      attendance/          Punches, days worked out by DayCalculator, punch fix requests, devices, and the dev punch seeder
+      leave/               Leave types, balances, applying and cancelling, the working day count
       session/             Who is signed in, /api/me, and the dev only pick a user sign in
       security/            Session cookie, XSRF check, JSON errors instead of redirects
       common/              Error shape ({"message": ...}) shared by every endpoint
       config/              The Maldives time clock
     src/main/resources/
       application.yml      Settings for every environment. The database comes from DB_URL, DB_USER, DB_PASSWORD
-      application-dev.yml  Local database and the dev sign in
+      application-dev.yml  Local database, the dev sign in, and generated punches (opro.dev.generate-punches)
       db/migration/        Flyway migrations, the schema
       db/dev/              Development seed data, the same people as the mock. Never loaded outside dev
     src/test/java/         Integration tests: a real server against a throwaway PostgreSQL (Testcontainers)
@@ -116,7 +119,9 @@ Then the frontend, from `frontend/`:
 USE_MOCK_BACKEND=false npm start
 ```
 
-That sends `/api` to Spring on `http://localhost:8080` instead. Nothing else changes. So far Spring has sign in, sign out and `/api/me`. The rest of the API comes over feature by feature, so for now most pages only work against the mock.
+That sends `/api` to Spring on `http://localhost:8080` instead. Nothing else changes. So far Spring has sign in, sign out, `/api/me`, holidays, attendance and leave, so the Overview, Attendance and Leave pages work end to end. Team, HR, calendar events, documents, notifications and the profile pages still only work against the mock.
+
+To see a working day on a weekend, pin Spring's clock the way `MOCK_NOW` pins the mock's: add `-Dspring-boot.run.jvmArguments="-Dopro.fixed-time=2026-11-12T10:30:00+05:00"`.
 
 ### Backend tests (inside `backend/`)
 

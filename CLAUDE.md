@@ -10,7 +10,7 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 | `frontend/` | Angular 22, Tailwind CSS v4, Vitest, Playwright | Employee, manager and HR views built. Employee and manager pages match the Figma design; HR pages reuse its classes |
 | `design/figma-make/` | `App.tsx` and `index.css` copied from the Figma Make file "Opro HRMS Portal" | The visual source of truth |
 | `frontend/dev-server/` | Plain Node mock API serving JSON fixtures | In progress |
-| `backend/` | Java 25, Spring Boot 4.1, PostgreSQL 18, Flyway, Maven | Started: schema for people and visas, session, XSRF, `/api/me`. The rest of the API moves over feature by feature |
+| `backend/` | Java 25, Spring Boot 4.1, PostgreSQL 18, Flyway, Maven | Session, `/api/me`, holidays, attendance (days, punch fix requests, devices) and leave (types, balances, apply, cancel) are live. The rest of the API moves over feature by feature |
 
 ---
 
@@ -116,6 +116,9 @@ Sidebar: Overview, People, Leave (count waiting), Calendar, Visas, Inbox (count 
 - **Shift rules are dated versions.** HR sets shift start and end, grace, half day threshold and Ramadan hours from a date after today. Days already worked keep the version they were worked under. A version that hasn't started can be cancelled. Ramadan hours apply from the first day of Ramadan to the day before Eid al Fitr in the holiday calendar (backend). The work week is not editable.
 - The backend sends `expectedOut` and `scheduledMinutes` with each day, from the version in force. The frontend shows them and never works out a shift itself.
 - **Punch fixes by HR:** add a missing punch or void a wrong one, one change at a time, always with a reason. Device punches are never overwritten, every change is logged with who, when and why, and the backend works the day out again. An approved punch fix request goes through the same path, logged as approved by whoever decided it. Corrected days show "Corrected" to everyone who sees them.
+- Raw punches are never edited. A wrong one is voided and a missing one is added with source `manual`. Each day is worked out per request from the punches, the schedule version in force, holidays, approved full day leave and the weekend (`DayCalculator`).
+- Ramadan hours are stored on the schedule but not applied yet: that needs the holiday calendar to mark Ramadan's start and end reliably, which comes with the HR holiday work.
+- Until a device is connected, the dev profile fills recent weeks with believable punches on start up (`DevPunchSeeder`). Real devices replace it.
 - The biometric device (model not yet known) pushes raw punches to the backend. A day may have **many punches** (breaks). The backend pairs them and works out first in, last out, time worked and status. **The frontend only displays these values. It never calculates attendance status.**
 
 ### Leave rules (placeholders, confirm with HR against the Maldives Employment Act)
@@ -136,7 +139,10 @@ Sidebar: Overview, People, Leave (count waiting), Calendar, Visas, Inbox (count 
 - Sick leave longer than `documentRequiredAfterDays` asks for a medical certificate: PDF, JPG or PNG up to 5 MB, attached when applying or later from the request history. It is health data: the employee and HR can open it, managers only see that one is attached. The server checks the file's first bytes, not just its type, and serves it with `nosniff` and a `sandbox` policy.
 - Single level approval by the direct manager.
 - Statuses: `pending`, `approved`, `rejected`, `cancelled`.
-- The backend owns day counts and balances. The frontend may preview a count but the server's number wins.
+- The backend owns day counts and balances. The frontend may preview a count but the server's number wins: Spring ignores any `days` the client sends.
+- Balances are never stored as totals. Taken is leave used before Opro HRMS (`taken_before`) plus approved requests in the year; pending is pending requests. Applying locks the person's record, so two requests sent at once can't spend the same days.
+- A request stays inside one leave year. Leave across New Year is two requests. Booking into next year opens that year's balance from the policy's default, for types the person holds now.
+- Overlapping pending or approved requests are refused. Cancelling works for pending requests, and approved ones that haven't started.
 
 ### Visa and work permit
 
