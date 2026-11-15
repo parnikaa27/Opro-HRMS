@@ -9,10 +9,10 @@ const day = (employeeId: string, employeeName: string, date: string, status: Att
 });
 
 const NOVEMBER = [
-  day('R', 'Rahim Uddin', '2026-11-10', 'absent'),
-  day('R', 'Rahim Uddin', TODAY, 'late', 300),
-  day('A', 'Ahmed Zahir', TODAY, 'present', 480),
-  day('A', 'Ahmed Zahir', '2026-11-20', 'present', 480),
+  day('R', 'Rohit Verma', '2026-11-10', 'absent'),
+  day('R', 'Rohit Verma', TODAY, 'late', 300),
+  day('A', 'Karan Mehta', TODAY, 'present', 480),
+  day('A', 'Karan Mehta', '2026-11-20', 'present', 480),
 ];
 
 describe('TeamAttendancePage', () => {
@@ -40,8 +40,8 @@ describe('TeamAttendancePage', () => {
 
     expect(text(root.querySelector('[data-testid=metric-present]') as HTMLElement)).toBe('2 / 3');
     expect(texts(root, 'team-attendance-row')).toEqual([
-      'AZ Ahmed Zahir 1 / 1 0 0 08h 00m Present',
-      'RU Rahim Uddin 1 / 2 1 1 05h 00m Late',
+      'KM Karan Mehta 1 / 1 0 0 08h 00m Present',
+      'RV Rohit Verma 1 / 2 1 1 05h 00m Late',
     ]);
     expect(root.querySelector('[data-testid=team-attendance-row] a')?.getAttribute('href')).toBe('/team/A');
   });
@@ -50,9 +50,9 @@ describe('TeamAttendancePage', () => {
     const root = await render();
 
     fill(root, 'month-picker', '2026-10');
-    await respond(http, { '/api/team/attendance?month=2026-10': [day('A', 'Ahmed Zahir', '2026-10-05', 'late', 480)] });
+    await respond(http, { '/api/team/attendance?month=2026-10': [day('A', 'Karan Mehta', '2026-10-05', 'late', 480)] });
 
-    expect(texts(root, 'team-attendance-row')).toEqual(['AZ Ahmed Zahir 1 / 1 1 0 08h 00m 0%']);
+    expect(texts(root, 'team-attendance-row')).toEqual(['KM Karan Mehta 1 / 1 1 0 08h 00m 0%']);
   });
 
   it('exports the table and says when a month is empty', async () => {

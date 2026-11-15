@@ -22,8 +22,8 @@ describe('HrVisasPage', () => {
 
     expect(texts(root, 'visa-row')).toEqual([
       'PN Priya Nair No record Add',
-      'RU Rahim Uddin MV-EV-1 02 Nov 2026 Expired 01 Jan 2030 Valid Update',
-      'KP Kasun Perera MV-EV-1 20 Dec 2026 Expires soon 01 Jan 2030 Valid Update',
+      'RV Rohit Verma MV-EV-1 02 Nov 2026 Expired 01 Jan 2030 Valid Update',
+      'AR Arjun Reddy MV-EV-1 20 Dec 2026 Expires soon 01 Jan 2030 Valid Update',
     ]);
   });
 
@@ -34,7 +34,7 @@ describe('HrVisasPage', () => {
 
     byTestId(root, 'edit-visa')[1].click();
     TestBed.tick();
-    expect(text(root.querySelector('dialog h2') as HTMLElement)).toBe('Update Rahim’s papers');
+    expect(text(root.querySelector('dialog h2') as HTMLElement)).toBe('Update Rohit’s papers');
     click(root, 'visa-submit');
     await respond(http, {});
     http.expectOne('/api/hr/employees/OPR-0021/visa').flush({});

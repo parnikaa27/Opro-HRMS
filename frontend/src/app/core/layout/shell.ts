@@ -56,10 +56,12 @@ export class Shell {
   private readonly pendingLeave = this.team.leaveRequests({ status: 'pending', isEnabled: this.countsWaiting, scope: this.scope });
   private readonly pendingFixes = this.team.corrections({ status: 'pending', isEnabled: this.countsWaiting, scope: this.scope });
   private readonly pendingHomeDays = this.team.homeDays({ status: 'pending', isEnabled: this.countsWaiting, scope: this.scope });
+  private readonly pendingCompOffs = this.team.compOffs({ status: 'pending', isEnabled: this.countsWaiting, scope: this.scope });
+  private readonly pendingFlights = this.hr.flightClaims({ status: 'pending', isEnabled: () => this.view() === 'hr' && this.session.isHr() });
   private readonly changeRequests = this.hr.changeRequests({ isEnabled: () => this.view() === 'hr' && this.session.isHr() });
   protected readonly badges = computed<Partial<Record<BadgeKey, number>>>(() => ({
-    approvals: valueOr(this.pendingLeave, []).length + valueOr(this.pendingFixes, []).length + valueOr(this.pendingHomeDays, []).length,
-    inbox: valueOr(this.changeRequests, []).filter(({ status }) => status === 'open').length,
+    approvals: [valueOr(this.pendingLeave, []), valueOr(this.pendingFixes, []), valueOr(this.pendingHomeDays, []), valueOr(this.pendingCompOffs, [])].reduce((total, list) => total + list.length, 0),
+    inbox: valueOr(this.changeRequests, []).filter(({ status }) => status === 'open').length + valueOr(this.pendingFlights, []).length,
   }));
 
   constructor() {
@@ -67,7 +69,7 @@ export class Shell {
     const seen = saves();
     effect(() => {
       if (saves() !== seen) {
-        untracked(() => [this.pendingLeave, this.pendingFixes, this.pendingHomeDays, this.changeRequests].forEach((counts) => counts.reload()));
+        untracked(() => [this.pendingLeave, this.pendingFixes, this.pendingHomeDays, this.pendingCompOffs, this.pendingFlights, this.changeRequests].forEach((counts) => counts.reload()));
       }
     });
   }

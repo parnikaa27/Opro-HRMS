@@ -12,11 +12,11 @@ class WorkingDaysTest {
     private static final LocalDate SUNDAY = LocalDate.of(2026, 12, 6);
 
     @Test
-    void weekendsAndHolidaysInsideTheRangeDontCount() {
-        // Sunday 6 to Sunday 13 December, with Friday and Saturday off and a holiday on the Tuesday.
+    void fridaysAndHolidaysInsideTheRangeDontCount() {
+        // Sunday 6 to Sunday 13 December, with Friday off, Saturday worked and a holiday on the Tuesday.
         BigDecimal days = WorkingDays.count(SUNDAY, SUNDAY.plusDays(7), false, Set.of(SUNDAY.plusDays(2)));
 
-        assertThat(days).isEqualByComparingTo("5");
+        assertThat(days).isEqualByComparingTo("6");
     }
 
     @Test

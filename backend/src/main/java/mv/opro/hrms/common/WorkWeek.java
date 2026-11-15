@@ -4,10 +4,10 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.Set;
 
-// Sunday to Thursday. Friday and Saturday are the weekend in the Maldives.
+// Saturday to Thursday. Friday is Opro's only day off each week.
 public final class WorkWeek {
 
-    private static final Set<DayOfWeek> WEEKEND = Set.of(DayOfWeek.FRIDAY, DayOfWeek.SATURDAY);
+    private static final Set<DayOfWeek> WEEKEND = Set.of(DayOfWeek.FRIDAY);
 
     private WorkWeek() {}
 

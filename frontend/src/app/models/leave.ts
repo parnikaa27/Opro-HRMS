@@ -7,13 +7,25 @@ export interface LeaveType {
   isUnlimited?: boolean;
   defaultEntitlement?: number;
   documentRequiredAfterDays?: number;
+  // Everyone gets it each year, or HR gives it to people one by one (maternity, marriage).
+  isForEveryone?: boolean;
+  // Unused days move into the next year, up to the cap. Otherwise they lapse.
+  carriesForward?: boolean;
+  carryForwardCap?: number;
+  // No longer offered. Kept so past requests still have a name.
+  retiredOn?: string;
 }
+
+// Compensatory off is earned for days off worked. The policy never gives it.
+export const COMP_OFF = 'comp-off';
 
 export interface LeaveBalance {
   type: string;
+  // Includes anything carried forward from last year.
   entitled: number;
   taken: number;
   pending: number;
+  carriedOver?: number;
 }
 
 export interface LeaveRequest {

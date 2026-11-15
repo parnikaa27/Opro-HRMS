@@ -11,6 +11,7 @@ import { valueOr } from '../../shared/utils/resource';
 import { DecisionState } from '../team/decision-state';
 import { DeclineForm } from '../team/decline-form';
 import { submittedAgo } from '../team/request-row';
+import { FlightClaimsInbox } from './flight-claims-inbox';
 import { HrApi } from './hr-api';
 
 type Status = ChangeRequest['status'];
@@ -23,14 +24,14 @@ const TABS: { value: Status; label: string; empty: string }[] = [
 
 @Component({
   selector: 'app-hr-inbox-page',
-  imports: [Avatar, DeclineForm, Dialog, Icon, ListSkeleton, RouterLink, StatusPill],
+  imports: [Avatar, DeclineForm, Dialog, FlightClaimsInbox, Icon, ListSkeleton, RouterLink, StatusPill],
   template: `
     <div class="page-view">
       <div class="page-title">
         <div>
           <span class="eyebrow">PEOPLE &amp; CULTURE</span>
           <h1>Inbox</h1>
-          <p>Personal detail changes people asked for from their profile. Open the person, edit their details, then mark the request done.</p>
+          <p>What people send HR from their profile: detail changes, and flight claims with their receipts.</p>
         </div>
       </div>
 
@@ -76,6 +77,8 @@ const TABS: { value: Status; label: string; empty: string }[] = [
           }
         }
       </section>
+
+      <app-flight-claims-inbox />
     </div>
 
     <app-dialog heading="Decline change" [isOpen]="declining() !== undefined" (isOpenChange)="$event || declining.set(undefined)">

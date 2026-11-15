@@ -43,7 +43,7 @@ import { TeamApi } from './team-api';
             <app-list-skeleton [count]="5" />
           } @else {
             <div class="table-wrap">
-              <table>
+              <table class="stacks">
                 <thead>
                   <tr>
                     <th scope="col">PERSON</th>
@@ -63,11 +63,11 @@ import { TeamApi } from './team-api';
                           <span><strong>{{ row.name }}</strong></span>
                         </a>
                       </td>
-                      <td>{{ row.present }} / {{ row.workingDays }}</td>
-                      <td>{{ row.late }}</td>
-                      <td>{{ row.missed }}</td>
-                      <td><b>{{ row.hours }}</b></td>
-                      <td>
+                      <td data-label="DAYS PRESENT">{{ row.present }} / {{ row.workingDays }}</td>
+                      <td data-label="LATE">{{ row.late }}</td>
+                      <td data-label="MISSED">{{ row.missed }}</td>
+                      <td data-label="WORK HOURS"><b>{{ row.hours }}</b></td>
+                      <td [attr.data-label]="isCurrentMonth() ? 'TODAY' : 'ON TIME'">
                         @if (isCurrentMonth() && row.today; as today) {
                           <app-status-pill [tone]="status(today).tone">{{ status(today).label }}</app-status-pill>
                         } @else {

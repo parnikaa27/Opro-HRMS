@@ -54,6 +54,7 @@ class HrPeople {
 
     @Transactional
     Employee hire(Employee.Details details) {
+        employees.lockNewIds();
         String id = nextId();
         checkEmail(details.email(), id);
         checkManager(id, details.managerId());

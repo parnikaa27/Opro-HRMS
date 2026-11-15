@@ -12,7 +12,7 @@ describe('HrOverviewPage', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(NOW);
     http = setupHttp();
-    TestBed.inject(Session).user.set(employee({ fullName: 'Aishath Shifa', roles: ['EMPLOYEE', 'HR'] }));
+    TestBed.inject(Session).user.set(employee({ fullName: 'Ananya Iyer', roles: ['EMPLOYEE', 'HR'] }));
   });
 
   afterEach(() => vi.useRealTimers());
@@ -23,7 +23,7 @@ describe('HrOverviewPage', () => {
       '/api/hr/employees': PEOPLE,
       '/api/hr/leave-requests?status=pending': [
         { id: 'LR-2', employeeId: 'P', employeeName: 'Priya Nair', type: 'annual', from: '2026-12-20', to: '2026-12-24', days: 3, reason: 'Trip', status: 'pending', appliedOn: '2026-11-11' },
-        { id: 'LR-1', employeeId: 'M', employeeName: 'Mariyam Nisha', type: 'annual', from: '2026-12-22', to: '2026-12-22', days: 1, reason: 'Trip', status: 'pending', appliedOn: '2026-11-09' },
+        { id: 'LR-1', employeeId: 'M', employeeName: 'Sneha Kulkarni', type: 'annual', from: '2026-12-22', to: '2026-12-22', days: 1, reason: 'Trip', status: 'pending', appliedOn: '2026-11-09' },
       ],
       '/api/hr/corrections?status=pending': [{ id: 'AC-1' }],
       '/api/hr/change-requests': [{ id: 'CR-1', status: 'open' }, { id: 'CR-2', status: 'done' }],
@@ -41,15 +41,15 @@ describe('HrOverviewPage', () => {
   it('greets HR with the company at a glance', async () => {
     const root = await render();
 
-    expect(text(root.querySelector('.welcome') as HTMLElement)).toBe('THURSDAY, 12 NOVEMBER Good morning, Aishath. 4 people at Opro. 2 in today.');
+    expect(text(root.querySelector('.welcome') as HTMLElement)).toBe('THURSDAY, 12 NOVEMBER Good morning, Ananya. 4 people at Opro. 2 in today.');
     expect([texts(root, 'stat-people'), texts(root, 'stat-waiting'), texts(root, 'stat-visas'), texts(root, 'stat-inbox')]).toEqual([['4'], ['3'], ['2'], ['1']]);
   });
 
   it('lists the oldest waiting leave, visa alerts and holidays to confirm soon', async () => {
     const root = await render();
 
-    expect(texts(root, 'waiting-leave')).toEqual(['MN Mariyam Nisha Submitted 3 days ago 22 December 2026 1 day', 'PN Priya Nair Submitted yesterday 20 Dec to 24 December 2026 3 days']);
-    expect(texts(root, 'visa-alert')).toEqual(['RU Rahim Uddin Visa expired 02 Nov 2026 Expired', 'KP Kasun Perera Visa expires 20 Dec 2026 38 days']);
+    expect(texts(root, 'waiting-leave')).toEqual(['SK Sneha Kulkarni Submitted 3 days ago 22 December 2026 1 day', 'PN Priya Nair Submitted yesterday 20 Dec to 24 December 2026 3 days']);
+    expect(texts(root, 'visa-alert')).toEqual(['RV Rohit Verma Visa expired 02 Nov 2026 Expired', 'AR Arjun Reddy Visa expires 20 Dec 2026 38 days']);
     expect(root.querySelector('[data-testid=visa-alert]')?.getAttribute('href')).toBe('/hr/people/OPR-0021');
     expect(texts(root, 'to-confirm')).toEqual(['Mawlid al Nabi Tentatively 20 Nov in 8 days']);
   });

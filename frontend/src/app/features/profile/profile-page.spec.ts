@@ -1,15 +1,18 @@
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { Session } from '../../core/session';
-import { click, employee, NOW, setupHttp, settle, text } from '../../../testing/fixtures';
+import { HttpTestingController } from '@angular/common/http/testing';
+import { click, employee, NOW, respond, setupHttp, settle, text } from '../../../testing/fixtures';
 import { ChangeRequestForm } from './change-request-form';
 import { ProfilePage } from './profile-page';
 
 describe('ProfilePage', () => {
+  let http: HttpTestingController;
+
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(NOW);
-    setupHttp();
+    http = setupHttp();
     TestBed.inject(Session).user.set(employee({ nationality: 'Maldivian' }));
   });
 
@@ -20,7 +23,8 @@ describe('ProfilePage', () => {
 
   const render = async () => {
     const fixture = TestBed.createComponent(ProfilePage);
-    await fixture.whenStable();
+    // Someone with no flight allowance: the card stays out of the way.
+    await respond(http, { '/api/flights': { year: 2026, usedUsd: 0, pendingUsd: 0, ratesPerUsd: {}, claims: [] } });
     return fixture;
   };
 
@@ -30,6 +34,7 @@ describe('ProfilePage', () => {
     expect(text(root.querySelector('[data-testid=id-card-number]') as HTMLElement)).toBe('OPR-0018');
     expect(root.querySelector('[data-testid=employee-card]')).not.toBeNull();
     expect(root.querySelector('[data-testid=visa-none]')).not.toBeNull();
+    expect(root.querySelector('[data-testid=flight-card]')).toBeNull();
   });
 
   it('prints the card with the browser print dialog', async () => {

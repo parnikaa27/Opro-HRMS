@@ -37,11 +37,11 @@ describe('ChangeRequestForm', () => {
   it('sends what to change and the new value', async () => {
     const { root, submitForm, sentCount } = await render();
     fill(root, 'change-field', 'Emergency contact');
-    fill(root, 'change-details', ' Ali Shareef, father, +960 777 2011 ');
+    fill(root, 'change-details', ' Amit Kulkarni, father, +960 777 2011 ');
     await submitForm();
 
     const request = http.expectOne('/api/profile/change-requests');
-    expect(request.request.body).toEqual({ field: 'Emergency contact', details: 'Ali Shareef, father, +960 777 2011' });
+    expect(request.request.body).toEqual({ field: 'Emergency contact', details: 'Amit Kulkarni, father, +960 777 2011' });
     request.flush(null);
     await settle();
     expect(sentCount()).toBe(1);

@@ -59,8 +59,9 @@ test('HR works through the inbox and the leave policy', async ({ page }) => {
   await expect(page.getByTestId('change-row').filter({ hasText: '+960 777 8018' })).toContainText('Done');
 
   await page.getByTestId('nav-policies').click();
-  await expect(page.getByTestId('policy-row')).toHaveCount(6);
+  // Other journeys add types at the same time, so this checks rows rather than counting them.
   await expect(page.getByTestId('policy-row').filter({ hasText: 'Unpaid leave' })).toContainText('No limit');
+  await expect(page.getByTestId('policy-row').filter({ hasText: 'Compensatory off' })).toContainText('Earned by working days off');
 });
 
 test('HR posts an announcement and takes it down', async ({ page }) => {

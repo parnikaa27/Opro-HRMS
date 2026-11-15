@@ -14,9 +14,9 @@ const TYPES = [
   { code: 'unpaid', name: 'Unpaid leave', allowsHalfDay: false, isUnlimited: true },
 ];
 const DETAIL = {
-  ...employee({ id: 'OPR-0021', fullName: 'Rahim Uddin', visa: { workPermitNumber: 'WP', visaNumber: 'MV-EV-4', passportLast4: '9012', visaIssuedOn: '2024-11-02', visaExpiry: '2026-11-02', passportExpiry: '2029-01-01' } }),
+  ...employee({ id: 'OPR-0021', fullName: 'Rohit Verma', visa: { workPermitNumber: 'WP', visaNumber: 'MV-EV-4', passportLast4: '9012', visaIssuedOn: '2024-11-02', visaExpiry: '2026-11-02', passportExpiry: '2029-01-01' } }),
   leaveBalances: [{ type: 'annual', entitled: 32, taken: 20, pending: 0 }],
-  adjustments: [{ id: 'BA-1', employeeId: 'OPR-0021', type: 'annual', days: 2, reason: 'Carried forward', by: 'OPR-0002', byName: 'Aishath Shifa', on: '2026-01-05' }],
+  adjustments: [{ id: 'BA-1', employeeId: 'OPR-0021', type: 'annual', days: 2, reason: 'Carried forward', by: 'OPR-0002', byName: 'Ananya Iyer', on: '2026-01-05' }],
 };
 
 describe('HrPersonPage', () => {
@@ -35,8 +35,8 @@ describe('HrPersonPage', () => {
     fixture.componentRef.setInput('employeeId', 'OPR-0021');
     await respond(http, {
       [PERSON]: detail,
-      [EDITS]: [{ id: 'PE-1', employeeId: 'OPR-0021', date: '2026-11-10', action: 'add', time: '08:55', reason: 'Device missed him', by: 'OPR-0002', byName: 'Aishath Shifa', on: '2026-11-11' }],
-      [EVERYONE]: [employee({ id: 'OPR-0030', fullName: 'Ali Shareef', managerId: 'OPR-0021' }), employee()],
+      [EDITS]: [{ id: 'PE-1', employeeId: 'OPR-0021', date: '2026-11-10', action: 'add', time: '08:55', reason: 'Device missed him', by: 'OPR-0002', byName: 'Ananya Iyer', on: '2026-11-11' }],
+      [EVERYONE]: [employee({ id: 'OPR-0030', fullName: 'Amit Kulkarni', managerId: 'OPR-0021' }), employee()],
       [ATTENDANCE]: [
         { employeeId: 'OPR-0021', date: '2026-11-10', status: 'absent', punches: [], workedMinutes: 0, overtimeMinutes: 0 },
         { employeeId: 'OPR-0021', date: '2026-11-20', status: 'present', punches: [], workedMinutes: 0, overtimeMinutes: 0 },
@@ -55,11 +55,11 @@ describe('HrPersonPage', () => {
   it('shows their balances, this month so far, their requests, the change log and visa', async () => {
     const root = await render();
 
-    expect(text(root.querySelector('h1') as HTMLElement)).toBe('Rahim Uddin');
+    expect(text(root.querySelector('h1') as HTMLElement)).toBe('Rohit Verma');
     expect(texts(root, 'leave-balance')).toEqual(['12 annual days Annual leave 12 of 32 days available']);
     expect(texts(root, 'attendance-row')).toEqual(['Tuesday 10 Nov, Tue — — — Absent Fix punches']);
     expect(texts(root, 'leave-request')).toHaveLength(1);
-    expect(texts(root, 'adjustment')).toEqual(['+2 days annual leave Carried forward · Aishath Shifa, 5 Jan']);
+    expect(texts(root, 'adjustment')).toEqual(['+2 days annual leave Carried forward · Ananya Iyer, 5 Jan']);
     expect(text(root.querySelector('[data-testid=visa-card]') as HTMLElement)).toContain('Their visa has lapsed. Start the renewal today');
   });
 
@@ -100,7 +100,7 @@ describe('HrPersonPage', () => {
     const root = await render();
 
     click(root, 'edit-punches');
-    expect(text(root.querySelector('[data-testid=punch-log]') as HTMLElement)).toBe('Added 08:55 AM · Device missed him · Aishath Shifa, 11 Nov');
+    expect(text(root.querySelector('[data-testid=punch-log]') as HTMLElement)).toBe('Added 08:55 AM · Device missed him · Ananya Iyer, 11 Nov');
     fill(root, 'punch-time', '17:20');
     fill(root, 'punch-reason', 'Device offline');
     click(root, 'punch-submit');
@@ -120,7 +120,7 @@ describe('HrPersonPage', () => {
     click(root, 'person-menu');
     click(root, 'mark-leaving');
 
-    expect(text(root.querySelector('[data-testid=move-reports]') as HTMLElement)).toContain('1 person reports to Rahim. Give each of them a new manager');
+    expect(text(root.querySelector('[data-testid=move-reports]') as HTMLElement)).toContain('1 person reports to Rohit. Give each of them a new manager');
     expect(root.querySelector('[data-testid=move-reports] a')?.getAttribute('href')).toBe('/hr/people/OPR-0030/edit');
   });
 
@@ -157,7 +157,7 @@ describe('HrPersonPage', () => {
     click(root, 'person-menu');
     click(root, 'change-photo');
 
-    expect(text(root.querySelector('dialog[open]') as HTMLElement)).toContain('Photo for Rahim');
+    expect(text(root.querySelector('dialog[open]') as HTMLElement)).toContain('Photo for Rohit');
   });
 
   it('says so when nobody has that ID, and when loading fails', async () => {

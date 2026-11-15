@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { AttendanceDay, PunchEdit, WorkSchedule } from '../../models/attendance';
 import { Announcement, ChangeRequest, CompanyEvent, Holiday } from '../../models/company';
 import { Employee, EmployeeDetails, Visa } from '../../models/employee';
+import { FlightClaim, FlightYear } from '../../models/flight';
 import { BalanceAdjustment, LeaveBalance, LeaveRequest, LeaveType } from '../../models/leave';
 
 export interface HrEmployee extends Employee {
@@ -52,7 +53,24 @@ export class HrApi {
   savePhoto = (employeeId: string, photo: Blob) => this.send<Employee>('PUT', `/api/hr/employees/${enc(employeeId)}/photo`, photo);
   removePhoto = (employeeId: string) => this.send<void>('DELETE', `/api/hr/employees/${enc(employeeId)}/photo`);
   saveVisa = (employeeId: string, visa: Visa) => this.send<Visa>('PUT', `/api/hr/employees/${enc(employeeId)}/visa`, visa);
-  updateLeaveType = (code: string, changes: Partial<LeaveType>) => this.send<LeaveType>('PUT', `/api/hr/leave-types/${enc(code)}`, changes);
+  saveLeaveType = ({ code, ...rules }: Partial<LeaveType>) =>
+    code ? this.send<LeaveType>('PUT', `/api/hr/leave-types/${enc(code)}`, rules) : this.send<LeaveType>('POST', '/api/hr/leave-types', rules);
+  // Deleted if nobody ever used it, otherwise retired with its history kept.
+  removeLeaveType = (code: string) => this.send<void>('DELETE', `/api/hr/leave-types/${enc(code)}`);
+  // One person's days of a type this year. Also how a type is given to just one person.
+  setLeaveDays = (employeeId: string, type: string, change: { days: number; reason: string }) =>
+    this.send<void>('PUT', `/api/hr/employees/${enc(employeeId)}/leave/${enc(type)}`, change);
+  takeLeaveTypeAway = (employeeId: string, type: string, reason: string) =>
+    this.send<void>('POST', `/api/hr/employees/${enc(employeeId)}/leave/${enc(type)}/remove`, { reason });
+
+  employeeFlights = (id: () => string) => httpResource<FlightYear>(() => `/api/hr/employees/${enc(id())}/flights`);
+  flightClaims = ({ status, isEnabled = () => true }: { status?: FlightClaim['status']; isEnabled?: () => boolean } = {}) =>
+    httpResource<FlightClaim[]>(() => (isEnabled() ? { url: '/api/hr/flight-claims', ...(status && { params: { status } }) } : undefined), { defaultValue: [] });
+  setFlightAllowance = (employeeId: string, year: number, amountUsd: number) =>
+    this.send<void>('PUT', `/api/hr/employees/${enc(employeeId)}/flight-allowance`, { year, amountUsd });
+  decideFlightClaim = (id: string, decision: 'approved' | 'rejected', note?: string) =>
+    this.send<FlightClaim>('POST', `/api/hr/flight-claims/${enc(id)}/decision`, { decision, ...(note && { note }) });
+  saveRates = (rates: { mvr: number; inr: number }) => this.send<Record<string, number>>('PUT', '/api/hr/exchange-rates', rates);
 
   saveSchedule = (schedule: NewSchedule) => this.send<WorkSchedule>('POST', '/api/hr/schedules', schedule);
   cancelSchedule = (id: string) => this.send<void>('DELETE', `/api/hr/schedules/${enc(id)}`);

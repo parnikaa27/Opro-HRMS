@@ -24,6 +24,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, String> {
     @Query("select max(e.id) from Employee e")
     Optional<String> findHighestId();
 
+    // People are added one at a time, so two added at once can't both take the next ID. Released when the transaction ends.
+    @Query(value = "select 1 from pg_advisory_xact_lock(hashtext('employee-ids'))", nativeQuery = true)
+    int lockNewIds();
+
     boolean existsByEmailIgnoreCaseAndIdNot(String email, String id);
 
     List<Employee> findAllByOrderByFullName();

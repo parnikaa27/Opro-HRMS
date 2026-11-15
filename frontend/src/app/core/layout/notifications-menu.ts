@@ -15,6 +15,7 @@ const TITLES: Record<AppNotification['kind'], string> = {
   record: 'Your record changed',
   schedule: 'Working hours',
   home: 'Working from home',
+  flight: 'Flight allowance',
 };
 
 @Component({

@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { AttendanceDay, CorrectionRequest, WorkMode } from '../../models/attendance';
 import { Location } from '../../shared/utils/location';
 
-export type CorrectionDraft = Pick<CorrectionRequest, 'date' | 'kind' | 'requestedTime' | 'reason'>;
+export type CorrectionDraft = Pick<CorrectionRequest, 'date' | 'kind' | 'category' | 'requestedTime' | 'reason'>;
 
 @Injectable({ providedIn: 'root' })
 export class AttendanceApi {

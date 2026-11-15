@@ -15,6 +15,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import mv.opro.hrms.attendance.AttendanceDay;
 import mv.opro.hrms.attendance.AttendanceService;
+import mv.opro.hrms.attendance.CompOffResponse;
+import mv.opro.hrms.attendance.CompOffs;
 import mv.opro.hrms.attendance.CorrectionRequest;
 import mv.opro.hrms.attendance.CorrectionResponse;
 import mv.opro.hrms.attendance.Corrections;
@@ -59,10 +61,11 @@ class TeamController {
     private final LeaveService leave;
     private final Corrections corrections;
     private final HomeDays homeDays;
+    private final CompOffs compOffs;
     private final Photos photos;
 
     TeamController(TeamAccess access, CurrentUser currentUser, People people, VisaRepository visas, AttendanceService attendance, LeaveService leave,
-            Corrections corrections, HomeDays homeDays, Photos photos) {
+            Corrections corrections, HomeDays homeDays, CompOffs compOffs, Photos photos) {
         this.access = access;
         this.currentUser = currentUser;
         this.people = people;
@@ -71,6 +74,7 @@ class TeamController {
         this.leave = leave;
         this.corrections = corrections;
         this.homeDays = homeDays;
+        this.compOffs = compOffs;
         this.photos = photos;
     }
 
@@ -138,6 +142,21 @@ class TeamController {
         HomeDay decided = homeDays.decide(me, id, Set.copyOf(names.keySet()), new Corrections.Decision(body.decision(), body.note()));
         names.put(me.getId(), me.getFullName());
         return HomeDayResponse.of(decided, names);
+    }
+
+    @GetMapping("/api/team/comp-offs")
+    List<CompOffResponse> compOffs(@RequestParam(required = false) String status) {
+        Map<String, String> names = namesOf(access.reportsOf(currentUser.get()));
+        return compOffs.of(names.keySet(), status).stream().map(claim -> CompOffResponse.of(claim, names)).toList();
+    }
+
+    @PostMapping("/api/team/comp-offs/{id}/decision")
+    CompOffResponse decideCompOff(@PathVariable String id, @Valid @RequestBody DecisionBody body) {
+        Employee me = currentUser.get();
+        Map<String, String> names = namesOf(access.reportsOf(me));
+        CompOffs.Claim decided = compOffs.decide(me, id, Set.copyOf(names.keySet()), new Corrections.Decision(body.decision(), body.note()));
+        names.put(me.getId(), me.getFullName());
+        return CompOffResponse.of(decided, names);
     }
 
     private EmployeeResponse profile(Employee employee) {

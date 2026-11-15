@@ -41,16 +41,56 @@ describe('CorrectionForm', () => {
     expect((root.querySelector('[data-testid=fix-kind]') as HTMLSelectElement).value).toBe('missed-in');
   });
 
-  it('asks for the time and a reason, and refuses future days', async () => {
+  const errors = (root: HTMLElement) => [...root.querySelectorAll('.field-error')].map((error) => text(error));
+
+  it('asks for the time, refuses future days, and needs no reason for a forgotten punch', async () => {
     const { root, submitForm } = await render();
     fill(root, 'fix-date', '2026-11-20');
     await submitForm();
 
-    expect([...root.querySelectorAll('.field-error')].map((error) => text(error))).toEqual([
-      "You can't fix a day that hasn't happened yet.",
-      'When did you actually punch?',
-      'Tell your manager what happened.',
+    expect(errors(root)).toEqual(["You can't fix a day that hasn't happened yet.", 'When did you actually punch?']);
+    expect(text(root.querySelector('label:has([data-testid=fix-reason])') as HTMLElement)).toBe('Note, if you like');
+    http.expectNone('/api/attendance/corrections');
+  });
+
+  it('offers the four types and sends a resort day without a note', async () => {
+    const { root, submitForm } = await render();
+    expect([...root.querySelectorAll('[data-testid=fix-category] option')].map((option) => text(option))).toEqual([
+      'Working from resort', 'Forgot to punch', 'Late punch', 'Other',
     ]);
+
+    fill(root, 'fix-category', 'resort');
+    fill(root, 'fix-time', '17:30');
+    await submitForm();
+
+    expect(http.expectOne('/api/attendance/corrections').request.body).toEqual({ date: '2026-11-10', kind: 'missed-in', category: 'resort', requestedTime: '17:30' });
+  });
+
+  it('asks a late punch for the arrival time and a reason, and always sends it as the punch in', async () => {
+    const { root, submitForm } = await render();
+    fill(root, 'fix-kind', 'missed-out');
+    fill(root, 'fix-category', 'late');
+
+    expect(root.querySelector('[data-testid=fix-kind]')).toBeNull();
+    expect(text(root)).toContain('When you actually arrived');
+    fill(root, 'fix-time', '08:55');
+    await submitForm();
+    expect(errors(root)).toEqual(['Tell your manager what happened.']);
+
+    fill(root, 'fix-reason', 'Queue at the gate');
+    await submitForm();
+    expect(http.expectOne('/api/attendance/corrections').request.body).toEqual({
+      date: '2026-11-10', kind: 'missed-in', category: 'late', requestedTime: '08:55', reason: 'Queue at the gate',
+    });
+  });
+
+  it('needs a reason for anything else', async () => {
+    const { root, submitForm } = await render();
+    fill(root, 'fix-category', 'other');
+    fill(root, 'fix-time', '08:55');
+    await submitForm();
+
+    expect(errors(root)).toEqual(['Tell your manager what happened.']);
     http.expectNone('/api/attendance/corrections');
   });
 
@@ -61,7 +101,7 @@ describe('CorrectionForm', () => {
     await submitForm();
 
     const request = http.expectOne('/api/attendance/corrections');
-    expect(request.request.body).toEqual({ date: '2026-11-10', kind: 'missed-in', requestedTime: '08:55', reason: 'Started at the port' });
+    expect(request.request.body).toEqual({ date: '2026-11-10', kind: 'missed-in', category: 'forgot', requestedTime: '08:55', reason: 'Started at the port' });
     request.flush({});
     await settle();
     expect(raisedCount()).toBe(1);

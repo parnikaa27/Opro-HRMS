@@ -3,6 +3,7 @@ import { Session } from '../../core/session';
 import { Dialog } from '../../shared/ui/dialog';
 import { Icon } from '../../shared/ui/icon';
 import { SuccessState } from '../../shared/ui/success-state';
+import { FlightCard } from '../flights/flight-card';
 import { ChangeRequestForm } from './change-request-form';
 import { EmployeeCard } from './employee-card';
 import { IdCard } from './id-card';
@@ -10,7 +11,7 @@ import { VisaDetails } from './visa-details';
 
 @Component({
   selector: 'app-profile-page',
-  imports: [ChangeRequestForm, Dialog, EmployeeCard, Icon, IdCard, SuccessState, VisaDetails],
+  imports: [ChangeRequestForm, Dialog, EmployeeCard, FlightCard, Icon, IdCard, SuccessState, VisaDetails],
   template: `
     @if (session.user(); as user) {
       <div class="page-view">
@@ -38,6 +39,9 @@ import { VisaDetails } from './visa-details';
             </section>
             <div class="no-print">
               <app-visa-details [visa]="user.visa" [nationality]="user.nationality" />
+            </div>
+            <div class="no-print">
+              <app-flight-card />
             </div>
           </div>
           <div class="side-column no-print">

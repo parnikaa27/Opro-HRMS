@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { interval, map } from 'rxjs';
-import { AttendanceDay, AttendanceStatus } from '../../models/attendance';
+import { AttendanceDay, AttendanceStatus, WorkMode } from '../../models/attendance';
 import { CircleProgress } from '../../shared/ui/circle-progress';
 import { Icon } from '../../shared/ui/icon';
 import { ListSkeleton } from '../../shared/ui/list-skeleton';
@@ -15,10 +15,16 @@ const PERCENT = 100;
 const MINUTES_PER_HOUR = 60;
 
 const OFF_DAY: Partial<Record<AttendanceStatus, { title: string; body: string }>> = {
-  weekend: { title: 'Enjoy your weekend', body: 'Friday and Saturday are off. See you on Sunday.' },
+  weekend: { title: 'Enjoy your Friday', body: 'Friday is the day off. See you on Saturday.' },
   holiday: { title: 'Public holiday today', body: 'The office is closed. Enjoy it.' },
   'on-leave': { title: "You're on leave today", body: 'Nothing to punch. Rest up.' },
   absent: { title: 'No punches today', body: 'If you forgot to punch, ask for a punch fix.' },
+};
+
+const WHERE: Record<WorkMode, string> = {
+  office: 'You’re in the office',
+  resort: 'You’re at a resort',
+  home: 'You’re working from home',
 };
 
 const HOME_NOTE = {
@@ -130,7 +136,7 @@ export class TodayAttendanceCard {
     if (this.lastOut()) {
       return 'You’ve finished for the day';
     }
-    return this.day()?.workMode === 'home' ? 'You’re working from home' : 'You’re in the office';
+    return WHERE[this.day()?.workMode ?? 'office'];
   });
 
   protected readonly elapsed = computed(() => {

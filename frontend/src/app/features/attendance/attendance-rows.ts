@@ -1,4 +1,4 @@
-import { AttendanceDay } from '../../models/attendance';
+import { AttendanceDay, WorkMode } from '../../models/attendance';
 import { ATTENDANCE_STATUS } from '../../shared/utils/attendance-status';
 import { addDays, formatClock, formatHours, formatShortDate, formatWeekday, minutesWorkedSoFar } from '../../shared/utils/date-time';
 import { AttendanceRow } from './attendance-table';
@@ -8,6 +8,8 @@ const WEEKDAY_LETTERS = 3;
 
 const dayName = (date: string, today: string) =>
   date === today ? 'Today' : date === addDays(today, -1) ? 'Yesterday' : formatWeekday(date);
+
+const WORKING_NOW: Record<WorkMode, string> = { office: 'In office', resort: 'At a resort', home: 'Working from home' };
 
 const HOME_NOTE: Record<NonNullable<AttendanceDay['homeStatus']>, string> = {
   pending: 'From home, waiting for approval',
@@ -30,7 +32,7 @@ export const toAttendanceRow = (day: AttendanceDay, today: string, now = new Dat
     punchIn: first ? formatClock(first.at) : EMPTY,
     punchOut: last?.direction === 'out' ? formatClock(last.at) : EMPTY,
     hours: day.punches.length === 0 ? EMPTY : formatHours(day.date === today && !isDeclined ? minutesWorkedSoFar(day.punches, now) : day.workedMinutes),
-    status: isWorkingNow ? { label: isHome ? 'Working from home' : 'In office', tone: 'ok' } : ATTENDANCE_STATUS[day.status],
+    status: isWorkingNow ? { label: WORKING_NOW[day.workMode ?? 'office'], tone: 'ok' } : ATTENDANCE_STATUS[day.status],
     isEdited: day.isCorrected ?? false,
     homeNote: isHome && day.homeStatus ? HOME_NOTE[day.homeStatus] : undefined,
   };

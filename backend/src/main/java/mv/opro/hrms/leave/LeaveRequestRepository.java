@@ -32,6 +32,8 @@ interface LeaveRequestRepository extends JpaRepository<LeaveRequest, String> {
 
     List<LeaveRequest> findAllByOrderByFromDateDesc();
 
+    boolean existsByType(String type);
+
     List<LeaveRequest> findByStatusOrderByFromDateDesc(String status);
 
     @Query("""

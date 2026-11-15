@@ -5,6 +5,7 @@ import { defineConfig } from '@playwright/test';
 const IS_SPRING = process.env['E2E_BACKEND'] === 'spring';
 const MOCK_PORT = 4310;
 const SPRING_PORT = 8090;
+const SPRING_WORKERS = 3;
 const APP_PORT = IS_SPRING ? 4220 : 4210;
 const APP_URL = `http://localhost:${APP_PORT}`;
 const IS_CI = !!process.env['CI'];
@@ -22,6 +23,8 @@ const proxyTarget = IS_SPRING ? `USE_MOCK_BACKEND=false SPRING_PORT=${SPRING_POR
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
+  // Spring, the app build and every Chrome worker compete for the CPU. Fewer workers stop Chrome timing out on start.
+  workers: IS_SPRING ? SPRING_WORKERS : undefined,
   forbidOnly: IS_CI,
   // CI machines have Playwright's own Chromium, not Chrome.
   use: { baseURL: APP_URL, channel: IS_CI ? undefined : 'chrome', trace: 'on-first-retry' },

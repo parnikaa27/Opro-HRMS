@@ -59,6 +59,16 @@ describe('PunchButton', () => {
     expect(dialog(root).open).toBe(false);
   });
 
+  it('punches in at a resort with the location, for the server to check', async () => {
+    const { root } = render();
+
+    click(root, 'punch-button');
+    click(root, 'punch-resort');
+    await settle();
+
+    expect(http.expectOne(PUNCH).request.body).toEqual({ mode: 'resort', ...AT_THE_OFFICE });
+  });
+
   it('punches in from home without asking for a location', async () => {
     const { root } = render();
 

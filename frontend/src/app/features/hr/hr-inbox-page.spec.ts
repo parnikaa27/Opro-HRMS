@@ -6,10 +6,10 @@ import { HrInboxPage } from './hr-inbox-page';
 
 const URL = '/api/hr/change-requests';
 const change = (overrides: Partial<ChangeRequest>): ChangeRequest => ({
-  id: 'CR', employeeId: 'E', employeeName: 'Kasun Perera', field: 'Phone number', details: '+960 777 8018', status: 'open', raisedOn: '2026-11-09', ...overrides,
+  id: 'CR', employeeId: 'E', employeeName: 'Arjun Reddy', field: 'Phone number', details: '+960 777 8018', status: 'open', raisedOn: '2026-11-09', ...overrides,
 });
 const REQUESTS = [
-  change({ id: 'CR-2', raisedOn: '2026-11-11', field: 'Emergency contact', details: 'Dilani, +94 77 000 0000' }),
+  change({ id: 'CR-2', raisedOn: '2026-11-11', field: 'Emergency contact', details: 'Lakshmi, +91 98450 00000' }),
   change({ id: 'CR-1' }),
   change({ id: 'CR-0', status: 'declined', decidedOn: '2026-11-05', decisionNote: 'Need the new passport first' }),
 ];
@@ -39,12 +39,12 @@ describe('HrInboxPage', () => {
 
     expect([...root.querySelectorAll('[role=tab]')].map((tab) => text(tab))).toEqual(['Open 2', 'Done', 'Declined']);
     expect(texts(root, 'change-row').map((row) => row.split(' Decline')[0])).toEqual([
-      'KP Kasun Perera Phone number · Submitted 3 days ago WHAT TO CHANGE +960 777 8018',
-      'KP Kasun Perera Emergency contact · Submitted yesterday WHAT TO CHANGE Dilani, +94 77 000 0000',
+      'AR Arjun Reddy Phone number · Submitted 3 days ago WHAT TO CHANGE +960 777 8018',
+      'AR Arjun Reddy Emergency contact · Submitted yesterday WHAT TO CHANGE Lakshmi, +91 98450 00000',
     ]);
 
     click(root, 'tab-declined');
-    expect(texts(root, 'change-row')).toEqual(['KP Kasun Perera Phone number · Submitted 3 days ago YOUR NOTE Need the new passport first Declined, 5 Nov']);
+    expect(texts(root, 'change-row')).toEqual(['AR Arjun Reddy Phone number · Submitted 3 days ago YOUR NOTE Need the new passport first Declined, 5 Nov']);
     click(root, 'tab-done');
     expect(text(root)).toContain('Nothing marked done yet.');
   });

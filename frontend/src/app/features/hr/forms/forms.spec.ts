@@ -2,10 +2,11 @@ import { HttpTestingController } from '@angular/common/http/testing';
 import { OutputRef, Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { LeaveType } from '../../../models/leave';
-import { fill, NOW, pickFile, settle, setupHttp, text } from '../../../../testing/fixtures';
+import { click, fill, NOW, pickFile, settle, setupHttp, text } from '../../../../testing/fixtures';
 import { employee } from '../../../../testing/fixtures';
 import { AdjustBalanceForm } from './adjust-balance-form';
 import { EmployeeForm } from './employee-form';
+import { LeaveDaysForm } from './leave-days-form';
 import { LeavingForm } from './leaving-form';
 import { PhotoForm } from './photo-form';
 import { ScheduleForm } from './schedule-form';
@@ -56,7 +57,7 @@ describe('HR forms', () => {
   const errors = (root: HTMLElement) => [...root.querySelectorAll('.field-error')].map((error) => text(error));
 
   describe('AdjustBalanceForm', () => {
-    const inputs = { employeeId: 'OPR-0021', name: 'Rahim Uddin', types: TYPES };
+    const inputs = { employeeId: 'OPR-0021', name: 'Rohit Verma', types: TYPES };
 
     it('offers only capped types and needs days and a reason', async () => {
       const { root } = await render(AdjustBalanceForm, inputs);
@@ -86,7 +87,7 @@ describe('HR forms', () => {
   });
 
   describe('RecordLeaveForm', () => {
-    const inputs = { employeeId: 'OPR-0021', name: 'Rahim Uddin', types: TYPES, holidays: new Set(['2026-11-17']) };
+    const inputs = { employeeId: 'OPR-0021', name: 'Rohit Verma', types: TYPES, holidays: new Set(['2026-11-17']) };
 
     it('starts on sick leave and shows it as selected', async () => {
       const { root } = await render(RecordLeaveForm, inputs);
@@ -124,13 +125,13 @@ describe('HR forms', () => {
       expect(saved).toHaveBeenCalled();
     });
 
-    it('rejects a range of only weekends and holidays', async () => {
+    it('rejects a range of only Fridays and holidays', async () => {
       const { root } = await render(RecordLeaveForm, inputs);
       fill(root, 'record-from', '2026-11-13');
-      fill(root, 'record-to', '2026-11-14');
+      fill(root, 'record-to', '2026-11-13');
       await submit(root);
 
-      expect(errors(root)).toContain('Those dates are all weekends or holidays.');
+      expect(errors(root)).toContain('Those dates are all Fridays or public holidays.');
     });
   });
 
@@ -138,7 +139,7 @@ describe('HR forms', () => {
     const visa = { workPermitNumber: 'WP-1', visaNumber: 'MV-EV-1', passportLast4: '1234', visaIssuedOn: '2025-11-02', visaExpiry: '2026-11-02', passportExpiry: '2029-09-04' };
 
     it('starts from the current papers and checks the passport and dates', async () => {
-      const { root } = await render(VisaForm, { employeeId: 'OPR-0021', name: 'Rahim Uddin', visa });
+      const { root } = await render(VisaForm, { employeeId: 'OPR-0021', name: 'Rohit Verma', visa });
       expect((root.querySelector('[data-testid=visa-number]') as HTMLInputElement).value).toBe('MV-EV-1');
 
       fill(root, 'visa-passport', 'AB12C');
@@ -149,7 +150,7 @@ describe('HR forms', () => {
     });
 
     it('saves new papers with the passport characters in capitals', async () => {
-      const { root, saved } = await render(VisaForm, { employeeId: 'OPR-0021', name: 'Rahim Uddin', visa });
+      const { root, saved } = await render(VisaForm, { employeeId: 'OPR-0021', name: 'Rohit Verma', visa });
       fill(root, 'visa-expiry', '2028-11-01');
       fill(root, 'visa-passport', 'ab12');
 
@@ -164,7 +165,7 @@ describe('HR forms', () => {
     });
 
     it('starts empty for someone with no record', async () => {
-      const { root } = await render(VisaForm, { employeeId: 'OPR-0021', name: 'Rahim Uddin' });
+      const { root } = await render(VisaForm, { employeeId: 'OPR-0021', name: 'Rohit Verma' });
       await submit(root);
 
       expect(errors(root)).toContain('Enter the visa number.');
@@ -249,6 +250,58 @@ describe('HR forms', () => {
     });
   });
 
+  describe('LeaveDaysForm', () => {
+    const MORE_TYPES: LeaveType[] = [...TYPES, { code: 'marriage', name: 'Marriage leave', allowsHalfDay: false, defaultEntitlement: 5 }, { code: 'comp-off', name: 'Compensatory off', allowsHalfDay: true }];
+    const inputs = { employeeId: 'OPR-0021', name: 'Rohit Verma', types: MORE_TYPES, balances: [{ type: 'annual', entitled: 32, taken: 20, pending: 0, carriedOver: 2 }] };
+
+    it('sets fewer days for a type they hold, needing a reason', async () => {
+      const { root, saved } = await render(LeaveDaysForm, inputs);
+      expect([...root.querySelectorAll('[data-testid=days-type] option')].map((option) => text(option))).toEqual([
+        'Annual leave · 30 days now', 'Sick leave · not given yet', 'Marriage leave · not given yet',
+      ]);
+      expect((root.querySelector('[data-testid=days-count]') as HTMLInputElement).value).toBe('30');
+
+      fill(root, 'days-count', '12');
+      await submit(root);
+      expect(errors(root)).toContain('Say why. It goes in their log.');
+      fill(root, 'days-reason', 'Joined in August');
+      await submit(root);
+
+      const request = http.expectOne('/api/hr/employees/OPR-0021/leave/annual');
+      expect(request.request.body).toEqual({ days: 12, reason: 'Joined in August' });
+      request.flush(null);
+      await settle();
+      expect(saved).toHaveBeenCalled();
+    });
+
+    it('gives a type only they get, starting from the policy’s days', async () => {
+      const { root } = await render(LeaveDaysForm, inputs);
+
+      fill(root, 'days-type', 'marriage');
+      expect((root.querySelector('[data-testid=days-count]') as HTMLInputElement).value).toBe('5');
+      expect(root.querySelector('[data-testid=days-remove]')).toBeNull();
+      fill(root, 'days-reason', 'Getting married');
+      await submit(root);
+
+      expect(http.expectOne('/api/hr/employees/OPR-0021/leave/marriage').request.body).toEqual({ days: 5, reason: 'Getting married' });
+    });
+
+    it('takes a type away, and shows why if the server refuses', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const { root } = await render(LeaveDaysForm, inputs);
+      fill(root, 'days-reason', 'Contract changed');
+
+      click(root, 'days-remove');
+      await settle();
+      const request = http.expectOne('/api/hr/employees/OPR-0021/leave/annual/remove');
+      expect(request.request.body).toEqual({ reason: 'Contract changed' });
+      request.flush({ message: 'Decide their waiting annual leave request first.' }, { status: 409, statusText: 'Conflict' });
+      await settle();
+
+      expect(text(root.querySelector('[data-testid=days-error]') as HTMLElement)).toBe('Decide their waiting annual leave request first.');
+    });
+  });
+
   describe('PolicyForm', () => {
     it('changes days and half days for a capped type', async () => {
       const { root, saved } = await render(PolicyForm, { type: TYPES[0] });
@@ -260,7 +313,9 @@ describe('HR forms', () => {
       fill(root, 'policy-half', 'no');
       await submit(root);
       const request = http.expectOne('/api/hr/leave-types/annual');
-      expect(request.request.body).toEqual({ name: 'Annual leave', allowsHalfDay: false, defaultEntitlement: 32 });
+      expect(request.request.body).toEqual({
+        name: 'Annual leave', allowsHalfDay: false, isUnlimited: false, defaultEntitlement: 32, isForEveryone: true, carriesForward: false,
+      });
       request.flush({});
       await settle();
 
@@ -273,7 +328,37 @@ describe('HR forms', () => {
 
       await submit(root);
 
-      expect(http.expectOne('/api/hr/leave-types/unpaid').request.body).toEqual({ name: 'Unpaid leave', allowsHalfDay: false });
+      expect(http.expectOne('/api/hr/leave-types/unpaid').request.body).toEqual({ name: 'Unpaid leave', allowsHalfDay: false, isUnlimited: true, isForEveryone: true, carriesForward: false });
+    });
+
+    it('adds a type given one by one that carries forward up to a cap', async () => {
+      const { root, saved } = await render(PolicyForm);
+      fill(root, 'policy-name', 'Marriage leave');
+      fill(root, 'policy-days', '5');
+      fill(root, 'policy-given', 'individual');
+      fill(root, 'policy-year-end', 'carry');
+      fill(root, 'policy-cap', '2');
+      await submit(root);
+
+      const request = http.expectOne((sent) => sent.method === 'POST' && sent.url === '/api/hr/leave-types');
+      expect(request.request.body).toEqual({
+        name: 'Marriage leave', allowsHalfDay: true, isUnlimited: false, defaultEntitlement: 5, isForEveryone: false, carriesForward: true, carryForwardCap: 2,
+      });
+      request.flush({});
+      await settle();
+      expect(saved).toHaveBeenCalled();
+    });
+
+    it('shows why the server refused a new type', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const { root } = await render(PolicyForm);
+      fill(root, 'policy-name', 'Annual leave');
+      await submit(root);
+
+      http.expectOne('/api/hr/leave-types').flush({ message: "There's already a leave type called that." }, { status: 409, statusText: 'Conflict' });
+      await settle();
+
+      expect(text(root.querySelector('[data-testid=policy-error]') as HTMLElement)).toBe("There's already a leave type called that.");
     });
   });
 
@@ -326,14 +411,14 @@ describe('HR forms', () => {
 
   describe('EmployeeForm', () => {
     const PEOPLE = [
-      employee({ id: 'OPR-0001', fullName: 'Hassan Waheed', department: 'Operations', managerId: undefined }),
-      employee({ id: 'OPR-0004', fullName: 'Ibrahim Rasheed', managerId: 'OPR-0001' }),
-      employee({ id: 'OPR-0018', fullName: 'Kasun Perera', department: 'Site', managerId: 'OPR-0004' }),
+      employee({ id: 'OPR-0001', fullName: 'Rajesh Sharma', department: 'Operations', managerId: undefined }),
+      employee({ id: 'OPR-0004', fullName: 'Vikram Singh', managerId: 'OPR-0001' }),
+      employee({ id: 'OPR-0018', fullName: 'Arjun Reddy', department: 'Site', managerId: 'OPR-0004' }),
     ];
     const NEW_PERSON = {
-      'employee-name': 'Fathimath Nazra', 'employee-designation': 'Accounts Officer', 'employee-department': 'Finance', 'employee-email': 'nazra@opro.mv',
+      'employee-name': 'Divya Pillai', 'employee-designation': 'Accounts Officer', 'employee-department': 'Finance', 'employee-email': 'nazra@opro.mv',
       'employee-joined': '2026-11-15', 'employee-phone': '+960 777 1030', 'employee-nationality': 'Maldivian', 'employee-manager': 'OPR-0001',
-      'employee-contact-name': 'Ali Nazir', 'employee-contact-relation': 'Father', 'employee-contact-phone': '+960 777 2030',
+      'employee-contact-name': 'Mohan Pillai', 'employee-contact-relation': 'Father', 'employee-contact-phone': '+960 777 2030',
     };
 
     it('names every missing field and needs a manager for a new person', async () => {
@@ -360,9 +445,9 @@ describe('HR forms', () => {
       await submit(root);
       const request = http.expectOne('/api/hr/employees');
       expect(request.request.body).toEqual({
-        fullName: 'Fathimath Nazra', designation: 'Accounts Officer', department: 'Finance', workLocation: 'Malé office', employmentType: 'Full-time', email: 'nazra@opro.mv',
+        fullName: 'Divya Pillai', designation: 'Accounts Officer', department: 'Finance', workLocation: 'Malé office', employmentType: 'Full-time', email: 'nazra@opro.mv',
         joinedOn: '2026-11-15', phone: '+960 777 1030', nationality: 'Maldivian', bloodGroup: 'A+', managerId: 'OPR-0001',
-        emergencyContact: { name: 'Ali Nazir', relation: 'Father', phone: '+960 777 2030' },
+        emergencyContact: { name: 'Mohan Pillai', relation: 'Father', phone: '+960 777 2030' },
       });
       request.flush({ id: 'OPR-0028' });
       await settle();
@@ -372,8 +457,8 @@ describe('HR forms', () => {
     it('edits a person, never offering them or their reports as manager', async () => {
       const { root } = await render(EmployeeForm, { people: PEOPLE, employee: PEOPLE[1] });
 
-      expect([...root.querySelectorAll('[data-testid=employee-manager] option')].map((option) => text(option))).toEqual(['Pick their manager', 'Hassan Waheed, Site Engineer']);
-      expect((root.querySelector('[data-testid=employee-name]') as HTMLInputElement).value).toBe('Ibrahim Rasheed');
+      expect([...root.querySelectorAll('[data-testid=employee-manager] option')].map((option) => text(option))).toEqual(['Pick their manager', 'Rajesh Sharma, Site Engineer']);
+      expect((root.querySelector('[data-testid=employee-name]') as HTMLInputElement).value).toBe('Vikram Singh');
       await submit(root);
       expect(http.expectOne('/api/hr/employees/OPR-0004').request.method).toBe('PUT');
     });
@@ -393,7 +478,7 @@ describe('HR forms', () => {
   });
 
   describe('LeavingForm', () => {
-    const inputs = { employeeId: 'OPR-0021', name: 'Rahim Uddin', joinedOn: '2024-04-01', reports: [] };
+    const inputs = { employeeId: 'OPR-0021', name: 'Rohit Verma', joinedOn: '2024-04-01', reports: [] };
 
     it('needs a last day after they joined and a reason', async () => {
       const { root } = await render(LeavingForm, inputs);
@@ -425,7 +510,7 @@ describe('HR forms', () => {
     it('asks to move reports first, in the right number', async () => {
       const { root, cancelled } = await render(LeavingForm, { ...inputs, reports: [employee(), employee({ id: 'B', fullName: 'Priya Nair' })] });
 
-      expect(text(root.querySelector('[data-testid=move-reports]') as HTMLElement)).toContain('2 people report to Rahim.');
+      expect(text(root.querySelector('[data-testid=move-reports]') as HTMLElement)).toContain('2 people report to Rohit.');
       expect(root.querySelector('form')).toBeNull();
       (root.querySelector('.secondary-button') as HTMLButtonElement).click();
       expect(cancelled).toHaveBeenCalled();
@@ -433,7 +518,7 @@ describe('HR forms', () => {
   });
 
   describe('PhotoForm', () => {
-    const inputs = { employeeId: 'OPR-0021', name: 'Rahim Uddin' };
+    const inputs = { employeeId: 'OPR-0021', name: 'Rohit Verma' };
     const photo = new File(['x'], 'face.png', { type: 'image/png' });
     let drawImage: ReturnType<typeof vi.fn>;
 
@@ -517,7 +602,7 @@ describe('HR forms', () => {
   });
 
   it('cancels without saving', async () => {
-    const { root, cancelled } = await render(AdjustBalanceForm, { employeeId: 'OPR-0021', name: 'Rahim Uddin', types: TYPES });
+    const { root, cancelled } = await render(AdjustBalanceForm, { employeeId: 'OPR-0021', name: 'Rohit Verma', types: TYPES });
 
     (root.querySelector('.secondary-button') as HTMLButtonElement).click();
 

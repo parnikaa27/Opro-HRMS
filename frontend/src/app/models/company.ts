@@ -40,7 +40,7 @@ export interface EmployeeDocument {
 
 export interface AppNotification {
   id: string;
-  kind: 'approval' | 'leave' | 'visa' | 'correction' | 'holiday' | 'announcement' | 'record' | 'schedule' | 'home';
+  kind: 'approval' | 'leave' | 'visa' | 'correction' | 'holiday' | 'announcement' | 'record' | 'schedule' | 'home' | 'flight';
   text: string;
   createdOn: string;
   isRead: boolean;

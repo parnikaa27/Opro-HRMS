@@ -9,24 +9,24 @@ export const NOW = new Date('2026-11-12T10:30:00+05:00');
 
 export const employee = (overrides: Partial<Employee> = {}): Employee => ({
   id: 'OPR-0018',
-  fullName: 'Kasun Perera',
+  fullName: 'Arjun Reddy',
   designation: 'Site Engineer',
   department: 'Operations',
-  email: 'kasun.perera@opro.mv',
+  email: 'arjun.reddy@opro.mv',
   phone: '+960 777 1018',
   joinedOn: '2023-12-20',
   bloodGroup: 'O-',
-  nationality: 'Sri Lankan',
+  nationality: 'Indian',
   workLocation: 'Hulhumalé site',
   employmentType: 'Contract',
   managerId: 'OPR-0004',
   roles: ['EMPLOYEE'],
-  emergencyContact: { name: 'Dilani Perera', relation: 'Spouse', phone: '+94 77 120 1018' },
+  emergencyContact: { name: 'Lakshmi Reddy', relation: 'Spouse', phone: '+94 77 120 1018' },
   ...overrides,
 });
 
 export const manager = (overrides: Partial<Employee> = {}) =>
-  employee({ id: 'OPR-0004', fullName: 'Ibrahim Rasheed', roles: ['EMPLOYEE', 'MANAGER'], ...overrides });
+  employee({ id: 'OPR-0004', fullName: 'Vikram Singh', roles: ['EMPLOYEE', 'MANAGER'], ...overrides });
 
 export const setupHttp = (routes: Routes = []) => {
   TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter(routes)] });

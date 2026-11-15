@@ -40,9 +40,6 @@ class LeaveController {
             @Pattern(regexp = "first|second") String halfDay,
             @NotBlank @Size(max = MAX_REASON) String reason) {}
 
-    record LeaveTypeResponse(String code, String name, boolean allowsHalfDay, boolean isUnlimited, BigDecimal defaultEntitlement,
-            Integer documentRequiredAfterDays) {}
-
     private final LeaveService leave;
     private final CurrentUser currentUser;
     private final People people;
@@ -57,10 +54,7 @@ class LeaveController {
 
     @GetMapping("/api/leave/types")
     List<LeaveTypeResponse> types() {
-        return leave.types().stream()
-                .map(type -> new LeaveTypeResponse(type.getCode(), type.getName(), type.allowsHalfDay(), type.isUnlimited(),
-                        type.getDefaultEntitlement(), type.getDocumentRequiredAfterDays()))
-                .toList();
+        return leave.types().stream().map(LeaveTypeResponse::of).toList();
     }
 
     @GetMapping("/api/leave/balances")

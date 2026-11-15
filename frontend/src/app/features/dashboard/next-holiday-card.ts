@@ -9,14 +9,14 @@ import { plural } from '../../shared/utils/text';
 import { HolidaysApi } from '../holidays/holidays-api';
 
 const THURSDAY = 4;
-const SUNDAY = 0;
-const DAYS_BEFORE_SUNDAY_WEEKEND = -2;
+const SATURDAY = 6;
+const DAY_BEFORE = -1;
 const DAY_DIGITS = -2;
 const MONTH_LETTERS = 3;
 
-// A holiday next to the Friday and Saturday weekend makes a long weekend. Returns the day it starts.
+// A holiday next to Friday, the weekly day off, makes a long weekend. Returns the day it starts.
 const longWeekendStart = ({ date }: Holiday) =>
-  weekdayOf(date) === THURSDAY ? date : weekdayOf(date) === SUNDAY ? addDays(date, DAYS_BEFORE_SUNDAY_WEEKEND) : undefined;
+  weekdayOf(date) === THURSDAY ? date : weekdayOf(date) === SATURDAY ? addDays(date, DAY_BEFORE) : undefined;
 
 @Component({
   selector: 'app-next-holiday-card',

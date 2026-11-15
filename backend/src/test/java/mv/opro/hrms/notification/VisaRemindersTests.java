@@ -9,8 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-// On 12 November 2026: Kasun's visa runs out in 38 days, Rahim's ran out on 2 November, Grace's passport in 59 days.
-// All three report to Ibrahim (OPR-0004). Aishath (OPR-0002) is HR.
+// On 12 November 2026: Arjun's visa runs out in 38 days, Rohit's ran out on 2 November, Kavya's passport in 59 days.
+// All three report to Vikram (OPR-0004). Ananya (OPR-0002) is HR.
 @ApiTest
 class VisaRemindersTests {
 
@@ -47,8 +47,8 @@ class VisaRemindersTests {
     void tellsTheirManagerAndHr() {
         reminders.remind();
 
-        List<String> expected = List.of("Kasun Perera's visa expires on Sunday 20 December, in 38 days.", "Rahim Uddin's visa expired on Monday 2 November.",
-                "Grace Mendoza's passport expires on 10 January 2027, in 59 days.");
+        List<String> expected = List.of("Arjun Reddy's visa expires on Sunday 20 December, in 38 days.", "Rohit Verma's visa expired on Monday 2 November.",
+                "Kavya Menon's passport expires on 10 January 2027, in 59 days.");
         assertThat(newFor("OPR-0004")).containsExactlyInAnyOrderElementsOf(expected);
         assertThat(newFor("OPR-0002")).containsExactlyInAnyOrderElementsOf(expected);
     }

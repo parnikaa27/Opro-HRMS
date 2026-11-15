@@ -7,6 +7,7 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -45,6 +46,11 @@ public class AttendanceService {
 
     public List<AttendanceDay> month(Employee employee, YearMonth month) {
         return between(employee, month.atDay(1), month.atEndOfMonth());
+    }
+
+    // One day, if they worked here then.
+    public Optional<AttendanceDay> on(Employee employee, LocalDate date) {
+        return between(employee, date, date).stream().findFirst();
     }
 
     public List<AttendanceDay> today(Employee employee) {

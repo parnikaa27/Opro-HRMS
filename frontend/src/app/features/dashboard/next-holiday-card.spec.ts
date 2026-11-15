@@ -26,7 +26,7 @@ describe('NextHolidayCard', () => {
         { date: '2026-11-03', name: 'Victory Day', isTentative: false },
         { date: '2026-12-01', name: 'Made up Tuesday', isTentative: true },
       ],
-      [{ date: '2027-01-03', name: 'Sunday holiday', isTentative: false }],
+      [{ date: '2027-01-02', name: 'Saturday holiday', isTentative: false }],
     );
 
     expect(text(root.querySelector('[data-testid=next-holiday]') as HTMLElement)).toBe('01 DEC Made up Tuesday Tuesday · Tentative');

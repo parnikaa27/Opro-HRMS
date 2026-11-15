@@ -110,7 +110,7 @@ export class LeaveForm {
 
   // Only types this person has a balance for, plus uncapped ones like unpaid leave.
   protected readonly offeredTypes = computed(() =>
-    this.types().filter((type) => type.isUnlimited || this.balances().some((balance) => balance.type === type.code)),
+    this.types().filter((type) => !type.retiredOn && (type.isUnlimited || this.balances().some((balance) => balance.type === type.code))),
   );
   protected readonly selectedType = computed(() => this.types().find((type) => type.code === this.draft().type));
   private readonly isSingleDay = computed(() => this.draft().from !== '' && this.draft().from === this.draft().to);
@@ -151,7 +151,7 @@ export class LeaveForm {
       if (value() < from) {
         return { kind: 'order', message: "The last day can't be before the first." };
       }
-      return this.days() === 0 ? { kind: 'no-working-days', message: 'Those dates are all weekends or holidays. Nothing to take.' } : undefined;
+      return this.days() === 0 ? { kind: 'no-working-days', message: 'Those dates are all Fridays or public holidays. Nothing to take.' } : undefined;
     });
     validate(path.type, () => {
       const available = this.available();

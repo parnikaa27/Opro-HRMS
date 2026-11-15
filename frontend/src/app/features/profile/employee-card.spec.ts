@@ -9,7 +9,7 @@ describe('EmployeeCard', () => {
     await fixture.whenStable();
 
     expect(text(fixture.nativeElement)).toBe(
-      'O EMPLOYEE KP Kasun Perera Site Engineer OPR-0018 kasun.perera@opro.mv +960 777 1018 Operations · Contract Active employee OPRO · MALDIVES',
+      'O EMPLOYEE AR Arjun Reddy Site Engineer OPR-0018 arjun.reddy@opro.mv +960 777 1018 Operations · Contract Active employee OPRO · MALDIVES',
     );
   });
 

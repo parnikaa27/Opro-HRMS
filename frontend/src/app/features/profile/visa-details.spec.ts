@@ -20,7 +20,7 @@ describe('VisaDetails', () => {
 
   afterEach(() => vi.useRealTimers());
 
-  const render = async (visa: Visa | undefined, nationality = 'Sri Lankan') => {
+  const render = async (visa: Visa | undefined, nationality = 'Indian') => {
     const fixture = TestBed.createComponent(VisaDetails);
     fixture.componentRef.setInput('visa', visa);
     fixture.componentRef.setInput('nationality', nationality);

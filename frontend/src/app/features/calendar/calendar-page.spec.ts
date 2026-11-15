@@ -28,9 +28,9 @@ describe('CalendarPage', () => {
       '/api/holidays?year=2027': [{ date: '2027-01-01', name: "New Year's Day", isTentative: false }],
       '/api/events?year=2026': [{ id: 'EV-1', date: '2026-11-19', name: 'Team review' }],
       '/api/team/leave-requests': [
-        { employeeId: 'M', employeeName: 'Mariyam Nisha', from: '2026-11-19', to: '2026-11-21', status: 'pending' },
-        { employeeId: 'K', employeeName: 'Kasun Perera', from: '2026-11-04', to: '2026-11-04', status: 'approved' },
-        { employeeId: 'G', employeeName: 'Grace Mendoza', from: '2026-11-26', to: '2026-11-26', status: 'rejected' },
+        { employeeId: 'M', employeeName: 'Sneha Kulkarni', from: '2026-11-19', to: '2026-11-21', status: 'pending' },
+        { employeeId: 'K', employeeName: 'Arjun Reddy', from: '2026-11-04', to: '2026-11-04', status: 'approved' },
+        { employeeId: 'G', employeeName: 'Kavya Menon', from: '2026-11-26', to: '2026-11-26', status: 'rejected' },
       ],
     });
     return fixture.nativeElement as HTMLElement;
@@ -58,11 +58,11 @@ describe('CalendarPage', () => {
     TestBed.inject(Session).user.set(manager());
     const root = await render(true);
 
-    expect(cell(root, 4)).toBe('4 Kasun Perera');
-    expect(cell(root, 19)).toBe('19 Team review Mariyam Nisha');
+    expect(cell(root, 4)).toBe('4 Arjun Reddy');
+    expect(cell(root, 19)).toBe('19 Team review Sneha Kulkarni');
     expect(cell(root, 20)).toBe('20');
     expect(cell(root, 26)).toBe('26');
-    expect(root.querySelector('small.pending')?.getAttribute('title')).toBe('Mariyam Nisha, waiting for approval');
+    expect(root.querySelector('small.pending')?.getAttribute('title')).toBe('Sneha Kulkarni, waiting for approval');
   });
 
   it('moves between months', async () => {

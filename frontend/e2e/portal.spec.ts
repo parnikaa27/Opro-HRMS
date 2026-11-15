@@ -17,7 +17,7 @@ test('signed out visitors land on sign in, and search engines are told to stay a
 test('an employee sees their own dashboard and no team view', async ({ page }) => {
   await signInAs(page, 'OPR-0018');
 
-  await expect(page.getByTestId('greeting')).toContainText('Kasun');
+  await expect(page.getByTestId('greeting')).toContainText('Arjun');
   await expect(page.getByTestId('visa-card')).toContainText('Expires soon');
   await expect(page.getByTestId('view-team')).toHaveCount(0);
 

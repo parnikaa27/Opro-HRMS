@@ -55,7 +55,7 @@ export class AdjustBalanceForm {
   readonly cancelled = output();
 
   protected readonly firstName = computed(() => this.name().split(' ')[0]);
-  protected readonly capped = computed(() => this.types().filter(({ isUnlimited }) => !isUnlimited));
+  protected readonly capped = computed(() => this.types().filter(({ isUnlimited, retiredOn }) => !isUnlimited && !retiredOn));
   protected readonly failed = signal(false);
   protected readonly draft = signal({ type: 'annual', days: 0, reason: '' });
   protected readonly adjustForm = form(this.draft, (path) => {

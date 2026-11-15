@@ -1,0 +1,4 @@
+[
+  {"id": "FC-1", "employeeId": "OPR-0018", "flightDate": "2026-04-10", "route": "Malé to Colombo and back", "amount": 6168, "currency": "MVR", "amountUsd": 400, "hasReceipt": false, "status": "approved", "raisedOn": "2026-04-12", "decidedBy": "OPR-0002", "decidedOn": "2026-04-13"},
+  {"id": "FC-2", "employeeId": "OPR-0015", "flightDate": "2026-11-02", "route": "Malé to Kochi and back", "amount": 26400, "currency": "INR", "amountUsd": 300, "hasReceipt": false, "status": "pending", "raisedOn": "2026-11-10"}
+]

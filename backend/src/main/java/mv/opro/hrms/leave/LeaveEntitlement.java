@@ -5,6 +5,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 // What someone gets of one leave type in one leave year.
 @Entity
@@ -27,9 +28,12 @@ public class LeaveEntitlement {
     // Leave used before Opro HRMS existed. Everything since comes from requests.
     private BigDecimal takenBefore;
 
+    // Set when HR takes this type away from the person. Undone if HR gives it back.
+    private LocalDate removedOn;
+
     protected LeaveEntitlement() {}
 
-    // A new year starts with the policy's default and nothing taken. Carry forward is none until HR confirms otherwise.
+    // A new year starts with the policy's default and nothing taken. Anything carried forward is worked out, not stored.
     static LeaveEntitlement fresh(String employeeId, String type, int leaveYear, BigDecimal entitled) {
         LeaveEntitlement entitlement = new LeaveEntitlement();
         entitlement.employeeId = employeeId;
@@ -42,6 +46,18 @@ public class LeaveEntitlement {
 
     void adjust(BigDecimal days) {
         entitled = entitled.add(days);
+    }
+
+    void remove(LocalDate on) {
+        removedOn = on;
+    }
+
+    void restore() {
+        removedOn = null;
+    }
+
+    public boolean isRemoved() {
+        return removedOn != null;
     }
 
     public String getType() {

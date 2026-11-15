@@ -85,7 +85,7 @@ export class RecordLeaveForm {
       if (!value() || !from) {
         return undefined;
       }
-      return value() < from ? { kind: 'order', message: "The last day can't be before the first." } : this.days() === 0 ? { kind: 'none', message: 'Those dates are all weekends or holidays.' } : undefined;
+      return value() < from ? { kind: 'order', message: "The last day can't be before the first." } : this.days() === 0 ? { kind: 'none', message: 'Those dates are all Fridays or public holidays.' } : undefined;
     });
   });
   protected readonly plural = plural;

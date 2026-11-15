@@ -11,9 +11,9 @@ values
 
 insert into notification (employee_id, kind, text, created_on, is_read)
 values
-    ('OPR-0004', 'approval', 'Rahim Uddin asked for half a day of family responsibility leave on 18 November', '2026-11-12', false),
+    ('OPR-0004', 'approval', 'Rohit Verma asked for half a day of family responsibility leave on 18 November', '2026-11-12', false),
     ('OPR-0004', 'approval', 'Priya Nair asked for 8 days of annual leave from 20 December', '2026-11-11', false),
-    ('OPR-0004', 'visa', 'Rahim Uddin''s visa expired on 2 November', '2026-11-03', true),
+    ('OPR-0004', 'visa', 'Rohit Verma''s visa expired on 2 November', '2026-11-03', true),
     ('OPR-0027', 'leave', 'Your leave on 26 November was not approved', '2026-11-07', false),
     ('OPR-0027', 'visa', 'Your passport expires on 10 January 2027. Start the renewal now', '2026-11-11', false),
     ('OPR-0018', 'visa', 'Your visa expires on 20 December. Send your documents to HR', '2026-10-21', false),

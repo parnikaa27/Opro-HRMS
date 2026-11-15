@@ -5,9 +5,9 @@ import { fail, respond, setupHttp } from '../../../testing/fixtures';
 import { LoginPage } from './login-page';
 
 const people = [
-  { id: 'OPR-0018', fullName: 'Kasun Perera', designation: 'Site Engineer', roles: ['EMPLOYEE'] },
-  { id: 'OPR-0004', fullName: 'Ibrahim Rasheed', designation: 'Operations Manager', roles: ['EMPLOYEE', 'MANAGER'] },
-  { id: 'OPR-0002', fullName: 'Aishath Shifa', designation: 'HR Manager', roles: ['EMPLOYEE', 'HR'] },
+  { id: 'OPR-0018', fullName: 'Arjun Reddy', designation: 'Site Engineer', roles: ['EMPLOYEE'] },
+  { id: 'OPR-0004', fullName: 'Vikram Singh', designation: 'Operations Manager', roles: ['EMPLOYEE', 'MANAGER'] },
+  { id: 'OPR-0002', fullName: 'Ananya Iyer', designation: 'HR Manager', roles: ['EMPLOYEE', 'HR'] },
 ];
 
 describe('LoginPage', () => {

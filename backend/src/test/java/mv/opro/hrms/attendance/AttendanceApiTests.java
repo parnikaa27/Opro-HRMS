@@ -23,12 +23,12 @@ class AttendanceApiTests {
     @Autowired
     JdbcTemplate jdbc;
 
-    ApiClient kasun;
+    ApiClient arjun;
 
     @BeforeEach
     void signIn() throws Exception {
-        kasun = new ApiClient(port);
-        kasun.signIn("OPR-0018");
+        arjun = new ApiClient(port);
+        arjun.signIn("OPR-0018");
     }
 
     @AfterEach
@@ -52,7 +52,7 @@ class AttendanceApiTests {
         punch("2026-11-10T17:20:00+05:00", false);
         punch("2026-11-12T09:40:00+05:00", false);
 
-        String month = kasun.get("/api/attendance?month=2026-11").body();
+        String month = arjun.get("/api/attendance?month=2026-11").body();
 
         assertThat(JsonPath.<List<String>>read(month, "$[*].date")).hasSize(12).first().isEqualTo("2026-11-01");
         assertThat(JsonPath.<List<String>>read(month, "$[?(@.date == '2026-11-10')].status")).containsExactly("present");
@@ -73,7 +73,7 @@ class AttendanceApiTests {
         punch("2026-11-10T08:55:00+05:00", false);
         punch("2026-11-10T12:00:00+05:00", true);
 
-        String month = kasun.get("/api/attendance?month=2026-11").body();
+        String month = arjun.get("/api/attendance?month=2026-11").body();
 
         assertThat(JsonPath.<List<String>>read(month, "$[?(@.date == '2026-11-10')].status")).containsExactly("incomplete");
         assertThat(JsonPath.<List<Boolean>>read(month, "$[?(@.date == '2026-11-10')].isCorrected")).containsExactly(true);
@@ -81,13 +81,13 @@ class AttendanceApiTests {
 
     @Test
     void nothingBeforeTheyJoinedOrStillToCome() throws Exception {
-        assertThat(JsonPath.<List<Object>>read(kasun.get("/api/attendance?month=2023-11").body(), "$")).isEmpty();
-        assertThat(JsonPath.<List<Object>>read(kasun.get("/api/attendance?month=2026-12").body(), "$")).isEmpty();
+        assertThat(JsonPath.<List<Object>>read(arjun.get("/api/attendance?month=2023-11").body(), "$")).isEmpty();
+        assertThat(JsonPath.<List<Object>>read(arjun.get("/api/attendance?month=2026-12").body(), "$")).isEmpty();
     }
 
     @Test
     void aBadMonthIsRefusedPolitely() throws Exception {
-        HttpResponse<String> response = kasun.get("/api/attendance?month=November");
+        HttpResponse<String> response = arjun.get("/api/attendance?month=November");
 
         assertThat(response.statusCode()).isEqualTo(400);
         assertThat(response.body()).isEqualTo("{\"message\":\"Month must look like 2026-11\"}");
@@ -95,38 +95,56 @@ class AttendanceApiTests {
 
     @Test
     void theFingerprintDevicesAreGone() throws Exception {
-        assertThat(kasun.get("/api/devices").statusCode()).isEqualTo(404);
+        assertThat(arjun.get("/api/devices").statusCode()).isEqualTo(404);
     }
 
     @Test
     void aPunchFixIsRaisedAndListedWithTheTimeAsTheyTypedIt() throws Exception {
-        HttpResponse<String> raised = kasun.post("/api/attendance/corrections",
-                "{\"date\":\"2026-11-10\",\"kind\":\"missed-out\",\"requestedTime\":\"17:20\",\"reason\":\"  Device was offline  \"}");
+        HttpResponse<String> raised = arjun.post("/api/attendance/corrections",
+                "{\"date\":\"2026-11-10\",\"kind\":\"missed-out\",\"category\":\"forgot\",\"requestedTime\":\"17:20\",\"reason\":\"  Device was offline  \"}");
 
         assertThat(raised.statusCode()).isEqualTo(200);
+        assertThat(JsonPath.<String>read(raised.body(), "$.category")).isEqualTo("forgot");
         assertThat(JsonPath.<String>read(raised.body(), "$.status")).isEqualTo("pending");
         assertThat(JsonPath.<String>read(raised.body(), "$.requestedTime")).isEqualTo("17:20");
         assertThat(JsonPath.<String>read(raised.body(), "$.reason")).isEqualTo("Device was offline");
-        assertThat(JsonPath.<List<String>>read(kasun.get("/api/attendance/corrections").body(), "$[*].id"))
+        assertThat(JsonPath.<List<String>>read(arjun.get("/api/attendance/corrections").body(), "$[*].id"))
                 .contains(JsonPath.<String>read(raised.body(), "$.id"), "AC-298");
     }
 
+    private HttpResponse<String> fix(String kind, String category, String reason) throws Exception {
+        return arjun.post("/api/attendance/corrections", "{\"date\":\"2026-11-10\",\"kind\":\"" + kind + "\",\"category\":\"" + category
+                + "\",\"requestedTime\":\"09:00\"" + (reason == null ? "" : ",\"reason\":\"" + reason + "\"") + "}");
+    }
+
     @Test
-    void aPunchFixNeedsADayThatHasHappenedAndAKindAndAReason() throws Exception {
-        assertThat(kasun.post("/api/attendance/corrections", "{\"date\":\"2026-11-20\",\"kind\":\"missed-in\",\"requestedTime\":\"09:00\",\"reason\":\"x\"}").body())
+    void aPunchFixNeedsADayThatHasHappenedAndAKnownKindAndType() throws Exception {
+        assertThat(arjun.post("/api/attendance/corrections", "{\"date\":\"2026-11-20\",\"kind\":\"missed-in\",\"category\":\"forgot\",\"requestedTime\":\"09:00\"}").body())
                 .isEqualTo("{\"message\":\"You can't fix a day that hasn't happened yet.\"}");
-        assertThat(kasun.post("/api/attendance/corrections", "{\"date\":\"2026-11-10\",\"kind\":\"forgot\",\"requestedTime\":\"09:00\",\"reason\":\"x\"}").statusCode())
-                .isEqualTo(400);
-        assertThat(kasun.post("/api/attendance/corrections", "{\"date\":\"2026-11-10\",\"kind\":\"missed-in\",\"requestedTime\":\"09:00\",\"reason\":\" \"}").statusCode())
-                .isEqualTo(400);
+        assertThat(fix("forgot", "forgot", "x").statusCode()).isEqualTo(400);
+        assertThat(fix("missed-in", "beach", "x").statusCode()).isEqualTo(400);
+    }
+
+    @Test
+    void forgettingOrWorkingFromAResortNeedNoReason() throws Exception {
+        assertThat(fix("missed-in", "forgot", null).statusCode()).isEqualTo(200);
+        assertThat(JsonPath.<String>read(fix("missed-out", "resort", " ").body(), "$.category")).isEqualTo("resort");
+    }
+
+    @Test
+    void aLatePunchOrAnythingElseNeedsAReasonAndALatePunchIsAboutThePunchIn() throws Exception {
+        assertThat(fix("missed-in", "late", null).body()).isEqualTo("{\"message\":\"Say what happened, so your manager can check it.\"}");
+        assertThat(fix("missed-in", "other", " ").statusCode()).isEqualTo(400);
+        assertThat(fix("missed-out", "late", "Traffic").body()).isEqualTo("{\"message\":\"A late punch is about your punch in.\"}");
+        assertThat(fix("missed-in", "late", "Reader queue at the gate").statusCode()).isEqualTo(200);
     }
 
     @Test
     void holidaysComeByYearWithTentativeIslamicDates() throws Exception {
-        String holidays = kasun.get("/api/holidays?year=2026").body();
+        String holidays = arjun.get("/api/holidays?year=2026").body();
 
         assertThat(JsonPath.<List<String>>read(holidays, "$[*].date")).hasSize(17).first().isEqualTo("2026-01-01");
         assertThat(JsonPath.<List<Boolean>>read(holidays, "$[?(@.name == 'Eid al Fitr')].isTentative")).containsExactly(true);
-        assertThat(JsonPath.<List<String>>read(kasun.get("/api/holidays").body(), "$[*].date")).hasSize(17);
+        assertThat(JsonPath.<List<String>>read(arjun.get("/api/holidays").body(), "$[*].date")).hasSize(17);
     }
 }

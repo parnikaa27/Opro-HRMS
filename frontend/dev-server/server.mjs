@@ -26,6 +26,11 @@ const db = {
   adjustments: load('balance-adjustments'),
   schedules: load('schedules'),
   punchEdits: load('punch-edits'),
+  flightAllowances: load('flight-allowances'),
+  flightClaims: load('flight-claims'),
+  rates: load('exchange-rates'),
+  compOffs: [],
+  receipts: new Map(),
   // Uploaded files live in memory like everything else, keyed by employee or request.
   photos: new Map(),
   certificates: new Map(),
@@ -38,6 +43,8 @@ db.homeDays = db.attendance
 
 const longDate = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 const sessions = new Map();
+const FRIDAY = 5;
+const FIX_CATEGORIES = ['resort', 'forgot', 'late', 'other'];
 const SENT = Symbol('sent');
 
 // The smallest valid PDF: one page with one line of text. Only plain ASCII names are used, so no escaping beyond parentheses.
@@ -273,6 +280,12 @@ const decisionText = (collection, { status, decisionNote, ...item }) => {
 // An approved fix goes through the same path as one HR makes. If the punch is already there, or the day is older
 // than the mock's history, there is nothing left to change.
 const applyFix = (correction, user) => {
+  // A late punch moves their punch in: the late one is voided first, then the real time is added.
+  const record = db.attendance.find((entry) => entry.employeeId === correction.employeeId && entry.date === correction.date);
+  const first = record && punchMinutesOf(record)[0];
+  if (correction.category === 'late' && first !== undefined && first > toMinutes(correction.requestedTime)) {
+    editPunch({ employeeId: correction.employeeId, date: correction.date, action: 'void', time: record.punches[0].at.slice(11, 16), reason: `Late punch fix approved: ${correction.reason}`, by: user.id });
+  }
   try {
     editPunch({ employeeId: correction.employeeId, date: correction.date, action: 'add', time: correction.requestedTime, reason: `Punch fix approved: ${correction.reason}`, by: user.id });
   } catch (error) {
@@ -301,6 +314,19 @@ const decide = (collection, user, id, { decision, note }, inScope = managerScope
   }
   const decided = { ...item, status: decision, decidedBy: user.id, decidedOn: today(), ...(note && { decisionNote: String(note) }) };
   db[collection] = db[collection].map((entry) => (entry.id === id ? decided : entry));
+  if (collection === 'compOffs') {
+    if (decision === 'approved') {
+      const earned = compOffView(item).days;
+      const held = (db.leaveBalances[item.employeeId] ?? []).find(({ type }) => type === 'comp-off');
+      setEntitled(item.employeeId, 'comp-off', (held?.entitled ?? 0) + earned);
+      logAdjustment(item.employeeId, 'comp-off', earned, `Worked on ${sayDate(item.date)}`, user.id);
+      db.compOffs = db.compOffs.map((entry) => (entry.id === id ? { ...entry, days: earned } : entry));
+    }
+    notify(item.employeeId, 'leave', decision === 'approved'
+      ? `${user.fullName} approved ${sayDays(compOffView(decided).days)} of compensatory off for working on ${sayDate(item.date)}.`
+      : `${user.fullName} didn't give compensatory off for working on ${sayDate(item.date)}: ${sentence(String(note ?? 'no reason given'))}`);
+    return compOffView(db.compOffs.find((entry) => entry.id === id));
+  }
   if (collection === 'homeDays') {
     db.attendance = db.attendance.map((entry) => (entry.employeeId === item.employeeId && entry.date === item.date ? decideHomeDay(entry, decision) : entry));
     notify(item.employeeId, 'home', homeDecisionText(user, decided));
@@ -308,6 +334,48 @@ const decide = (collection, user, id, { decision, note }, inScope = managerScope
   }
   notify(item.employeeId, collection === 'corrections' ? 'correction' : 'leave', decisionText(collection, decided));
   return withName(decided);
+};
+
+// Retired types drop out of everyone's balances. Their history stays.
+const balancesOf = (employeeId) =>
+  (db.leaveBalances[employeeId] ?? []).filter(({ type }) => !db.leaveTypes.find((entry) => entry.code === type)?.retiredOn).map((balance) => ({ carriedOver: 0, ...balance }));
+
+const setEntitled = (employeeId, type, entitled) => {
+  const balances = db.leaveBalances[employeeId] ?? [];
+  db.leaveBalances = {
+    ...db.leaveBalances,
+    [employeeId]: balances.some((balance) => balance.type === type)
+      ? balances.map((balance) => (balance.type === type ? { ...balance, entitled } : balance))
+      : [...balances, { type, entitled, taken: 0, pending: 0 }],
+  };
+};
+
+const logAdjustment = (employeeId, type, days, reason, by) => {
+  db.adjustments = [{ id: `BA-${randomUUID().slice(0, 6)}`, employeeId, type, days, reason, by, on: today() }, ...db.adjustments];
+};
+
+// Flights are counted in USD. A claim in MVR or INR is converted at HR's rate on the day it's made.
+const toUsd = (amount, currency) => Math.round((currency === 'USD' ? amount : amount / db.rates[currency]) * 100) / 100;
+const dollars = (usd) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(usd);
+const flightTotal = (employeeId, status, year) =>
+  db.flightClaims.filter((claim) => claim.employeeId === employeeId && claim.status === status && claim.flightDate.startsWith(String(year))).reduce((sum, claim) => sum + claim.amountUsd, 0);
+const flightYearOf = (employeeId) => {
+  const year = Number(today().slice(0, 4));
+  const allowance = db.flightAllowances.find((entry) => entry.employeeId === employeeId && entry.year === year);
+  return {
+    year,
+    ...(allowance && { allowanceUsd: allowance.amountUsd }),
+    usedUsd: flightTotal(employeeId, 'approved', year),
+    pendingUsd: flightTotal(employeeId, 'pending', year),
+    ratesPerUsd: db.rates,
+    claims: db.flightClaims.filter((claim) => claim.employeeId === employeeId).sort((first, second) => second.flightDate.localeCompare(first.flightDate)).map(withName),
+  };
+};
+
+// A day off worked earns a full day, or half for a short one. The mock reads it off the day's record.
+const compOffView = (claim) => {
+  const day = db.attendance.find((entry) => entry.employeeId === claim.employeeId && entry.date === claim.date);
+  return { ...withName(claim), workedMinutes: day?.workedMinutes ?? 0, days: claim.days ?? (day?.status === 'half-day' ? 0.5 : 1) };
 };
 
 const MEGABYTE = 1024 * 1024;
@@ -383,11 +451,11 @@ const routes = [
   // Spring checks the distance to an office. The mock only checks a location was sent.
   ['POST', /^\/api\/attendance\/punch$/, ({ user, body }) => {
     const record = db.attendance.find((entry) => entry.employeeId === user.id && entry.date === today());
-    if (!record || !['office', 'home'].includes(body.mode)) {
+    if (!record || !['office', 'resort', 'home'].includes(body.mode)) {
       throw new HttpError(400, 'Pick office or home');
     }
-    if (body.mode === 'office' && [body.latitude, body.longitude, body.accuracy].some((value) => typeof value !== 'number')) {
-      throw new HttpError(400, "Allow location so we can see you're at the office.");
+    if (body.mode !== 'home' && [body.latitude, body.longitude, body.accuracy].some((value) => typeof value !== 'number')) {
+      throw new HttpError(400, `Allow location so we can see you're at the ${body.mode}.`);
     }
     const workMode = record.workMode ?? body.mode;
     if (record.punches.length > 0 && workMode !== body.mode) {
@@ -400,7 +468,14 @@ const routes = [
         notify(user.managerId, 'approval', `${user.fullName} is working from home today. Approve it from Leave requests.`);
       }
     }
-    const place = body.mode === 'home' ? 'Home' : user.workLocation;
+    const isDayOff = new Date(`${today()}T00:00:00Z`).getUTCDay() === FRIDAY || db.holidays.some(({ date }) => date === today());
+    if (isDayOff && !db.compOffs.some((entry) => entry.employeeId === user.id && entry.date === today())) {
+      db.compOffs = [{ id: `CO-${user.id}-${today()}`, employeeId: user.id, date: today(), status: 'pending' }, ...db.compOffs];
+      if (user.managerId) {
+        notify(user.managerId, 'approval', `${user.fullName} is working on ${sayDate(today())}, a day off. Give them compensatory off from Leave requests.`);
+      }
+    }
+    const place = { home: 'Home', resort: 'Client resort', office: user.workLocation }[body.mode];
     const homeStatus = body.mode === 'home' ? (record.homeStatus ?? 'pending') : undefined;
     const punched = punchNow({ record, workMode, place, homeStatus, schedules: db.schedules });
     db.attendance = db.attendance.map((entry) => (entry === record ? punched : entry));
@@ -408,16 +483,20 @@ const routes = [
   }],
   ['GET', /^\/api\/attendance\/corrections$/, ({ user }) => db.corrections.filter(({ employeeId }) => employeeId === user.id).map(withName)],
   ['POST', /^\/api\/attendance\/corrections$/, ({ user, body }) => {
-    if (!DATE.test(String(body.date)) || body.date > today() || !TIME.test(String(body.requestedTime)) || !['missed-in', 'missed-out'].includes(body.kind)) {
-      throw new HttpError(400, 'Say which day, which punch and what time');
+    if (!DATE.test(String(body.date)) || body.date > today() || !TIME.test(String(body.requestedTime)) || !['missed-in', 'missed-out'].includes(body.kind) || !FIX_CATEGORIES.includes(body.category)) {
+      throw new HttpError(400, 'Say which day, which punch, what time and what happened');
     }
-    const correction = { id: `AC-${randomUUID().slice(0, 6)}`, employeeId: user.id, date: body.date, kind: body.kind, requestedTime: body.requestedTime, reason: body.reason, status: 'pending', raisedOn: today() };
+    const reason = String(body.reason ?? '').trim();
+    if (['late', 'other'].includes(body.category) && !reason) {
+      throw new HttpError(400, 'Say what happened, so your manager can check it.');
+    }
+    const correction = { id: `AC-${randomUUID().slice(0, 6)}`, employeeId: user.id, date: body.date, kind: body.category === 'late' ? 'missed-in' : body.kind, category: body.category, requestedTime: body.requestedTime, ...(reason && { reason }), status: 'pending', raisedOn: today() };
     db.corrections = [correction, ...db.corrections];
     return correction;
   }],
 
   ['GET', /^\/api\/leave\/types$/, () => db.leaveTypes],
-  ['GET', /^\/api\/leave\/balances$/, ({ user }) => db.leaveBalances[user.id] ?? []],
+  ['GET', /^\/api\/leave\/balances$/, ({ user }) => balancesOf(user.id)],
   ['GET', /^\/api\/leave\/requests$/, ({ user }) => db.leaveRequests.filter(({ employeeId }) => employeeId === user.id).map(withName)],
   ['POST', /^\/api\/leave\/requests$/, ({ user, body }) => {
     // The real backend counts days itself. The mock trusts the client to keep things simple.
@@ -449,6 +528,44 @@ const routes = [
     res.end(samplePdf(`${document.name} for ${user.fullName}`));
     return SENT;
   }],
+  ['GET', /^\/api\/flights$/, ({ user }) => flightYearOf(user.id)],
+  ['POST', /^\/api\/flights\/claims$/, ({ user, body }) => {
+    const year = Number(String(body.flightDate).slice(0, 4));
+    const allowance = db.flightAllowances.find((entry) => entry.employeeId === user.id && entry.year === year);
+    if (!allowance) {
+      throw new HttpError(409, `You don't have a flight allowance for ${year}. Ask HR about it.`);
+    }
+    const amountUsd = toUsd(Number(body.amount), body.currency);
+    const left = allowance.amountUsd - flightTotal(user.id, 'approved', year) - flightTotal(user.id, 'pending', year);
+    if (amountUsd > left) {
+      throw new HttpError(409, `That's ${dollars(amountUsd)}, more than the ${dollars(Math.max(0, left))} you have left for ${year}.`);
+    }
+    const claim = { id: `FC-${randomUUID().slice(0, 6)}`, employeeId: user.id, flightDate: body.flightDate, route: String(body.route).trim(), amount: Number(body.amount), currency: body.currency, amountUsd, hasReceipt: false, status: 'pending', raisedOn: today() };
+    db.flightClaims = [claim, ...db.flightClaims];
+    return withName(claim);
+  }],
+  ['PUT', /^\/api\/flights\/claims\/([\w-]+)\/receipt$/, ({ user, params: [id], body }) => {
+    const claim = db.flightClaims.find((entry) => entry.id === id && entry.employeeId === user.id && entry.status === 'pending');
+    if (!claim) {
+      throw new HttpError(404, 'Claim not found');
+    }
+    db.receipts.set(id, body);
+    return withName(replaceIn('flightClaims', { ...claim, hasReceipt: true }));
+  }, { upload: CERTIFICATE_UPLOAD }],
+  ['GET', /^\/api\/flights\/claims\/([\w-]+)\/receipt$/, ({ user, params: [id], res }) => {
+    const receipt = db.flightClaims.some((entry) => entry.id === id && entry.employeeId === user.id) && db.receipts.get(id);
+    if (!receipt) {
+      throw new HttpError(404, 'No receipt on this claim.');
+    }
+    return sendFile(res, receipt, `receipt-${id}`);
+  }],
+  ['POST', /^\/api\/flights\/claims\/([\w-]+)\/cancel$/, ({ user, params: [id] }) => {
+    const claim = db.flightClaims.find((entry) => entry.id === id && entry.employeeId === user.id);
+    if (!claim || claim.status !== 'pending') {
+      throw new HttpError(409, "Only a claim that's still waiting can be cancelled.");
+    }
+    return withName(replaceIn('flightClaims', { ...claim, status: 'cancelled' }));
+  }],
   ['GET', /^\/api\/notifications$/, ({ user }) => db.notifications.filter(({ employeeId }) => employeeId === user.id)],
   ['POST', /^\/api\/notifications\/read$/, ({ user }) => {
     db.notifications = db.notifications.map((entry) => (entry.employeeId === user.id ? { ...entry, isRead: true } : entry));
@@ -476,6 +593,11 @@ const routes = [
     return db.corrections.filter((entry) => reportIds.has(entry.employeeId)).filter(byStatus(query.get('status'))).map(withName);
   }],
   ['POST', /^\/api\/team\/corrections\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => decide('corrections', user, id, body)],
+  ['GET', /^\/api\/team\/comp-offs$/, ({ user, query }) => {
+    const reportIds = requireManager(user);
+    return db.compOffs.filter((entry) => reportIds.has(entry.employeeId)).filter(byStatus(query.get('status'))).map(compOffView);
+  }],
+  ['POST', /^\/api\/team\/comp-offs\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => decide('compOffs', user, id, body)],
   ['GET', /^\/api\/team\/home-days$/, ({ user, query }) => {
     const reportIds = requireManager(user);
     return db.homeDays.filter((entry) => reportIds.has(entry.employeeId)).filter(byStatus(query.get('status'))).map(withName);
@@ -548,7 +670,7 @@ const routes = [
     const employee = findOr404('employees', id, 'Employee');
     return {
       ...profileOf(withRoles(employee)),
-      leaveBalances: db.leaveBalances[id] ?? [],
+      leaveBalances: balancesOf(id),
       adjustments: db.adjustments.filter(({ employeeId }) => employeeId === id).map((entry) => ({ ...entry, byName: nameOf(entry.by) })),
     };
   }],
@@ -664,9 +786,101 @@ const routes = [
     if (!type) {
       throw new HttpError(404, 'Leave type not found');
     }
-    const updated = { ...type, ...pick(body, ['name', 'allowsHalfDay', 'defaultEntitlement', 'documentRequiredAfterDays']) };
+    const updated = { ...type, ...pick(body, ['name', 'allowsHalfDay', 'defaultEntitlement', 'documentRequiredAfterDays', 'isForEveryone', 'carriesForward', 'carryForwardCap']) };
     db.leaveTypes = db.leaveTypes.map((entry) => (entry.code === code ? updated : entry));
     return updated;
+  }],
+  ['GET', /^\/api\/hr\/comp-offs$/, ({ user, query }) => {
+    requireHr(user);
+    return db.compOffs.filter(byStatus(query.get('status'))).map(compOffView);
+  }],
+  ['POST', /^\/api\/hr\/comp-offs\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => decide('compOffs', user, id, body, hrScope(user))],
+  ['POST', /^\/api\/hr\/leave-types$/, ({ user, body }) => {
+    requireHr(user);
+    const code = String(body.name ?? '').trim().toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 20);
+    if (!code || db.leaveTypes.some((entry) => entry.code === code)) {
+      throw new HttpError(409, "There's already a leave type called that.");
+    }
+    const type = { code, ...pick(body, ['name', 'allowsHalfDay', 'isUnlimited', 'defaultEntitlement', 'documentRequiredAfterDays', 'isForEveryone', 'carriesForward', 'carryForwardCap']) };
+    db.leaveTypes = [...db.leaveTypes.filter(({ code: existing }) => existing !== 'comp-off'), type, ...db.leaveTypes.filter(({ code: existing }) => existing === 'comp-off')];
+    if (type.isForEveryone && !type.isUnlimited) {
+      activeEmployees().forEach(({ id }) => setEntitled(id, code, Number(type.defaultEntitlement ?? 0)));
+    }
+    return type;
+  }],
+  ['DELETE', /^\/api\/hr\/leave-types\/([\w-]+)$/, ({ user, params: [code] }) => {
+    requireHr(user);
+    if (code === 'comp-off') {
+      throw new HttpError(409, 'Compensatory off pays back Fridays and holidays worked, so it stays.');
+    }
+    const isUsed = db.leaveRequests.some(({ type }) => type === code) || Object.values(db.leaveBalances).some((balances) => balances.some(({ type }) => type === code));
+    db.leaveTypes = isUsed ? db.leaveTypes.map((entry) => (entry.code === code ? { ...entry, retiredOn: today() } : entry)) : db.leaveTypes.filter((entry) => entry.code !== code);
+    return undefined;
+  }],
+  ['PUT', /^\/api\/hr\/employees\/([\w-]+)\/leave\/([\w-]+)$/, ({ user, params: [id, code], body }) => {
+    requireHr(user);
+    const held = (db.leaveBalances[id] ?? []).find(({ type }) => type === code);
+    const days = Number(body.days);
+    if (held && days < held.taken + held.pending) {
+      throw new HttpError(409, `They've already taken or booked ${sayDays(held.taken + held.pending)}, so it can't go below that.`);
+    }
+    if (days !== (held?.entitled ?? 0)) {
+      logAdjustment(id, code, days - (held?.entitled ?? 0), String(body.reason).trim(), user.id);
+    }
+    setEntitled(id, code, days);
+    notify(id, 'leave', `HR set your ${typeName(code)} to ${sayDays(days)} this year. ${sentence(String(body.reason))}`);
+    return undefined;
+  }],
+  ['POST', /^\/api\/hr\/employees\/([\w-]+)\/leave\/([\w-]+)\/remove$/, ({ user, params: [id, code], body }) => {
+    requireHr(user);
+    db.leaveBalances = { ...db.leaveBalances, [id]: (db.leaveBalances[id] ?? []).filter(({ type }) => type !== code) };
+    notify(id, 'leave', `HR removed ${typeName(code)} from your leave. ${sentence(String(body.reason))}`);
+    return undefined;
+  }],
+  ['GET', /^\/api\/hr\/flight-claims$/, ({ user, query }) => {
+    requireHr(user);
+    return db.flightClaims.filter(byStatus(query.get('status'))).sort((first, second) => second.raisedOn.localeCompare(first.raisedOn)).map(withName);
+  }],
+  ['POST', /^\/api\/hr\/flight-claims\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => {
+    requireHr(user);
+    const claim = findOr404('flightClaims', id, 'Claim');
+    if (claim.status !== 'pending' || !['approved', 'rejected'].includes(body.decision)) {
+      throw new HttpError(409, 'This claim has already been decided.');
+    }
+    const decided = { ...claim, status: body.decision, decidedBy: user.id, decidedOn: today(), ...(body.note && { decisionNote: String(body.note) }) };
+    const what = `Your flight claim for ${claim.route} (${dollars(claim.amountUsd)})`;
+    notify(claim.employeeId, 'flight', body.decision === 'approved' ? `${what} was approved.` : `${what} was declined: ${sentence(String(body.note ?? 'no reason given'))}`);
+    return withName(replaceIn('flightClaims', decided));
+  }],
+  ['GET', /^\/api\/hr\/flight-claims\/([\w-]+)\/receipt$/, ({ user, params: [id], res }) => {
+    requireHr(user);
+    const receipt = db.receipts.get(id);
+    if (!receipt) {
+      throw new HttpError(404, 'No receipt on this claim.');
+    }
+    return sendFile(res, receipt, `receipt-${id}`);
+  }],
+  ['GET', /^\/api\/hr\/employees\/([\w-]+)\/flights$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    findOr404('employees', id, 'Employee');
+    return flightYearOf(id);
+  }],
+  ['PUT', /^\/api\/hr\/employees\/([\w-]+)\/flight-allowance$/, ({ user, params: [id], body }) => {
+    requireHr(user);
+    const year = Number(body.year);
+    const amountUsd = Number(body.amountUsd);
+    const claimed = flightTotal(id, 'approved', year) + flightTotal(id, 'pending', year);
+    if (amountUsd < claimed) {
+      throw new HttpError(409, `They've already claimed ${dollars(claimed)} for ${year}, so it can't go below that.`);
+    }
+    db.flightAllowances = [...db.flightAllowances.filter((entry) => !(entry.employeeId === id && entry.year === year)), { employeeId: id, year, amountUsd }];
+    notify(id, 'flight', `HR set your flight allowance for ${year} to ${dollars(amountUsd)}.`);
+    return undefined;
+  }],
+  ['PUT', /^\/api\/hr\/exchange-rates$/, ({ user, body }) => {
+    requireHr(user);
+    db.rates = { MVR: Number(body.mvr), INR: Number(body.inr) };
+    return db.rates;
   }],
   ['POST', /^\/api\/hr\/holidays$/, ({ user, body }) => {
     requireHr(user);
@@ -779,7 +993,7 @@ const routes = [
     if (!employee) {
       throw new HttpError(404, 'Not one of your reports');
     }
-    return { ...profileOf(employee), leaveBalances: db.leaveBalances[id] ?? [] };
+    return { ...profileOf(employee), leaveBalances: balancesOf(id) };
   }],
 ];
 
