@@ -18,6 +18,9 @@ import java.util.stream.Stream;
 import mv.opro.hrms.attendance.CorrectionRequest;
 import mv.opro.hrms.attendance.CorrectionResponse;
 import mv.opro.hrms.attendance.Corrections;
+import mv.opro.hrms.attendance.HomeDay;
+import mv.opro.hrms.attendance.HomeDayResponse;
+import mv.opro.hrms.attendance.HomeDays;
 import mv.opro.hrms.common.ApiException;
 import mv.opro.hrms.employee.Employee;
 import mv.opro.hrms.employee.People;
@@ -74,14 +77,16 @@ class HrLeaveController {
     private final People people;
     private final LeaveService leave;
     private final Corrections corrections;
+    private final HomeDays homeDays;
     private final Files files;
 
-    HrLeaveController(HrAccess hr, CurrentUser currentUser, People people, LeaveService leave, Corrections corrections, Files files) {
+    HrLeaveController(HrAccess hr, CurrentUser currentUser, People people, LeaveService leave, Corrections corrections, HomeDays homeDays, Files files) {
         this.hr = hr;
         this.currentUser = currentUser;
         this.people = people;
         this.leave = leave;
         this.corrections = corrections;
+        this.homeDays = homeDays;
         this.files = files;
     }
 
@@ -126,6 +131,24 @@ class HrLeaveController {
         Employee me = hr.require(currentUser.get());
         CorrectionRequest decided = corrections.decide(me, id, everyoneBut(me), new Corrections.Decision(body.decision(), body.note()));
         return CorrectionResponse.of(decided, people.namesOf(Set.of(decided.getEmployeeId())).get(decided.getEmployeeId()));
+    }
+
+    @GetMapping("/api/hr/home-days")
+    List<HomeDayResponse> homeDays(@RequestParam(required = false) String status) {
+        hr.require(currentUser.get());
+        List<HomeDay> days = homeDays.all(status);
+        Map<String, String> names = people.namesOf(days.stream()
+                .flatMap(day -> Stream.of(day.getEmployeeId(), day.getDecidedBy()))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet()));
+        return days.stream().map(day -> HomeDayResponse.of(day, names)).toList();
+    }
+
+    @PostMapping("/api/hr/home-days/{id}/decision")
+    HomeDayResponse decideHomeDay(@PathVariable String id, @Valid @RequestBody DecisionBody body) {
+        Employee me = hr.require(currentUser.get());
+        HomeDay decided = homeDays.decide(me, id, everyoneBut(me), new Corrections.Decision(body.decision(), body.note()));
+        return HomeDayResponse.of(decided, people.namesOf(Set.of(decided.getEmployeeId(), me.getId())));
     }
 
     @PostMapping("/api/hr/balance-adjustments")

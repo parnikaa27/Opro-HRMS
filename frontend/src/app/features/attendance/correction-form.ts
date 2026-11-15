@@ -13,7 +13,7 @@ const MAX_REASON = 300;
   selector: 'app-correction-form',
   imports: [FormField, FieldError, Icon, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="BIOMETRIC RECORDS" heading="Fix a punch" intro="Forgot to punch, or the device was down? Tell your manager what really happened." />
+    <app-modal-heading eyebrow="ATTENDANCE RECORDS" heading="Fix a punch" intro="Forgot to punch, or your phone couldn't place you? Tell your manager what really happened." />
     <form novalidate (submit)="save($event)">
       <div class="form-row">
         <label>
@@ -39,7 +39,7 @@ const MAX_REASON = 300;
 
       <label>
         What happened?
-        <textarea [formField]="fixForm.reason" placeholder="The device at the Hulhumalé site was offline" data-testid="fix-reason" [attr.aria-invalid]="fixForm.reason().touched() && fixForm.reason().invalid()" aria-describedby="fix-reason-error"></textarea>
+        <textarea [formField]="fixForm.reason" placeholder="My phone had no signal at the Hulhumalé site" data-testid="fix-reason" [attr.aria-invalid]="fixForm.reason().touched() && fixForm.reason().invalid()" aria-describedby="fix-reason-error"></textarea>
       </label>
       <app-field-error id="fix-reason-error" [errors]="fixForm.reason().errors()" [isTouched]="fixForm.reason().touched()" />
 

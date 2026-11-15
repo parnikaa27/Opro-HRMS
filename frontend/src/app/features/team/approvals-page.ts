@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
-import { CorrectionRequest } from '../../models/attendance';
+import { CorrectionRequest, HomeDay } from '../../models/attendance';
 import { LeaveRequest } from '../../models/leave';
 import { Avatar } from '../../shared/ui/avatar';
 import { Dialog } from '../../shared/ui/dialog';
@@ -12,15 +12,16 @@ import { LeaveApi } from '../leave/leave-api';
 import { describeDates, describeLength } from '../leave/leave-format';
 import { DecisionState } from './decision-state';
 import { DeclineForm } from './decline-form';
+import { HomeDayList } from './home-day-list';
 import { submittedAgo } from './request-row';
 import { RequestScope, TeamApi } from './team-api';
 
-type Tab = 'pending' | 'approved' | 'rejected' | 'fixes';
+type Tab = 'pending' | 'approved' | 'rejected' | 'fixes' | 'home';
 
 interface Declining {
   id: string;
   name: string;
-  kind: 'leave' | 'fix';
+  kind: 'leave' | 'fix' | 'home';
 }
 
 const isOpen = ({ status }: LeaveRequest) => status === 'approved' || status === 'pending';
@@ -28,14 +29,14 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
 
 @Component({
   selector: 'app-approvals-page',
-  imports: [Avatar, DeclineForm, Dialog, Icon, ListSkeleton, StatusPill],
+  imports: [Avatar, DeclineForm, Dialog, HomeDayList, Icon, ListSkeleton, StatusPill],
   template: `
     <div class="page-view">
       <div class="page-title">
         <div>
           <span class="eyebrow">{{ scope() === 'hr' ? 'PEOPLE & CULTURE' : 'TEAM MANAGEMENT' }}</span>
           <h1>Leave requests</h1>
-          <p>{{ scope() === 'hr' ? 'Every request across Opro. Step in when a manager is away.' : 'Review and manage leave requests and punch fixes from your team.' }}</p>
+          <p>{{ scope() === 'hr' ? 'Every request across Opro. Step in when a manager is away.' : 'Review leave, punch fixes and days worked from home for your team.' }}</p>
         </div>
       </div>
 
@@ -51,10 +52,21 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
           }
         </div>
 
-        @if (leave.error() || fixes.error()) {
+        @if (leave.error() || fixes.error() || homeDays.error()) {
           <p class="attendance-off">Requests didn't load. Refresh the page to try again.</p>
         } @else if (leave.isLoading() && leaveList().length === 0) {
           <app-list-skeleton [count]="3" />
+        } @else if (tab() === 'home') {
+          <app-home-day-list
+            [days]="pendingHomeDays()"
+            [busyId]="decisions.busyId()"
+            [failedId]="decisions.failedId()"
+            (approved)="approveHomeDay($event)"
+            (declined)="declining.set({ id: $event.id, name: $event.employeeName ?? '', kind: 'home' })"
+          />
+          @if (pendingHomeDays().length === 0) {
+            <p class="attendance-off">{{ emptyText.home }}</p>
+          }
         } @else if (tab() === 'fixes') {
           @for (fix of pendingFixes(); track fix.id) {
             <div class="large-request" data-testid="pending-fix">
@@ -120,7 +132,7 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
 
     <app-dialog heading="Decline request" [isOpen]="declining() !== undefined" (isOpenChange)="$event || declining.set(undefined)">
       @if (declining(); as target) {
-        <app-decline-form [name]="target.name" (declined)="decline(target, $event)" (cancelled)="declining.set(undefined)" />
+        <app-decline-form [name]="target.name" [placeholder]="declineExample[target.kind]" (declined)="decline(target, $event)" (cancelled)="declining.set(undefined)" />
       }
     </app-dialog>
   `,
@@ -134,6 +146,7 @@ export class ApprovalsPage {
 
   protected readonly leave = this.api.leaveRequests({ scope: this.scope });
   protected readonly fixes = this.api.corrections({ scope: this.scope });
+  protected readonly homeDays = this.api.homeDays({ status: 'pending', scope: this.scope });
   private readonly types = inject(LeaveApi).types();
   protected readonly decisions = new DecisionState();
 
@@ -146,6 +159,7 @@ export class ApprovalsPage {
       .filter(({ status }) => status === 'pending')
       .sort((first, second) => first.raisedOn.localeCompare(second.raisedOn)),
   );
+  protected readonly pendingHomeDays = computed(() => [...valueOr(this.homeDays, [])].sort((first, second) => first.date.localeCompare(second.date)));
   private readonly byStatus = (status: LeaveRequest['status']) => this.leaveList().filter((request) => request.status === status);
 
   protected readonly tabs = computed(() => [
@@ -153,11 +167,12 @@ export class ApprovalsPage {
     { value: 'approved' as const, label: 'Approved', count: 0 },
     { value: 'rejected' as const, label: 'Declined', count: 0 },
     { value: 'fixes' as const, label: 'Punch fixes', count: this.pendingFixes().length },
+    { value: 'home' as const, label: 'Home working', count: this.pendingHomeDays().length },
   ]);
 
   protected readonly shown = computed(() => {
     const tab = this.tab();
-    const list = tab === 'fixes' ? [] : this.byStatus(tab);
+    const list = tab === 'fixes' || tab === 'home' ? [] : this.byStatus(tab);
     // Oldest waiting first; decided ones newest first.
     return tab === 'pending'
       ? list.sort((first, second) => first.appliedOn.localeCompare(second.appliedOn))
@@ -167,8 +182,16 @@ export class ApprovalsPage {
   protected readonly emptyText: Record<Tab, string> = {
     pending: 'Nothing waiting for you. Enjoy the quiet.',
     fixes: 'No punch fixes waiting for you.',
+    home: 'Nobody is waiting for a home working decision.',
     approved: 'No approved requests yet.',
     rejected: 'You haven’t declined anything.',
+  };
+
+  // An example reason that fits what's being declined. A declined home day becomes an absence, so say why.
+  protected readonly declineExample: Record<Declining['kind'], string> = {
+    leave: 'Two others are off that week. Could you move it by a few days?',
+    fix: 'The site log shows you left at 4, not 5. Could you check the time?',
+    home: 'We had the site visit today, so I needed you in the office.',
   };
 
   protected readonly typeName = (code: string) => valueOr(this.types, []).find((type) => type.code === code)?.name ?? code;
@@ -191,11 +214,19 @@ export class ApprovalsPage {
     return this.decisions.run(id, () => this.api.decideCorrection(id, { decision: 'approved' }, this.scope()), () => this.fixes.reload());
   }
 
+  protected approveHomeDay({ id }: HomeDay) {
+    return this.decisions.run(id, () => this.api.decideHomeDay(id, { decision: 'approved' }, this.scope()), () => this.homeDays.reload());
+  }
+
   protected async decline(target: Declining, note: string) {
     this.declining.set(undefined);
     const decision = { decision: 'rejected' as const, note };
-    return target.kind === 'leave'
-      ? this.decisions.run(target.id, () => this.api.decideLeave(target.id, decision, this.scope()), () => this.leave.reload())
-      : this.decisions.run(target.id, () => this.api.decideCorrection(target.id, decision, this.scope()), () => this.fixes.reload());
+    const save = {
+      leave: () => this.api.decideLeave(target.id, decision, this.scope()),
+      fix: () => this.api.decideCorrection(target.id, decision, this.scope()),
+      home: () => this.api.decideHomeDay(target.id, decision, this.scope()),
+    }[target.kind];
+    const list = { leave: this.leave, fix: this.fixes, home: this.homeDays }[target.kind];
+    return this.decisions.run(target.id, save, () => list.reload());
   }
 }

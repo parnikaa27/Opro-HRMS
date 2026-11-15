@@ -94,11 +94,8 @@ class AttendanceApiTests {
     }
 
     @Test
-    void devicesReportWhereTheyAreAndWhetherTheyAreOnline() throws Exception {
-        String devices = kasun.get("/api/devices").body();
-
-        assertThat(JsonPath.<List<String>>read(devices, "$[*].name")).containsExactlyInAnyOrder("Front desk", "Site gate");
-        assertThat(JsonPath.<List<Boolean>>read(devices, "$[*].isOnline")).containsOnly(true);
+    void theFingerprintDevicesAreGone() throws Exception {
+        assertThat(kasun.get("/api/devices").statusCode()).isEqualTo(404);
     }
 
     @Test

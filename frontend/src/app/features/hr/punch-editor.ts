@@ -17,7 +17,7 @@ const timeOf = (iso: string) => iso.slice(TIME_START, TIME_END);
   selector: 'app-punch-editor',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="ATTENDANCE" [heading]="'Fix punches for ' + firstName()" [intro]="formatDayShort(day().date) + '. Device punches are never overwritten. Voided ones stay in the log below.'" />
+    <app-modal-heading eyebrow="ATTENDANCE" [heading]="'Fix punches for ' + firstName()" [intro]="formatDayShort(day().date) + '. Punches are never overwritten. Voided ones stay in the log below.'" />
     <ul class="punch-list" data-testid="punch-list">
       @for (punch of day().punches; track punch.at) {
         <li>{{ formatClock(punch.at) }} <span>{{ punch.direction === 'in' ? 'In' : 'Out' }}</span></li>

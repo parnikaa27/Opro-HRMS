@@ -3,14 +3,14 @@
 > **Read this file in full before doing anything.**
 > These rules apply to every response, every task, and every session.
 
-Opro is a company based in the Maldives. This repo holds its HR portal: attendance (fed by a biometric device), leave, holidays, employee profiles with a virtual ID card, and visa tracking for expatriate staff.
+Opro is a company based in the Maldives. This repo holds its HR portal: attendance (punched from the portal, at an office or from home), leave, holidays, employee profiles with a virtual ID card, and visa tracking for expatriate staff.
 
 | Part | Stack | Status |
 |---|---|---|
 | `frontend/` | Angular 22, Tailwind CSS v4, Vitest, Playwright | Employee, manager and HR views built. Employee and manager pages match the Figma design; HR pages reuse its classes |
 | `design/figma-make/` | `App.tsx` and `index.css` copied from the Figma Make file "Opro HRMS Portal" | The visual source of truth |
 | `frontend/dev-server/` | Plain Node mock API serving JSON fixtures | In progress |
-| `backend/` | Java 25, Spring Boot 4.1, PostgreSQL 18, Flyway, Maven | Every endpoint is live: session, profile with photo, holidays and events, attendance, leave with medical certificates, documents, announcements, change requests, notifications, the team view and the HR view. The mock stays for frontend work and the e2e tests |
+| `backend/` | Java 25, Spring Boot 4.1, PostgreSQL 18, Flyway, Maven | Every endpoint is live: session, profile with photo, holidays and events, attendance, leave with medical certificates, documents, announcements, change requests, notifications, the team view, the HR view, punching from the office or home, and daily visa reminders. The mock stays for frontend work, and the e2e tests run against both |
 
 ---
 
@@ -63,13 +63,13 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 | Route | Contents |
 |---|---|
 | `/login` | Mock user picker (dev only) |
-| `/` Overview | Welcome banner, today's attendance (time in, expected out, effective hours, device sync), leave balance, visa status, recent attendance table, dark staff card, next holiday and long weekend, latest leave request |
+| `/` Overview | Welcome banner, today's attendance (time in, expected out, effective hours, punch in and out), leave balance, visa status, recent attendance table, dark staff card, next holiday and long weekend, latest leave request |
 | `/documents` | Employment documents with status and download (sample files from the mock until storage exists) |
-| `/attendance` | My attendance: four summary cards, the attendance log for a chosen month, CSV export, punch fix requests and their status, and the device's sync state |
+| `/attendance` | My attendance: four summary cards, the attendance log for a chosen month, CSV export, punch fix requests and their status, and the punch button while today is on screen |
 | `/leave` | Leave and time off: balance rings, other leave types, request history with cancel (pending, or approved and not started), and the Request leave modal with a working day preview and a success screen |
 | `/calendar` | Company calendar: month grid with public holidays and company events, upcoming holidays, the holiday policy. Islamic holidays are marked **tentative** until confirmed after moon sighting. `/holidays` redirects here |
 | `/profile` | Virtual ID card (printable), personal and job details, emergency contact, visa and work permit details, request a change to personal details |
-| Notifications | Header panel, not a page: leave and punch fix decisions, visa reminders, announcements, every change HR makes to your record (punches, leave recorded for you, balance adjustments, visa, details, photo, a detail change request) and changes to working hours. Each says what changed and why, in plain words. Marking someone as leaving sends nothing: HR tells people in person |
+| Notifications | Header panel, not a page: leave, punch fix and home working decisions, visa reminders, announcements, every change HR makes to your record (punches, leave recorded for you, balance adjustments, visa, details, photo, a detail change request) and changes to working hours. Each says what changed and why, in plain words. Marking someone as leaving sends nothing: HR tells people in person |
 | Search | Top bar, ⌘K or Ctrl K. Finds pages, and people for managers |
 
 **Team view (managers only)**
@@ -78,8 +78,8 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 |---|---|
 | `/team` | Manager overview: welcome banner, team members, pending requests, average attendance and out of office cards, waiting leave with one click approve, team today, a month attendance chart with CSV export, visa alerts |
 | `/team/people` | Card directory of direct reports with today's status and search |
-| `/team/approvals` | Leave requests in tabs (Pending, Approved, Declined, Punch fixes). Approve in one click. Declining opens a modal that needs a reason, so the employee can plan around it. Waiting leave shows who else is off on those dates |
-| `/team/attendance` | Team summary cards and a table with one row per report (days present, late, missed, hours, today), month picker, CSV export, every device's status |
+| `/team/approvals` | Leave requests in tabs (Pending, Approved, Declined, Punch fixes, Home working). Approve in one click. Declining opens a modal that needs a reason, so the employee can plan around it. Waiting leave shows who else is off on those dates |
+| `/team/attendance` | Team summary cards and a table with one row per report (days present, late, missed, hours, today), month picker, CSV export |
 | `/team/calendar` | The company calendar plus who on the team is away (approved filled, pending dashed) |
 | `/team/:employeeId` | One report's leave balances, this month's attendance log, leave requests, staff card and visa. Read only |
 
@@ -115,11 +115,21 @@ Sidebar: Overview, People, Leave (count waiting), Calendar, Visas, Inbox (count 
 
 - **Shift rules are dated versions.** HR sets shift start and end, grace, half day threshold and Ramadan hours from a date after today. Days already worked keep the version they were worked under. A version that hasn't started can be cancelled. Ramadan hours apply from the first day of Ramadan to the day before Eid al Fitr in the holiday calendar (backend). The work week is not editable.
 - The backend sends `expectedOut` and `scheduledMinutes` with each day, from the version in force. The frontend shows them and never works out a shift itself.
-- **Punch fixes by HR:** add a missing punch or void a wrong one, one change at a time, always with a reason. Device punches are never overwritten, every change is logged with who, when and why, and the backend works the day out again. An approved punch fix request goes through the same path, logged as approved by whoever decided it. Corrected days show "Corrected" to everyone who sees them.
+- **Punch fixes by HR:** add a missing punch or void a wrong one, one change at a time, always with a reason. Punches are never overwritten, every change is logged with who, when and why, and the backend works the day out again. An approved punch fix request goes through the same path, logged as approved by whoever decided it. Corrected days show "Corrected" to everyone who sees them.
 - Raw punches are never edited. A wrong one is voided and a missing one is added with source `manual`. Each day is worked out per request from the punches, the schedule version in force, holidays, approved full day leave and the weekend (`DayCalculator`).
 - Ramadan hours are stored on the schedule but not applied yet. HR now confirms the first day of Ramadan and Eid al Fitr in the calendar, so the next step is applying those dates when a day is worked out.
-- Until a device is connected, the dev profile fills recent weeks with believable punches on start up (`DevPunchSeeder`). Real devices replace it.
-- The biometric device (model not yet known) pushes raw punches to the backend. A day may have **many punches** (breaks). The backend pairs them and works out first in, last out, time worked and status. **The frontend only displays these values. It never calculates attendance status.**
+- The dev profile fills recent weeks with believable portal punches on start up, mostly from the office and some from home (`DevPunchSeeder`).
+- A day may have **many punches** (breaks). The backend pairs them and works out first in, last out, time worked and status. **The frontend only displays these values. It never calculates attendance status.**
+
+### Punching (replaces the fingerprint devices)
+
+- Staff punch in and out from the portal (`POST /api/attendance/punch`). Punching in asks once: **at the office** or **from home**. The first punch sets the day's mode, and every later punch that day must match it.
+- **At the office:** the browser sends its location and accuracy. The server works out the distance to the nearest work location and refuses anything further than its radius (**300 m**), or a location less precise than **150 m**. Only the office name and the distance are stored, never coordinates.
+- **Work location pins are placeholders** in `backend/src/main/resources/application.yml` (`opro.punch.offices`: Malé office and Hulhumalé site) until Parnika confirms them.
+- **From home:** no location. The first home punch of a day creates a home day for the manager, who approves or declines it on the Home working tab. HR can decide too, but never for themselves. Declining needs a reason and turns the day into an absence (punches kept, 0 hours).
+- A double tap within a minute is refused. A person's punches are locked while one saves.
+- Old fingerprint device punches stay in history with the device's name. The device status screens and `/api/devices` are gone.
+- Honest limit: a browser location can be faked with free apps. The fingerprint was the proof someone was there; the distance check is a weaker one.
 
 ### Leave rules (placeholders, confirm with HR against the Maldives Employment Act)
 
@@ -151,6 +161,7 @@ Sidebar: Overview, People, Leave (count waiting), Calendar, Visas, Inbox (count 
 - Fields: work permit number, visa number, passport (**last 4 digits only, the API never sends the full number**), passport expiry, visa issue date, visa expiry date.
 - Status shown: **Valid**, **Expiring soon** (60 days or less), **Expired**. Passport expiry gets the same treatment.
 - Managers see visa status for their reports. Visa reminders appear on the dashboard and in notifications.
+- A daily job at 08:00 Maldives time (and on start up) sends each reminder once, at 60, 30 and 7 days and on the day it runs out, to the holder, their manager and HR (`VisaReminders`). If the server was down, only the most urgent missed one goes out. A renewal starts the reminders again.
 
 ### Virtual ID card
 
@@ -305,7 +316,8 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 | POST | `/api/session/login` | Mock login, sets session cookie |
 | POST | `/api/session/logout` | Clears session |
 | GET | `/api/me` | Logged in employee profile, roles and visa (absent for nationals) |
-| GET | `/api/attendance?month=YYYY-MM` | Own daily records. Each punch carries the `device` that recorded it |
+| GET | `/api/attendance?month=YYYY-MM` | Own daily records. Each punch carries where it was made in `device` (an office, "Home", or an old device's name). Days punched from the portal carry `workMode`, and home days `homeStatus` |
+| POST | `/api/attendance/punch` | Punch now: `mode` (`office` or `home`), plus `latitude`, `longitude` and `accuracy` for the office. Returns today |
 | GET / POST | `/api/attendance/corrections` | Own correction requests / raise one |
 | GET | `/api/leave/types` | Leave types from the policy. `isUnlimited` marks types with no balance, like unpaid |
 | GET | `/api/leave/balances` | Own balances |
@@ -315,7 +327,6 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 | POST | `/api/profile/change-requests` | Ask HR to change personal details |
 | GET | `/api/announcements` | Company announcements |
 | GET | `/api/events?year=YYYY` | Company events for the calendar |
-| GET | `/api/devices` | Biometric devices with location, online state and last sync time |
 | GET | `/api/documents` | Own documents (`updatedOn` or `expiresOn`, `status`) |
 | GET | `/api/documents/:id/file` | Download one document |
 | GET | `/api/notifications` | Own notifications |
@@ -327,6 +338,8 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 | POST | `/api/team/leave-requests/:id/decision` | Approve or reject |
 | GET | `/api/team/corrections?status=` | Reports' correction requests |
 | POST | `/api/team/corrections/:id/decision` | Approve or reject. Approving adds the punch to the record, the same way an HR punch fix does |
+| GET | `/api/team/home-days?status=` | Reports' days worked from home |
+| POST | `/api/team/home-days/:id/decision` | Approve or reject. Rejecting needs a `note` and makes the day an absence |
 | GET | `/api/hr/employees` | Everyone, with today's attendance and visa. HR only, like every `/api/hr` route |
 | GET | `/api/hr/employees/:id` | One person's profile, visa, leave balances and balance adjustments |
 | PUT | `/api/hr/employees/:id/visa` | Add or update visa, work permit and passport (last 4 only) |
@@ -335,6 +348,7 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 | POST | `/api/hr/leave-requests/:id/decision` | Approve or reject any request |
 | GET | `/api/hr/corrections?status=` | Every correction request |
 | POST | `/api/hr/corrections/:id/decision` | Approve or reject |
+| GET / POST | `/api/hr/home-days?status=`, `/api/hr/home-days/:id/decision` | Every day worked from home / decide one, never your own |
 | POST | `/api/hr/balance-adjustments` | Add or remove days with a reason (`employeeId`, `type`, `days`, `reason`) |
 | PUT | `/api/hr/leave-types/:code` | Change a leave type's name, `defaultEntitlement` or `allowsHalfDay` |
 | POST / PUT / DELETE | `/api/hr/holidays`, `/api/hr/holidays/:id` | Manage holidays. Confirming a tentative one notifies everyone |
@@ -458,7 +472,7 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 
 ## Configuration & Environment
 
-- The only frontend env variable is `USE_MOCK_BACKEND`, read by `proxy.conf.mjs` at dev time. Document any new variable in `HOW-TO-RUN.md`.
+- The only frontend env variable that changes behaviour is `USE_MOCK_BACKEND`, read by `proxy.conf.mjs` at dev time. The rest pick ports (`MOCK_PORT`, `SPRING_PORT`) or the e2e backend (`E2E_BACKEND`). Document any new variable in `HOW-TO-RUN.md`.
 - Runtime constants (expiry warning days, footer details) live in `src/app/core/config.ts`.
 
 ---
@@ -480,6 +494,8 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 - Test what the user sees, not internals.
 - Playwright selectors use `data-testid`, never CSS classes or copy text.
 - Coverage target: **80%** lines and branches minimum.
+- The e2e journeys run against the mock and against Spring on a throwaway database. A difference between them is a bug in the mock.
+- GitHub Actions (`.github/workflows/ci.yml`) runs the backend build, the frontend checks and both e2e runs on every pull request and push to `main`.
 
 ### Commands (run inside `frontend/`)
 
@@ -492,6 +508,7 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 | Unit (watch) | `npm run test:unit:watch` |
 | Coverage | `npm run test:coverage` |
 | E2E (Playwright) | `npm run test:e2e` |
+| E2E against Spring | `npm run test:e2e:spring` (throwaway database, needs Docker) |
 | All checks | `npm run check` |
 
 ---
@@ -522,7 +539,7 @@ After **every** code change, run these in order inside `frontend/`:
 - [ ] `npm run lint` exits with 0
 - [ ] `npm run check:type` has zero errors
 - [ ] `npm run test:unit` all passing
-- [ ] `npm run test:e2e` affected journeys passing (needs the mock server running)
+- [ ] `npm run test:e2e` and `npm run test:e2e:spring` affected journeys passing (each starts its own backend)
 - [ ] Dead code scan on all touched files
 - [ ] `npm run test:coverage` meets 80%
 

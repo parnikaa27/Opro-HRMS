@@ -30,14 +30,6 @@ export interface ChangeRequest {
   decisionNote?: string;
 }
 
-export interface Device {
-  id: string;
-  name: string;
-  location: string;
-  isOnline: boolean;
-  lastSyncAt: string;
-}
-
 export interface EmployeeDocument {
   id: string;
   name: string;
@@ -48,7 +40,7 @@ export interface EmployeeDocument {
 
 export interface AppNotification {
   id: string;
-  kind: 'approval' | 'leave' | 'visa' | 'correction' | 'holiday' | 'announcement' | 'record' | 'schedule';
+  kind: 'approval' | 'leave' | 'visa' | 'correction' | 'holiday' | 'announcement' | 'record' | 'schedule' | 'home';
   text: string;
   createdOn: string;
   isRead: boolean;

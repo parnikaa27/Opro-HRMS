@@ -1,15 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { interval, map } from 'rxjs';
-import { CompanyApi } from '../../core/company-api';
 import { AttendanceDay, AttendanceStatus } from '../../models/attendance';
 import { CircleProgress } from '../../shared/ui/circle-progress';
 import { Icon } from '../../shared/ui/icon';
 import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { formatClock, formatDuration, minutesAgo, minutesWorkedSoFar } from '../../shared/utils/date-time';
-import { valueOr } from '../../shared/utils/resource';
 import { plural } from '../../shared/utils/text';
+import { PunchButton } from '../attendance/punch-button';
 
 const TICK_MS = 60_000;
 const PERCENT = 100;
@@ -19,12 +18,18 @@ const OFF_DAY: Partial<Record<AttendanceStatus, { title: string; body: string }>
   weekend: { title: 'Enjoy your weekend', body: 'Friday and Saturday are off. See you on Sunday.' },
   holiday: { title: 'Public holiday today', body: 'The office is closed. Enjoy it.' },
   'on-leave': { title: "You're on leave today", body: 'Nothing to punch. Rest up.' },
-  absent: { title: 'No punches today', body: 'If the device missed you, ask for a punch fix.' },
+  absent: { title: 'No punches today', body: 'If you forgot to punch, ask for a punch fix.' },
+};
+
+const HOME_NOTE = {
+  pending: 'Working from home. Waiting for your manager to approve the day.',
+  approved: 'Working from home. Your manager approved the day.',
+  rejected: 'Your manager didn’t approve working from home today, so it counts as absent.',
 };
 
 @Component({
   selector: 'app-today-attendance-card',
-  imports: [CircleProgress, Icon, ListSkeleton, RouterLink],
+  imports: [CircleProgress, Icon, ListSkeleton, PunchButton, RouterLink],
   template: `
     <section class="attendance-hero card" data-testid="today-card">
       <div class="card-heading">
@@ -32,8 +37,8 @@ const OFF_DAY: Partial<Record<AttendanceStatus, { title: string; body: string }>
           <span class="eyebrow">TODAY’S ATTENDANCE</span>
           <h2 data-testid="today-heading">{{ heading() }}</h2>
         </div>
-        @if (syncLabel(); as label) {
-          <div class="synced"><i></i>{{ label }}</div>
+        @if (day() && !hasFailed()) {
+          <app-punch-button [day]="day()" (punched)="punched.emit($event)" />
         }
       </div>
 
@@ -51,13 +56,13 @@ const OFF_DAY: Partial<Record<AttendanceStatus, { title: string; body: string }>
             <div>
               <span>PUNCH IN</span>
               <strong data-testid="punch-in">{{ formatClock(first.at) }}</strong>
-              <small>{{ first.device ?? 'Biometric' }} device</small>
+              <small>{{ first.device ?? 'Added by hand' }}</small>
             </div>
             @if (lastOut(); as out) {
               <div>
                 <span>PUNCH OUT</span>
                 <strong>{{ formatClock(out.at) }}</strong>
-                <small>{{ out.device ?? 'Biometric' }} device</small>
+                <small>{{ out.device ?? 'Added by hand' }}</small>
               </div>
             } @else if (day()?.expectedOut; as expected) {
               <div>
@@ -76,7 +81,10 @@ const OFF_DAY: Partial<Record<AttendanceStatus, { title: string; body: string }>
           </div>
         </div>
       } @else {
-        <p class="attendance-off"><strong>Not punched in yet</strong>Your punches show up here as soon as the device sends them.</p>
+        <p class="attendance-off"><strong>Not punched in yet</strong>Punch in when you start. From the office, the portal checks you're there.</p>
+      }
+      @if (homeNote(); as note) {
+        <p class="home-note" data-testid="home-note"><app-icon name="house" [size]="16" /> {{ note }}</p>
       }
 
       <a routerLink="/attendance" class="text-link">View attendance details <app-icon name="arrow" [size]="15" /></a>
@@ -87,17 +95,20 @@ const OFF_DAY: Partial<Record<AttendanceStatus, { title: string; body: string }>
 })
 export class TodayAttendanceCard {
   readonly day = input<AttendanceDay>();
-  readonly workLocation = input.required<string>();
   // Without these, a failed or slow load would read as "you haven't punched in yet", which isn't true.
   readonly isLoading = input(false);
   readonly hasFailed = input(false);
+  readonly punched = output<AttendanceDay>();
 
   private readonly now = toSignal(interval(TICK_MS).pipe(map(() => new Date())), { initialValue: new Date() });
-  private readonly devices = inject(CompanyApi).devices();
-
+  // Punches on a weekend or a holiday still show. A declined home day has punches but counts as absent.
   protected readonly offDay = computed(() => {
-    const status = this.day()?.status;
-    return status ? OFF_DAY[status] : undefined;
+    const day = this.day();
+    return day && day.punches.length === 0 ? OFF_DAY[day.status] : undefined;
+  });
+  protected readonly homeNote = computed(() => {
+    const status = this.day()?.homeStatus;
+    return status ? HOME_NOTE[status] : undefined;
   });
   protected readonly firstIn = computed(() => this.day()?.punches[0]);
   protected readonly lastOut = computed(() => {
@@ -116,7 +127,10 @@ export class TodayAttendanceCard {
     if (!this.firstIn()) {
       return 'You haven’t punched in yet';
     }
-    return this.lastOut() ? 'You’ve finished for the day' : 'You’re in the office';
+    if (this.lastOut()) {
+      return 'You’ve finished for the day';
+    }
+    return this.day()?.workMode === 'home' ? 'You’re working from home' : 'You’re in the office';
   });
 
   protected readonly elapsed = computed(() => {
@@ -132,14 +146,6 @@ export class TodayAttendanceCard {
   protected readonly remainingLabel = computed(() => {
     const left = Math.round((new Date(this.day()?.expectedOut ?? this.now()).getTime() - this.now().getTime()) / TICK_MS);
     return left > 0 ? `${formatDuration(left)} remaining` : `${formatDuration(-left)} past your shift`;
-  });
-
-  protected readonly syncLabel = computed(() => {
-    const device = valueOr(this.devices, []).find(({ location }) => location === this.workLocation());
-    if (!device) {
-      return undefined;
-    }
-    return device.isOnline ? `Biometric synced · ${minutesAgo(device.lastSyncAt, this.now())} min ago` : 'Biometric device offline';
   });
 
   protected readonly formatClock = formatClock;

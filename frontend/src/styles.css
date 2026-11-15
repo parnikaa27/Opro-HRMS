@@ -128,7 +128,12 @@ body {
   color: var(--muted);
 }
 
+/* The design only shows a short list. A full panel scrolls inside itself, so "Mark all as read" stays reachable. */
 .notification-popover {
+  max-block-size: calc(100dvh - 90px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
   .popover-action {
     margin-top: 10px;
     border: 0;
@@ -668,5 +673,82 @@ dialog.modal {
     flex: 1;
     padding: 6px 4px;
     text-align: center;
+  }
+}
+
+/* Punching from the portal, which replaced the fingerprint devices after the design was made. */
+.punch-control {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.punch-error {
+  max-inline-size: 260px;
+  color: var(--coral);
+  font-size: 11px;
+  text-align: end;
+}
+
+.work-mode-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-block: 18px 8px;
+
+  button {
+    display: grid;
+    gap: 6px;
+    justify-items: start;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: none;
+    color: var(--ink);
+    text-align: start;
+    transition: border-color 0.15s, background-color 0.15s;
+
+    &:hover:not(:disabled) {
+      border-color: var(--aqua);
+      background: var(--aqua-light);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: progress;
+    }
+
+    app-icon {
+      color: var(--aqua-dark);
+    }
+
+    strong {
+      font-size: 14px;
+    }
+
+    span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+  }
+
+  + .punch-error {
+    max-inline-size: none;
+    text-align: start;
+  }
+}
+
+.home-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-block: 2px 12px;
+  color: var(--muted);
+  font-size: 12px;
+
+  app-icon {
+    color: var(--aqua-dark);
   }
 }

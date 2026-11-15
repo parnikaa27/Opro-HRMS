@@ -6,7 +6,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import java.time.OffsetDateTime;
 
-// One raw punch. Never changed after it lands: a wrong one is voided, a missing one is added with source manual.
+// One raw punch, from the portal (app), an old fingerprint device, or added by hand (manual).
+// Never changed after it lands: a wrong one is voided, a missing one is added with source manual.
 @Entity
 public class Punch {
 
@@ -21,15 +22,21 @@ public class Punch {
     private OffsetDateTime voidedAt;
     private String correctionRequestId;
     private String voidedBy;
+    private String workMode;
+    private String office;
+    private Integer distanceMetres;
 
     protected Punch() {}
 
-    static Punch fromDevice(String employeeId, OffsetDateTime punchedAt, String deviceId) {
+    // Punched from the portal. An office punch names the office it passed at; a home punch has neither.
+    static Punch fromApp(String employeeId, OffsetDateTime punchedAt, String workMode, String office, Integer distanceMetres) {
         Punch punch = new Punch();
         punch.employeeId = employeeId;
         punch.punchedAt = punchedAt;
-        punch.deviceId = deviceId;
-        punch.source = "device";
+        punch.source = "app";
+        punch.workMode = workMode;
+        punch.office = office;
+        punch.distanceMetres = distanceMetres;
         return punch;
     }
 
@@ -67,6 +74,14 @@ public class Punch {
 
     public String getDeviceId() {
         return deviceId;
+    }
+
+    public String getWorkMode() {
+        return workMode;
+    }
+
+    public String getOffice() {
+        return office;
     }
 
     public boolean isManual() {

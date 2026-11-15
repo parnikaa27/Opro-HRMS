@@ -71,7 +71,7 @@ const workday = (employeeId, date, isToday, nowMinutes, rules) => {
   return { status: isLate ? 'late' : isHalfDay ? 'half-day' : 'present', punchMinutes };
 };
 
-const toRecord = ({ employeeId, date, status, punchMinutes, device, rules }) => {
+const toRecord = ({ employeeId, date, status, punchMinutes, device, rules, workMode, homeStatus }) => {
   const isComplete = punchMinutes.length % 2 === 0 && punchMinutes.length > 0;
   const lastOut = isComplete ? punchMinutes.at(-1) : undefined;
   const shiftLength = toMinutes(rules.shiftEnd) - toMinutes(rules.shiftStart);
@@ -84,6 +84,8 @@ const toRecord = ({ employeeId, date, status, punchMinutes, device, rules }) => 
     ...(lastOut !== undefined && { lastOut: toIso(date, lastOut) }),
     workedMinutes: isComplete ? workedMinutes(punchMinutes) : 0,
     overtimeMinutes: lastOut !== undefined ? Math.max(0, lastOut - toMinutes(rules.shiftEnd)) : 0,
+    ...(punchMinutes.length > 0 && workMode && { workMode }),
+    ...(workMode === 'home' && homeStatus && { homeStatus }),
   };
 };
 
@@ -104,11 +106,25 @@ export const rebuildDay = ({ record, punchMinutes, schedules }) => {
   const sorted = [...punchMinutes].sort((first, second) => first - second);
   const isToday = record.date === maldivesNow().date;
   return {
-    ...toRecord({ employeeId: record.employeeId, date: record.date, status: statusFor(sorted, rules, isToday), punchMinutes: sorted, device: record.punches[0]?.device ?? 'Front desk', rules }),
+    ...toRecord({ employeeId: record.employeeId, date: record.date, status: statusFor(sorted, rules, isToday), punchMinutes: sorted, device: record.punches[0]?.device, rules, workMode: record.workMode, homeStatus: record.homeStatus }),
     // Someone changed the punches by hand: HR, or a manager approving a punch fix.
     isCorrected: true,
   };
 };
+
+// A punch from the portal, now. The day is worked out again the way Spring does, and keeps any earlier correction.
+export const punchNow = ({ record, workMode, place, homeStatus, schedules }) => {
+  const rules = rulesOn(schedules, record.date);
+  const minutes = [...record.punches.map(({ at }) => toMinutes(at.slice(11, 16))), maldivesNow().minutes];
+  return {
+    ...toRecord({ employeeId: record.employeeId, date: record.date, status: statusFor(minutes, rules, true), punchMinutes: minutes, device: place, rules, workMode, homeStatus }),
+    ...(record.isCorrected && { isCorrected: true }),
+  };
+};
+
+// Spring's answer to a manager declining a day worked from home: it counts as absent.
+export const decideHomeDay = (record, status) =>
+  status === 'rejected' ? { ...record, homeStatus: status, status: 'absent', workedMinutes: 0, overtimeMinutes: 0 } : { ...record, homeStatus: status };
 
 export const buildAttendance = ({ employees, holidays, leaveRequests, schedules }) => {
   const now = maldivesNow();
@@ -124,7 +140,10 @@ export const buildAttendance = ({ employees, holidays, leaveRequests, schedules 
       const offDay = WEEKEND.has(weekday) ? 'weekend' : holidayDates.has(date) ? 'holiday' : isOnLeave(employeeId, date) ? 'on-leave' : undefined;
       const rules = rulesOn(schedules, date);
       const day = offDay ? { status: offDay, punchMinutes: [] } : workday(employeeId, date, date === now.date, now.minutes, rules);
-      return toRecord({ employeeId, date, device: workLocation === 'Hulhumalé site' ? 'Site gate' : 'Front desk', rules, ...day });
+      // About one working day in twelve is from home, the same roll Spring's dev seeder makes. Today's still waits for approval.
+      const isHome = day.punchMinutes.length > 0 && seeded(`${employeeId}${date}home`) < 0.08;
+      const home = { workMode: 'home', device: 'Home', homeStatus: date === now.date ? 'pending' : 'approved' };
+      return toRecord({ employeeId, date, rules, ...day, ...(isHome ? home : { workMode: 'office', device: workLocation }) });
     }),
   );
 };

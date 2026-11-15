@@ -15,6 +15,7 @@
     "test:unit:watch": "ng test",
     "test:coverage": "ng test --watch=false --coverage",
     "test:e2e": "playwright test",
+    "test:e2e:spring": "E2E_BACKEND=spring playwright test",
     "check": "npm run theme:check && npm run lint && npm run check:type && npm run test:coverage && npm run test:e2e"
   },
   "private": true,

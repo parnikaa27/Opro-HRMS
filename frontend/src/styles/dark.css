@@ -660,6 +660,15 @@
 :root[data-theme='dark'] .large-request .certificate-note {
   color: #5ac6ba;
 }
+:root[data-theme='dark'] .punch-error {
+  color: #ff8c75;
+}
+:root[data-theme='dark'] .work-mode-options button app-icon {
+  color: #5ac6ba;
+}
+:root[data-theme='dark'] .home-note app-icon {
+  color: #5ac6ba;
+}
 @media (max-width: 860px) {
 :root[data-theme='dark'] .mobile-menu {
   color: #deedf8;
@@ -1325,6 +1334,15 @@
   color: #ff8c75;
 }
 :root:not([data-theme='light']) .large-request .certificate-note {
+  color: #5ac6ba;
+}
+:root:not([data-theme='light']) .punch-error {
+  color: #ff8c75;
+}
+:root:not([data-theme='light']) .work-mode-options button app-icon {
+  color: #5ac6ba;
+}
+:root:not([data-theme='light']) .home-note app-icon {
   color: #5ac6ba;
 }
 @media (max-width: 860px) {

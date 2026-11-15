@@ -12,6 +12,7 @@ export type AttendanceStatus =
 export interface Punch {
   at: string;
   direction: 'in' | 'out';
+  // Where it was made: an office, "Home", or an old fingerprint device's name.
   device?: string;
 }
 
@@ -30,6 +31,23 @@ export interface AttendanceDay {
   scheduledMinutes?: number;
   // Punches changed by hand: an HR fix or an approved punch fix request.
   isCorrected?: boolean;
+  // For days punched from the portal. A home day waits for the manager; declined, it counts as absent.
+  workMode?: WorkMode;
+  homeStatus?: HomeDay['status'];
+}
+
+export type WorkMode = 'office' | 'home';
+
+export interface HomeDay {
+  id: string;
+  employeeId: string;
+  employeeName?: string;
+  date: string;
+  status: 'pending' | 'approved' | 'rejected';
+  decidedBy?: string;
+  decidedByName?: string;
+  decidedOn?: string;
+  decisionNote?: string;
 }
 
 export interface WorkSchedule {

@@ -26,3 +26,16 @@ server:
 
 opro:
   time-zone: Indian/Maldives
+  punch:
+    # Placeholder pins until Parnika confirms them. "Working from office" has to be punched within radius-metres of one.
+    offices:
+      - name: Malé office
+        latitude: 4.1755
+        longitude: 73.5093
+        radius-metres: 300
+      - name: Hulhumalé site
+        latitude: 4.2117
+        longitude: 73.5405
+        radius-metres: 300
+    # A phone that can't place itself closer than this can't show it's at the office.
+    max-accuracy-metres: 150

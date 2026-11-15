@@ -77,7 +77,7 @@ test('an employee downloads a document', async ({ page }) => {
   const download = page.waitForEvent('download');
   await page.getByRole('link', { name: 'Download Employment contract' }).click();
 
-  expect((await download).suggestedFilename()).toBe('contract.txt');
+  expect((await download).suggestedFilename()).toBe('Employment contract.pdf');
 });
 
 test('dark mode can be chosen from the name menu and sticks after a reload', async ({ page }) => {

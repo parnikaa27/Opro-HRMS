@@ -16,6 +16,7 @@
 HRMS/
   CLAUDE.md                Requirements and coding rules. Read this first.
   HOW-TO-RUN.md            This file.
+  .github/workflows/ci.yml GitHub Actions: backend build, frontend checks, and e2e on the mock and on Spring
   design/figma-make/       App.tsx and index.css copied from the Figma Make file. The design to match, not built
   frontend/                Angular 22 app
     src/
@@ -36,7 +37,7 @@ HRMS/
           dashboard/       Overview: welcome banner, today's attendance, leave balance, visa, recent attendance, staff card, next holiday, latest request
           documents/       Employment documents with download
           leave/           Balance rings, request history with cancel, request modal with day count preview
-          attendance/      Summary cards, attendance log, punch fixes, device status, CSV export
+          attendance/      Summary cards, attendance log, punch in and out, punch fixes, CSV export
           calendar/        Company calendar: holidays, events, and team leave for managers
           holidays/        API for holidays and company events
           profile/         Two sided printable ID card, visa and work permit status, change request to HR
@@ -53,7 +54,7 @@ HRMS/
     proxy.conf.mjs         Sends /api to the mock or to Spring
     scripts/
       build-dark-theme.mjs Writes src/styles/dark.css from portal.css and styles.css (see theme:dark)
-    playwright.config.ts   Starts the mock and the app, then runs e2e tests in Chrome
+    playwright.config.ts   Starts a fresh backend (the mock, or Spring with E2E_BACKEND=spring) and the app, then runs e2e tests in Chrome
     eslint.config.js       Lint rules
     .postcssrc.json        Plugs Tailwind into the Angular build
   backend/                 Spring Boot 4.1 API on Java 25. Maven, with its own wrapper (mvnw)
@@ -62,7 +63,7 @@ HRMS/
     src/main/java/mv/opro/hrms/
       employee/            Employees and visas, and roles worked out from reporting lines
       holiday/             The holiday calendar, used by attendance and leave, and CalendarEditor for HR's changes
-      attendance/          Punches, days worked out by DayCalculator, punch fix requests, devices, the dev punch seeder, and HR's PunchEditor and ScheduleEditor
+      attendance/          Punches, PunchClock (punching from the office or home), home days, days worked out by DayCalculator, punch fix requests, the dev punch seeder, and HR's PunchEditor and ScheduleEditor
       leave/               Leave types, balances, applying, cancelling and deciding, the working day count, HR's balance adjustments
       notification/        The notifications panel, and the service every feature uses to tell people things
       team/                The manager's view: TeamAccess limits everything to their own active direct reports
@@ -77,10 +78,12 @@ HRMS/
       config/              The Maldives time clock
     src/main/resources/
       application.yml      Settings for every environment. The database comes from DB_URL, DB_USER, DB_PASSWORD
+      application.yml      Also holds the work location pins for office punches (opro.punch.offices), placeholders until confirmed
       application-dev.yml  Local database, the dev sign in, and generated punches (opro.dev.generate-punches)
       db/migration/        Flyway migrations, the schema
       db/dev/              Development seed data, the same people as the mock. Never loaded outside dev
     src/test/java/         Integration tests: a real server against a throwaway PostgreSQL (Testcontainers)
+      TestHrmsBackendApplication.java  Spring on a throwaway PostgreSQL, used by the Spring e2e run
 ```
 
 ## First time setup
@@ -158,9 +161,16 @@ Needs Docker Desktop running: each run starts its own PostgreSQL and throws it a
 | `npm run test:unit` / `test:unit:watch` | Vitest |
 | `npm run test:coverage` | Vitest with coverage. Fails under 80% |
 | `npm run test:e2e` | Playwright. Starts its own fresh mock on 4310 and app on 4210, so it never clashes with your dev servers or their state |
+| `npm run test:e2e:spring` | The same journeys against Spring on 8090, on a throwaway PostgreSQL, with the app on 4220. Needs Docker Desktop. The first run takes a minute or two to compile |
 | `npm run check` | Dark theme freshness, lint, types, coverage and e2e in one go |
 
-In CI, run `npx playwright install chromium` and drop `channel: 'chrome'` from `playwright.config.ts`, since CI machines won't have Chrome installed.
+## CI
+
+`.github/workflows/ci.yml` runs on every pull request and every push to `main`: `./mvnw verify`, then the dark theme check, lint, types and coverage, then the e2e journeys once on the mock and once on Spring. On CI, Playwright uses its own Chromium instead of Chrome.
+
+## Punching in and out
+
+Punching lives on the overview's today card and on the attendance page. "At the office" asks the browser for its location, and Spring refuses it more than 300 m from a work location. The pins in `backend/src/main/resources/application.yml` are placeholders. The mock only checks a location was sent. To try an office punch in a browser that has no real location, Chrome DevTools has a Sensors panel that sets one.
 
 ## Test users
 
@@ -178,8 +188,10 @@ In CI, run `npx playwright install chromium` and drop `channel: 'chrome'` from `
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `USE_MOCK_BACKEND` | `true` | `true` sends `/api` to the mock, `false` sends it to Spring on 8080 |
+| `USE_MOCK_BACKEND` | `true` | `true` sends `/api` to the mock, `false` sends it to Spring |
 | `MOCK_PORT` | `4300` | Port for the mock API |
+| `SPRING_PORT` | `8080` | Port the proxy sends `/api` to when `USE_MOCK_BACKEND=false` |
+| `E2E_BACKEND` | unset | `spring` runs the e2e journeys against Spring instead of the mock (`npm run test:e2e:spring` sets it) |
 | `MOCK_NOW` | unset | Pins the mock's clock, for example `MOCK_NOW=2026-11-12T15:10:00+05:00 npm run mock`. Handy on weekends, when every screen shows days off |
 
 ## Version notes

@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
-import { buildAttendance, clockNow, maldivesNow, rebuildDay, toMinutes } from './attendance.mjs';
+import { buildAttendance, clockNow, decideHomeDay, maldivesNow, punchNow, rebuildDay, toMinutes } from './attendance.mjs';
 
 const PORT = Number(process.env.MOCK_PORT ?? 4300);
 const MAX_BODY_BYTES = 10_000;
@@ -31,17 +31,36 @@ const db = {
   certificates: new Map(),
 };
 db.attendance = buildAttendance(db);
+// The approvals that go with the generated days worked from home.
+db.homeDays = db.attendance
+  .filter(({ workMode }) => workMode === 'home')
+  .map(({ employeeId, date, homeStatus }) => ({ id: `HW-${employeeId}-${date}`, employeeId, date, status: homeStatus }));
 
 const longDate = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 const sessions = new Map();
 const SENT = Symbol('sent');
-const MINUTE_MS = 60_000;
 
-// Sync times are relative to now so the "synced 3 min ago" label always reads true.
-const devices = () => [
-  { id: 'OPR-MLE-01', name: 'Front desk', location: 'Malé office', isOnline: true, lastSyncAt: new Date(clockNow().getTime() - 3 * MINUTE_MS).toISOString() },
-  { id: 'OPR-HMH-01', name: 'Site gate', location: 'Hulhumalé site', isOnline: true, lastSyncAt: new Date(clockNow().getTime() - 11 * MINUTE_MS).toISOString() },
-];
+// The smallest valid PDF: one page with one line of text. Only plain ASCII names are used, so no escaping beyond parentheses.
+const samplePdf = (line) => {
+  const text = line.normalize('NFD').replace(/[^\x20-\x7e]/g, '').replace(/[()\\]/g, '');
+  const stream = `BT /F1 14 Tf 72 760 Td (${text}) Tj ET`;
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+  ];
+  let body = '%PDF-1.4\n';
+  const offsets = objects.map((object, index) => {
+    const offset = body.length;
+    body += `${index + 1} 0 obj\n${object}\nendobj\n`;
+    return offset;
+  });
+  const xref = body.length;
+  body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`).join('')}`;
+  return `${body}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+};
 
 const documentsOf = (user) => {
   const visa = db.visas.find(({ employeeId }) => employeeId === user.id);
@@ -263,6 +282,12 @@ const applyFix = (correction, user) => {
   }
 };
 
+// A day worked from home: the decision lands on the day itself, and a declined one counts as absent.
+const homeDecisionText = (user, { status, decisionNote, date }) =>
+  status === 'approved'
+    ? `${user.fullName} approved working from home on ${sayDate(date)}.`
+    : `${user.fullName} didn't approve working from home on ${sayDate(date)}, so it counts as absent: ${sentence(decisionNote ?? 'no reason given')}`;
+
 const decide = (collection, user, id, { decision, note }, inScope = managerScope(user)) => {
   const item = db[collection].find((entry) => entry.id === id && inScope(entry));
   if (!item) {
@@ -276,6 +301,11 @@ const decide = (collection, user, id, { decision, note }, inScope = managerScope
   }
   const decided = { ...item, status: decision, decidedBy: user.id, decidedOn: today(), ...(note && { decisionNote: String(note) }) };
   db[collection] = db[collection].map((entry) => (entry.id === id ? decided : entry));
+  if (collection === 'homeDays') {
+    db.attendance = db.attendance.map((entry) => (entry.employeeId === item.employeeId && entry.date === item.date ? decideHomeDay(entry, decision) : entry));
+    notify(item.employeeId, 'home', homeDecisionText(user, decided));
+    return withName(decided);
+  }
   notify(item.employeeId, collection === 'corrections' ? 'correction' : 'leave', decisionText(collection, decided));
   return withName(decided);
 };
@@ -350,6 +380,32 @@ const routes = [
   }],
 
   ['GET', /^\/api\/attendance$/, ({ user, query }) => db.attendance.filter((record) => record.employeeId === user.id).filter(inMonth(query.get('month')))],
+  // Spring checks the distance to an office. The mock only checks a location was sent.
+  ['POST', /^\/api\/attendance\/punch$/, ({ user, body }) => {
+    const record = db.attendance.find((entry) => entry.employeeId === user.id && entry.date === today());
+    if (!record || !['office', 'home'].includes(body.mode)) {
+      throw new HttpError(400, 'Pick office or home');
+    }
+    if (body.mode === 'office' && [body.latitude, body.longitude, body.accuracy].some((value) => typeof value !== 'number')) {
+      throw new HttpError(400, "Allow location so we can see you're at the office.");
+    }
+    const workMode = record.workMode ?? body.mode;
+    if (record.punches.length > 0 && workMode !== body.mode) {
+      throw new HttpError(409, `You started today ${workMode === 'home' ? 'working from home' : 'at the office'}. Punch ${record.punches.length % 2 ? 'out' : 'in'} the same way.`);
+    }
+    const isFirstFromHome = body.mode === 'home' && !db.homeDays.some((entry) => entry.employeeId === user.id && entry.date === today());
+    if (isFirstFromHome) {
+      db.homeDays = [{ id: `HW-${user.id}-${today()}`, employeeId: user.id, date: today(), status: 'pending' }, ...db.homeDays];
+      if (user.managerId) {
+        notify(user.managerId, 'approval', `${user.fullName} is working from home today. Approve it from Leave requests.`);
+      }
+    }
+    const place = body.mode === 'home' ? 'Home' : user.workLocation;
+    const homeStatus = body.mode === 'home' ? (record.homeStatus ?? 'pending') : undefined;
+    const punched = punchNow({ record, workMode, place, homeStatus, schedules: db.schedules });
+    db.attendance = db.attendance.map((entry) => (entry === record ? punched : entry));
+    return punched;
+  }],
   ['GET', /^\/api\/attendance\/corrections$/, ({ user }) => db.corrections.filter(({ employeeId }) => employeeId === user.id).map(withName)],
   ['POST', /^\/api\/attendance\/corrections$/, ({ user, body }) => {
     if (!DATE.test(String(body.date)) || body.date > today() || !TIME.test(String(body.requestedTime)) || !['missed-in', 'missed-out'].includes(body.kind)) {
@@ -382,16 +438,15 @@ const routes = [
   ['GET', /^\/api\/holidays$/, ({ query }) => db.holidays.filter(({ date }) => date.startsWith(query.get('year') ?? today().slice(0, 4)))],
   ['GET', /^\/api\/announcements$/, () => db.announcements],
   ['GET', /^\/api\/events$/, ({ query }) => db.events.filter(({ date }) => date.startsWith(query.get('year') ?? today().slice(0, 4)))],
-  ['GET', /^\/api\/devices$/, () => devices()],
   ['GET', /^\/api\/documents$/, ({ user }) => documentsOf(user)],
   ['GET', /^\/api\/documents\/([\w-]+)\/file$/, ({ user, params: [id], res }) => {
     const document = documentsOf(user).find((entry) => entry.id === id);
     if (!document) {
       throw new HttpError(404, 'Document not found');
     }
-    // A stand in file. Real documents come from storage once the backend exists.
-    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Content-Disposition': `attachment; filename="${id}.txt"` });
-    res.end(`${document.name} for ${user.fullName}\nThis is a sample file from the mock server.\n`);
+    // A one page sample PDF, named the way Spring names real documents.
+    res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${document.name}.pdf"` });
+    res.end(samplePdf(`${document.name} for ${user.fullName}`));
     return SENT;
   }],
   ['GET', /^\/api\/notifications$/, ({ user }) => db.notifications.filter(({ employeeId }) => employeeId === user.id)],
@@ -421,6 +476,11 @@ const routes = [
     return db.corrections.filter((entry) => reportIds.has(entry.employeeId)).filter(byStatus(query.get('status'))).map(withName);
   }],
   ['POST', /^\/api\/team\/corrections\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => decide('corrections', user, id, body)],
+  ['GET', /^\/api\/team\/home-days$/, ({ user, query }) => {
+    const reportIds = requireManager(user);
+    return db.homeDays.filter((entry) => reportIds.has(entry.employeeId)).filter(byStatus(query.get('status'))).map(withName);
+  }],
+  ['POST', /^\/api\/team\/home-days\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => decide('homeDays', user, id, body)],
   ['GET', /^\/api\/hr\/employees$/, ({ user, query }) => {
     requireHr(user);
     const people = query.get('include') === 'former' ? db.employees : activeEmployees();
@@ -433,6 +493,10 @@ const routes = [
     const employee = { id: `${EMPLOYEE_ID_PREFIX}${String(next).padStart(EMPLOYEE_ID_DIGITS, '0')}`, ...details, roles: ['EMPLOYEE'] };
     checkManager(employee, details.managerId);
     db.employees = [...db.employees, employee];
+    // Spring works out every day from the joining date. The mock only needs today, so a new starter can punch in.
+    if (employee.joinedOn <= today()) {
+      db.attendance = [...db.attendance, { employeeId: employee.id, date: today(), status: 'not-in-yet', punches: [], workedMinutes: 0, overtimeMinutes: 0 }];
+    }
     // New starters get the yearly types in full. Maternity and paternity are granted when they apply.
     db.leaveBalances = {
       ...db.leaveBalances,
@@ -569,6 +633,11 @@ const routes = [
     return db.corrections.filter(byStatus(query.get('status'))).map(withName);
   }],
   ['POST', /^\/api\/hr\/corrections\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => decide('corrections', user, id, body, hrScope(user))],
+  ['GET', /^\/api\/hr\/home-days$/, ({ user, query }) => {
+    requireHr(user);
+    return db.homeDays.filter(byStatus(query.get('status'))).map(withName);
+  }],
+  ['POST', /^\/api\/hr\/home-days\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => decide('homeDays', user, id, body, hrScope(user))],
   ['POST', /^\/api\/hr\/balance-adjustments$/, ({ user, body }) => {
     requireHr(user);
     findOr404('employees', body.employeeId, 'Employee');

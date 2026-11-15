@@ -32,7 +32,7 @@ const STATUS: Record<CorrectionRequest['status'], { label: string; tone: Tone }>
           <app-status-pill [tone]="status[item.status].tone">{{ status[item.status].label }}</app-status-pill>
         </div>
       } @empty {
-        <p class="attendance-off">No fixes requested. If the device misses a punch, ask for a fix and it shows up here.</p>
+        <p class="attendance-off">No fixes requested. If you miss a punch, ask for a fix and it shows up here.</p>
       }
     </section>
   `,

@@ -41,7 +41,7 @@ const DEFAULT_LINE = 'Here’s everything you need for the day.';
       <app-welcome-banner [dateLabel]="dateLabel" [heading]="greeting + ', ' + firstName() + '.'" [line]="line()" />
       <div class="employee-grid">
         <div class="main-column">
-          <app-today-attendance-card [day]="today()" [workLocation]="user.workLocation" [isLoading]="thisMonth.isLoading()" [hasFailed]="!!thisMonth.error()" />
+          <app-today-attendance-card [day]="today()" [isLoading]="thisMonth.isLoading()" [hasFailed]="!!thisMonth.error()" (punched)="thisMonth.reload()" />
           <div class="balance-grid">
             <app-leave-balance-card />
             <app-visa-card [employee]="user" />
