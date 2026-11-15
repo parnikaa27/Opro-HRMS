@@ -1,4 +1,5 @@
-export type Role = 'EMPLOYEE' | 'MANAGER' | 'HR';
+// MANAGER is shown as HOD: anyone with people reporting to them.
+export type Role = 'EMPLOYEE' | 'MANAGER' | 'HR' | 'SUPER_ADMIN';
 
 export interface EmergencyContact {
   name: string;

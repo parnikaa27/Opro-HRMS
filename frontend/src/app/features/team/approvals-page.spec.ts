@@ -187,16 +187,29 @@ describe('ApprovalsPage', () => {
     await settle();
   });
 
-  it('tells a manager a certificate is attached, but only HR gets to open it', async () => {
-    const sick = [leave({ id: 'LR-7', type: 'sick', hasCertificate: true })];
-    const manager = await render(sick);
-    expect(text(manager.querySelector('[data-testid=certificate]') as HTMLElement)).toBe('Medical certificate attached');
+  it('tells a manager a certificate is attached, without a way to open it', async () => {
+    const root = await render([leave({ id: 'LR-7', type: 'sick', hasCertificate: true })]);
 
+    expect(text(root.querySelector('[data-testid=certificate]') as HTMLElement)).toBe('Medical certificate attached');
+    expect(root.querySelector('[data-testid=certificate] a')).toBeNull();
+  });
+
+  it('lets a super admin step in on anyone’s request across Opro', async () => {
     const fixture = TestBed.createComponent(ApprovalsPage);
-    fixture.componentRef.setInput('scope', 'hr');
-    await respond(http, { '/api/hr/leave-requests': sick, '/api/hr/corrections': [], '/api/leave/types': [] });
-    const hr = fixture.nativeElement as HTMLElement;
-    expect(hr.querySelector('[data-testid=certificate] a')?.getAttribute('href')).toBe('/api/hr/leave-requests/LR-7/certificate');
+    fixture.componentRef.setInput('scope', 'company');
+    await respond(http, {
+      '/api/company/leave-requests': LEAVE,
+      '/api/company/corrections': FIXES,
+      '/api/company/home-days?status=pending': HOME_DAYS,
+      '/api/company/comp-offs?status=pending': COMP_OFFS,
+      '/api/leave/types': [],
+    });
+    const root = fixture.nativeElement as HTMLElement;
+    expect(text(root.querySelector('.page-title') as HTMLElement)).toContain('Step in when an HOD is away.');
+
+    click(row(root, 'Priya Nair'), 'approve');
+    expect(http.expectOne('/api/company/leave-requests/LR-2/decision').request.body).toEqual({ decision: 'approved' });
+    http.expectNone('/api/team/leave-requests');
   });
 
   it('explains when requests fail to load', async () => {

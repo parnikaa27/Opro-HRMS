@@ -19,7 +19,7 @@ import { RequestScope, TeamApi, TeamMember } from './team-api';
         <div>
           <span class="eyebrow">DIRECTORY</span>
           <h1>People</h1>
-          <p>{{ scope() === 'hr' ? 'Everyone at Opro and where they are today.' : 'Your team members and their current work status.' }}</p>
+          <p>{{ scope() === 'team' ? 'Your team members and their current work status.' : 'Everyone at Opro and where they are today.' }}</p>
         </div>
         <div class="title-actions">
           <div class="header-search people-search">
@@ -33,6 +33,13 @@ import { RequestScope, TeamApi, TeamMember } from './team-api';
       </div>
       @if (scope() === 'hr') {
         <label class="filter-check"><input #former type="checkbox" [checked]="showsFormer()" (change)="showsFormer.set(former.checked)" data-testid="show-former" /> Show people who've left</label>
+      }
+      @if (scope() === 'company' && whereToday(); as places) {
+        <p class="where-today" data-testid="where-today">
+          @for (place of places; track place.label) {
+            <app-status-pill [tone]="place.tone">{{ place.count }} {{ place.label }}</app-status-pill>
+          }
+        </p>
       }
       @if (members().error()) {
         <p class="attendance-off">Your team didn't load. Refresh the page to try again.</p>
@@ -53,7 +60,7 @@ import { RequestScope, TeamApi, TeamMember } from './team-api';
               <a class="secondary-button" [routerLink]="profileLink(person.id)">View profile</a>
             </div>
           } @empty {
-            <p class="attendance-off">{{ query() ? 'Nobody matches “' + query() + '”.' : 'Nobody reports to you yet.' }}</p>
+            <p class="attendance-off">{{ query() ? 'Nobody matches “' + query() + '”.' : scope() === 'team' ? 'Nobody reports to you yet.' : 'Nobody here yet.' }}</p>
           }
         </div>
       }
@@ -62,17 +69,31 @@ import { RequestScope, TeamApi, TeamMember } from './team-api';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PeoplePage {
-  // Set from route data: managers see their reports, HR sees everyone.
+  // Set from route data: an HOD sees their reports, HR and super admins see everyone.
   readonly scope = input<RequestScope>('team');
 
-  private readonly team = inject(TeamApi).members({ isEnabled: () => this.scope() === 'team' });
+  private readonly team = inject(TeamApi).members({ isEnabled: () => this.scope() !== 'hr', scope: () => (this.scope() === 'company' ? 'company' : 'team') });
   protected readonly showsFormer = signal(false);
   private readonly everyone = inject(HrApi).employees({ isEnabled: () => this.scope() === 'hr', includesFormer: this.showsFormer });
   private readonly today = maldivesToday();
   protected readonly members = computed(() => (this.scope() === 'hr' ? this.everyone : this.team));
   protected readonly query = signal('');
   protected readonly list = computed(() => [...valueOr(this.members(), [])].sort((first, second) => first.fullName.localeCompare(second.fullName)));
-  protected readonly profileLink = (id: string) => (this.scope() === 'hr' ? ['/hr/people', id] : ['/team', id]);
+  protected readonly profileLink = (id: string) => ({ hr: ['/hr/people', id], team: ['/team', id], company: ['/company', id] })[this.scope()];
+  // Where everyone is today, for a super admin: in, from home, at a resort, on leave, not in.
+  protected readonly whereToday = computed(() => {
+    const days = this.list().map(({ today }) => today);
+    const count = (isThere: (day: TeamMember['today']) => boolean) => days.filter(isThere).length;
+    // A declined day from home has punches but counts as absent.
+    const isIn = (day: TeamMember['today']) => day !== undefined && day.punches.length > 0 && day.status !== 'absent';
+    return [
+      { label: 'at the office', tone: 'ok' as const, count: count((day) => isIn(day) && (day?.workMode ?? 'office') === 'office') },
+      { label: 'from home', tone: 'sea' as const, count: count((day) => isIn(day) && day?.workMode === 'home') },
+      { label: 'at a resort', tone: 'sea' as const, count: count((day) => isIn(day) && day?.workMode === 'resort') },
+      { label: 'on leave', tone: 'leave' as const, count: count((day) => day?.status === 'on-leave') },
+      { label: 'not in', tone: 'neutral' as const, count: count((day) => !isIn(day) && day?.status !== 'on-leave') },
+    ];
+  });
   protected readonly shown = computed(() => {
     const needle = this.query().trim().toLowerCase();
     return this.list().filter(({ fullName, designation }) => `${fullName} ${designation}`.toLowerCase().includes(needle));

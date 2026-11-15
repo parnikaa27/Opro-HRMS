@@ -1,9 +1,10 @@
 import { HttpErrorResponse, HttpStatusCode } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Icon } from '../../shared/ui/icon';
 import { ListSkeleton } from '../../shared/ui/list-skeleton';
-import { maldivesToday, monthOf } from '../../shared/utils/date-time';
+import { MonthPicker } from '../../shared/ui/month-picker';
+import { formatMonth, maldivesToday, monthOf } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { toAttendanceRow } from '../attendance/attendance-rows';
 import { AttendanceTable } from '../attendance/attendance-table';
@@ -12,21 +13,21 @@ import { LeaveApi } from '../leave/leave-api';
 import { LeaveBalances } from '../leave/leave-balances';
 import { LeaveRequests } from '../leave/leave-requests';
 import { EmployeeCard } from '../profile/employee-card';
-import { TeamApi } from './team-api';
+import { TeamApi, ViewScope } from './team-api';
 
 @Component({
   selector: 'app-team-member-page',
-  imports: [AttendanceTable, EmployeeCard, Icon, LeaveBalances, LeaveRequests, ListSkeleton, RouterLink, VisaCard],
+  imports: [AttendanceTable, EmployeeCard, Icon, LeaveBalances, LeaveRequests, ListSkeleton, MonthPicker, RouterLink, VisaCard],
   template: `
     <div class="page-view">
-      <a routerLink="/team/people" class="text-link back-link"><app-icon name="chevronLeft" [size]="15" /> People</a>
+      <a [routerLink]="scope() === 'company' ? '/company' : '/team/people'" class="text-link back-link"><app-icon name="chevronLeft" [size]="15" /> People</a>
 
       @if (isNotFound()) {
         <div class="page-title">
           <div>
-            <span class="eyebrow">TEAM MEMBER</span>
-            <h1>Not on your team</h1>
-            <p>You can only see people who report to you.</p>
+            <span class="eyebrow">{{ eyebrow() }}</span>
+            <h1>{{ scope() === 'company' ? 'Nobody by that ID' : 'Not on your team' }}</h1>
+            <p>{{ scope() === 'company' ? 'They may have left Opro. Find them on the People page.' : 'You can only see people who report to you.' }}</p>
           </div>
         </div>
       } @else if (member.error()) {
@@ -36,7 +37,7 @@ import { TeamApi } from './team-api';
       } @else if (person(); as employee) {
         <div class="page-title">
           <div>
-            <span class="eyebrow">TEAM MEMBER</span>
+            <span class="eyebrow">{{ eyebrow() }}</span>
             <h1>{{ employee.fullName }}</h1>
             <p>{{ employee.designation }}, {{ employee.workLocation }}</p>
           </div>
@@ -49,9 +50,10 @@ import { TeamApi } from './team-api';
             <section class="card full-table">
               <div class="card-heading">
                 <div>
-                  <span class="eyebrow">THIS MONTH</span>
+                  <span class="eyebrow">{{ monthLabel() }}</span>
                   <h2>Attendance log</h2>
                 </div>
+                <app-month-picker [(month)]="month" [latest]="currentMonth" />
               </div>
               <app-attendance-table [rows]="rows()" />
             </section>
@@ -72,10 +74,16 @@ export class TeamMemberPage {
   private readonly today = maldivesToday();
 
   readonly employeeId = input.required<string>();
+  // Set from route data: an HOD's report, or anyone for a super admin.
+  readonly scope = input<ViewScope>('team');
 
-  protected readonly member = this.api.member(this.employeeId);
-  private readonly attendance = this.api.attendance(() => monthOf(this.today));
-  private readonly leave = this.api.leaveRequests();
+  protected readonly currentMonth = monthOf(this.today);
+  protected readonly month = signal(this.currentMonth);
+  protected readonly monthLabel = computed(() => (this.month() === this.currentMonth ? 'THIS MONTH' : formatMonth(this.month()).toUpperCase()));
+  protected readonly eyebrow = computed(() => (this.scope() === 'company' ? 'PEOPLE' : 'TEAM MEMBER'));
+  protected readonly member = this.api.member(this.employeeId, this.scope);
+  private readonly attendance = this.api.attendance(this.month, this.scope);
+  private readonly leave = this.api.leaveRequests({ scope: this.scope });
   private readonly types = inject(LeaveApi).types();
 
   protected readonly person = computed(() => valueOr(this.member, undefined));

@@ -19,11 +19,11 @@ public final class FlightResponses {
     }
 
     // allowanceUsd is left out for someone who doesn't get one this year.
-    public record YearResponse(int year, BigDecimal allowanceUsd, BigDecimal usedUsd, BigDecimal pendingUsd, Map<String, BigDecimal> ratesPerUsd,
+    public record YearResponse(int year, BigDecimal allowanceUsd, BigDecimal usedUsd, Map<String, BigDecimal> ratesPerUsd,
             List<ClaimResponse> claims) {
 
         public static YearResponse of(Flights.Year year, Map<String, BigDecimal> rates, Map<String, String> names) {
-            return new YearResponse(year.year(), year.allowanceUsd(), year.usedUsd(), year.pendingUsd(), rates,
+            return new YearResponse(year.year(), year.allowanceUsd(), year.usedUsd(), rates,
                     year.claims().stream().map(claim -> ClaimResponse.of(claim, names)).toList());
         }
     }

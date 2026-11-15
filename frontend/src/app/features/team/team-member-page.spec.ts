@@ -46,6 +46,30 @@ describe('TeamMemberPage', () => {
     expect(root.querySelector('[data-testid=employee-card]')).not.toBeNull();
   });
 
+  it('shows a super admin anyone, with earlier months a pick away', async () => {
+    const fixture = create();
+    fixture.componentRef.setInput('scope', 'company');
+    await respond(http, {
+      '/api/company/OPR-0018': { ...employee(), leaveBalances: [] },
+      '/api/company/attendance?month=2026-11': [],
+      '/api/company/leave-requests': [],
+      '/api/leave/types': [],
+    });
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('.back-link')?.getAttribute('href')).toBe('/company');
+    expect(text(root.querySelector('.eyebrow') as HTMLElement)).toBe('PEOPLE');
+
+    const picker = root.querySelector('[data-testid=month-picker]') as HTMLSelectElement;
+    picker.value = '2026-10';
+    picker.dispatchEvent(new Event('change'));
+    await respond(http, {
+      '/api/company/attendance?month=2026-10': [{ employeeId: 'OPR-0018', date: '2026-10-05', status: 'present', punches: [], workedMinutes: 480, overtimeMinutes: 0 }],
+    });
+
+    expect(texts(root, 'attendance-row')).toEqual(['Monday 5 Oct, Mon — — — Present']);
+    expect(text(root)).toContain('OCTOBER 2026');
+  });
+
   it('says so when the person is not on the team', async () => {
     const fixture = create();
     TestBed.tick();

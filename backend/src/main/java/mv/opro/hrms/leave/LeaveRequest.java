@@ -30,7 +30,6 @@ public class LeaveRequest {
     private String decidedBy;
     private LocalDate decidedOn;
     private String decisionNote;
-    private boolean recordedByHr;
     private boolean hasCertificate;
     private UUID certificateFileId;
 
@@ -49,14 +48,6 @@ public class LeaveRequest {
         request.reason = reason;
         request.status = PENDING;
         request.appliedOn = today;
-        return request;
-    }
-
-    static LeaveRequest recordedByHr(String id, String employeeId, String type, LocalDate from, LocalDate to, String halfDay, BigDecimal days,
-            String reason, String hrId, LocalDate today) {
-        LeaveRequest request = apply(id, employeeId, type, from, to, halfDay, days, reason, today);
-        request.decide(APPROVED, hrId, today, null);
-        request.recordedByHr = true;
         return request;
     }
 
@@ -146,10 +137,6 @@ public class LeaveRequest {
 
     public String getDecisionNote() {
         return decisionNote;
-    }
-
-    public boolean isRecordedByHr() {
-        return recordedByHr;
     }
 
     public boolean hasCertificate() {

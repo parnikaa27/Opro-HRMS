@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { FormField, form, hidden, maxLength, required, submit, validate } from '@angular/forms/signals';
+import { Session } from '../../core/session';
 import { LeaveBalance, LeaveType } from '../../models/leave';
 import { FieldError } from '../../shared/ui/field-error';
 import { Icon } from '../../shared/ui/icon';
@@ -22,7 +23,7 @@ interface LeaveDraft {
   selector: 'app-leave-form',
   imports: [FormField, FieldError, Icon, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="TIME OFF" heading="Request leave" intro="Submit your leave dates for manager approval." />
+    <app-modal-heading eyebrow="TIME OFF" heading="Request leave" [intro]="isSuperAdmin() ? 'Your leave is approved as soon as you send it.' : 'Submit your leave dates for manager approval.'" />
     <form novalidate (submit)="save($event)">
       <label>
         Leave type
@@ -97,6 +98,7 @@ interface LeaveDraft {
 })
 export class LeaveForm {
   private readonly api = inject(LeaveApi);
+  protected readonly isSuperAdmin = inject(Session).isSuperAdmin;
 
   readonly types = input.required<readonly LeaveType[]>();
   readonly balances = input.required<readonly LeaveBalance[]>();

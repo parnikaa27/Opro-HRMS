@@ -54,6 +54,23 @@ describe('CalendarPage', () => {
     expect(texts(root, 'upcoming-holiday')).toEqual(['01 DEC Made up day Tuesday · Tentative date', "01 JAN New Year's Day Friday · Public holiday"]);
   });
 
+  it('shows a super admin who is away across Opro', async () => {
+    TestBed.inject(Session).user.set(manager({ roles: ['EMPLOYEE', 'SUPER_ADMIN'] }));
+    const fixture = TestBed.createComponent(CalendarPage);
+    fixture.componentRef.setInput('showsTeamLeave', true);
+    fixture.componentRef.setInput('scope', 'company');
+    await respond(http, {
+      '/api/holidays?year=2026': [],
+      '/api/holidays?year=2027': [],
+      '/api/events?year=2026': [],
+      '/api/company/leave-requests': [{ employeeId: 'V', employeeName: 'Vikram Singh', from: '2026-11-04', to: '2026-11-04', status: 'approved' }],
+    });
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(text(root.querySelector('.page-title') as HTMLElement)).toContain('who at Opro is away');
+    expect(cell(root, 4)).toBe('4 Vikram Singh');
+  });
+
   it('adds who is away for managers, skipping weekends and declined leave', async () => {
     TestBed.inject(Session).user.set(manager());
     const root = await render(true);

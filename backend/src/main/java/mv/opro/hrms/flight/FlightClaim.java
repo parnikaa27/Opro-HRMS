@@ -37,8 +37,9 @@ public class FlightClaim {
         this.amount = amount;
         this.currency = currency;
         this.amountUsd = amountUsd;
-        this.status = "pending";
+        this.status = "approved";
         this.raisedOn = raisedOn;
+        this.decidedOn = raisedOn;
     }
 
     // A new receipt replaces the old one. Returns the old one so its file can go.
@@ -48,19 +49,12 @@ public class FlightClaim {
         return previous;
     }
 
-    void decide(String decision, String by, LocalDate on, String note) {
-        status = decision;
-        decidedBy = by;
-        decidedOn = on;
-        decisionNote = note;
-    }
-
     void cancel() {
         status = "cancelled";
     }
 
-    boolean isPending() {
-        return "pending".equals(status);
+    boolean isApproved() {
+        return "approved".equals(status);
     }
 
     public String getId() {

@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { Session } from '../../core/session';
 import { Dialog } from '../../shared/ui/dialog';
 import { Icon } from '../../shared/ui/icon';
 import { SuccessState } from '../../shared/ui/success-state';
@@ -45,7 +46,7 @@ import { ListSkeleton } from '../../shared/ui/list-skeleton';
 
     <app-dialog heading="Request leave" [(isOpen)]="isApplying">
       @if (wasApplied()) {
-        <app-success-state heading="Request submitted" [body]="isCertificateMissing() ? 'Your manager has been notified. Add your medical certificate from your request history when you have it.' : 'Your manager has been notified. You can track the status from the Leave page.'" (done)="closeForm()" />
+        <app-success-state [heading]="isSuperAdmin() ? 'Leave booked' : 'Request submitted'" [body]="(isSuperAdmin() ? 'It’s approved, as yours need nobody’s sign off.' : 'Your manager has been notified.') + (isCertificateMissing() ? ' Add your medical certificate from your request history when you have it.' : ' You can track the status from the Leave page.')" (done)="closeForm()" />
       } @else {
         <app-leave-form [types]="typeList()" [balances]="balanceList()" [holidays]="holidayDates()" (applied)="onApplied($event)" (cancelled)="closeForm()" />
       }
@@ -58,6 +59,7 @@ export class LeavePage {
   private readonly holidaysApi = inject(HolidaysApi);
 
   private readonly year = yearOf(maldivesToday());
+  protected readonly isSuperAdmin = inject(Session).isSuperAdmin;
   // The overview's "Request leave" button links here with ?apply=1.
   protected readonly isApplying = signal(inject(ActivatedRoute).snapshot.queryParamMap.has('apply'));
 

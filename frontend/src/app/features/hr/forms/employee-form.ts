@@ -42,7 +42,7 @@ const below = (people: readonly Employee[], id: string): string[] =>
         <label>
           Manager
           <select [formField]="employeeForm.managerId" data-testid="employee-manager" aria-describedby="employee-managerId-error">
-            <option value="" [selected]="draft().managerId === ''">{{ isTopOfCompany() ? 'Nobody, they lead the company' : 'Pick their manager' }}</option>
+            <option value="" [selected]="draft().managerId === ''">{{ isSuperAdmin() ? 'Nobody, they’re a super admin' : 'Pick their reporting manager' }}</option>
             @for (manager of managers(); track manager.id) {
               <option [value]="manager.id" [selected]="draft().managerId === manager.id">{{ manager.fullName }}, {{ manager.designation }}</option>
             }
@@ -131,8 +131,8 @@ export class EmployeeForm {
   protected readonly bloodGroups = BLOOD_GROUPS;
   protected readonly failed = signal(false);
   protected readonly problem = signal<string | undefined>(undefined);
-  // Only the person at the very top has no manager, so only they can be saved without one.
-  protected readonly isTopOfCompany = computed(() => this.employee() !== undefined && !this.employee()?.managerId);
+  // Everyone reports to someone except a super admin, so only they can be saved without a manager.
+  protected readonly isSuperAdmin = computed(() => this.employee()?.roles.includes('SUPER_ADMIN') ?? false);
   protected readonly departments = computed(() => [...new Set(this.people().map(({ department }) => department))].sort());
   protected readonly managers = computed(() => {
     const id = this.employee()?.id;
@@ -169,7 +169,7 @@ export class EmployeeForm {
     required(path.email, { message: 'Enter their work email.' });
     pattern(path.email, EMAIL, { message: 'That doesn’t look like an email address.' });
     required(path.joinedOn, { message: 'Pick the day they start.' });
-    required(path.managerId, { message: 'Pick who they report to.', when: () => !this.isTopOfCompany() });
+    required(path.managerId, { message: 'Pick their reporting manager.', when: () => !this.isSuperAdmin() });
   });
 
   protected save(event: Event) {

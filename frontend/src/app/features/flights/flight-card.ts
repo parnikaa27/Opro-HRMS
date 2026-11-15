@@ -34,7 +34,7 @@ import { FlightsApi } from './flights-api';
 
     <app-dialog heading="Claim a flight" [isOpen]="isClaiming()" (isOpenChange)="$event || close()">
       @if (wasClaimed()) {
-        <app-success-state heading="Sent to HR" body="You'll hear when HR has checked it. It counts as waiting until then." (done)="close()" />
+        <app-success-state heading="Flight claimed" body="It's taken off what's left of your allowance. HR can see it and the receipt on your record." (done)="close()" />
       } @else {
         <app-flight-claim-form (claimed)="wasClaimed.set(true)" (cancelled)="close()" />
       }

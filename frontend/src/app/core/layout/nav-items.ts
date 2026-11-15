@@ -26,10 +26,16 @@ export const MANAGER_NAV: readonly NavItem[] = [
   { label: 'Calendar', path: '/team/calendar', icon: 'calendar' },
 ];
 
+export const COMPANY_NAV: readonly NavItem[] = [
+  { label: 'People', path: '/company', icon: 'users', isExact: true },
+  { label: 'Attendance', path: '/company/attendance', icon: 'fingerprint' },
+  { label: 'Leave', path: '/company/leave', icon: 'userCheck', badge: 'approvals' },
+  { label: 'Calendar', path: '/company/calendar', icon: 'calendar' },
+];
+
 export const HR_NAV: readonly NavItem[] = [
   { label: 'Overview', path: '/hr', icon: 'dashboard', isExact: true },
   { label: 'People', path: '/hr/people', icon: 'users' },
-  { label: 'Leave', path: '/hr/leave', icon: 'userCheck', badge: 'approvals' },
   { label: 'Calendar', path: '/hr/calendar', icon: 'calendar' },
   { label: 'Visas', path: '/hr/visas', icon: 'globe' },
   { label: 'Inbox', path: '/hr/inbox', icon: 'mail', badge: 'inbox' },

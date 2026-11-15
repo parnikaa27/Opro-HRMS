@@ -31,7 +31,7 @@ test('HR adds a leave type for people they pick, and gives it to one person', as
   await expect(page.getByTestId('leave-balance').filter({ hasText: 'Marriage leave' })).toContainText('5 days available');
 });
 
-test('HR sets a flight allowance, the employee claims a flight, and HR approves it from the inbox', async ({ page }) => {
+test('HR sets a flight allowance, and a claim counts straight away with nobody to approve it', async ({ page }) => {
   test.slow();
   // The seed's allowances are for one year. Setting this year's first keeps the journey working in any year.
   const thisYear = new Intl.DateTimeFormat('en-CA', { timeZone: 'Indian/Maldives', year: 'numeric' }).format(new Date());
@@ -49,11 +49,9 @@ test('HR sets a flight allowance, the employee claims a flight, and HR approves 
   await page.getByTestId('claim-amount').fill('200');
   await page.getByTestId('claim-submit').click();
   await page.getByRole('button', { name: 'Done' }).click();
-  await expect(page.getByTestId('flight-claim').filter({ hasText: 'Malé to Kochi, one way' })).toContainText('Waiting for HR');
+  await expect(page.getByTestId('flight-claim').filter({ hasText: 'Malé to Kochi, one way' })).toContainText('Claimed');
 
   await signInAs(page, 'OPR-0002');
-  await page.goto('/hr/inbox');
-  const row = page.getByTestId('flight-claim-row').filter({ hasText: 'Malé to Kochi, one way' });
-  await row.getByTestId('approve').click();
-  await expect(row).toHaveCount(0);
+  await page.goto('/hr/people/OPR-0015');
+  await expect(page.getByTestId('hr-flight-card').getByTestId('flight-claim').filter({ hasText: 'Malé to Kochi, one way' })).toContainText('Claimed');
 });

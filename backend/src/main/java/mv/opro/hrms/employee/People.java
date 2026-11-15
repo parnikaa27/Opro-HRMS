@@ -54,6 +54,9 @@ public class People {
         if (employee.isHr()) {
             roles.add(Role.HR);
         }
+        if (employee.isSuperAdmin()) {
+            roles.add(Role.SUPER_ADMIN);
+        }
         return List.copyOf(roles);
     }
 }

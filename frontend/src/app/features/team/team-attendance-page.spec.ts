@@ -69,10 +69,20 @@ describe('TeamAttendancePage', () => {
     expect(text(root)).toContain('Nothing recorded for this month.');
   });
 
+  it('covers everyone for a super admin, linking to their read only page', async () => {
+    const fixture = TestBed.createComponent(TeamAttendancePage);
+    fixture.componentRef.setInput('scope', 'company');
+    await respond(http, { '/api/company/attendance?month=2026-11': NOVEMBER });
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(text(root.querySelector('h1') as HTMLElement)).toBe('Company attendance');
+    expect(root.querySelector('.person-cell')?.getAttribute('href')).toBe('/company/A');
+  });
+
   it('explains when attendance fails to load', async () => {
     const fixture = TestBed.createComponent(TeamAttendancePage);
     await fail(http, '/api/team/attendance?month=2026-11');
 
-    expect(text(fixture.nativeElement)).toContain("Team attendance didn't load");
+    expect(text(fixture.nativeElement)).toContain("Attendance didn't load");
   });
 });

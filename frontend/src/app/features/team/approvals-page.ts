@@ -16,7 +16,7 @@ import { DecisionState } from './decision-state';
 import { DeclineForm } from './decline-form';
 import { HomeDayList } from './home-day-list';
 import { submittedAgo } from './request-row';
-import { RequestScope, TeamApi } from './team-api';
+import { TeamApi, ViewScope } from './team-api';
 
 type Tab = 'pending' | 'approved' | 'rejected' | 'fixes' | 'home' | 'comp-off';
 
@@ -36,9 +36,9 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
     <div class="page-view">
       <div class="page-title">
         <div>
-          <span class="eyebrow">{{ scope() === 'hr' ? 'PEOPLE & CULTURE' : 'TEAM MANAGEMENT' }}</span>
+          <span class="eyebrow">{{ scope() === 'company' ? 'ACROSS OPRO' : 'TEAM MANAGEMENT' }}</span>
           <h1>Leave requests</h1>
-          <p>{{ scope() === 'hr' ? 'Every request across Opro. Step in when a manager is away.' : 'Review leave, punch fixes and days worked from home for your team.' }}</p>
+          <p>{{ scope() === 'company' ? 'Every request at Opro. Step in when an HOD is away.' : 'Review leave, punch fixes and days worked from home for your team.' }}</p>
         </div>
       </div>
 
@@ -113,12 +113,7 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
                   <span class="overlap" data-testid="overlap">Also off then: {{ others }}</span>
                 }
                 @if (request.hasCertificate) {
-                  <span class="certificate-note" data-testid="certificate">
-                    Medical certificate attached
-                    @if (scope() === 'hr') {
-                      · <a [href]="'/api/hr/leave-requests/' + request.id + '/certificate'" target="_blank" rel="noopener" class="text-link">View</a>
-                    }
-                  </span>
+                  <span class="certificate-note" data-testid="certificate">Medical certificate attached</span>
                 }
               </div>
               <div><small>DATES</small><strong>{{ describeDates(request) }}</strong></div>
@@ -154,8 +149,8 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
 export class ApprovalsPage {
   private readonly api = inject(TeamApi);
 
-  // Set from route data: managers decide for their team, HR for anyone.
-  readonly scope = input<RequestScope>('team');
+  // Set from route data: an HOD decides for their team, a super admin for anyone but themselves.
+  readonly scope = input<ViewScope>('team');
 
   protected readonly leave = this.api.leaveRequests({ scope: this.scope });
   protected readonly fixes = this.api.corrections({ scope: this.scope });

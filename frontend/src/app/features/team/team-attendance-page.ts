@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Avatar } from '../../shared/ui/avatar';
 import { Icon } from '../../shared/ui/icon';
@@ -11,7 +11,7 @@ import { formatHours, formatMonth, maldivesToday, monthOf } from '../../shared/u
 import { valueOr } from '../../shared/utils/resource';
 import { summarise } from '../attendance/attendance-summary';
 import { SummaryRow } from '../attendance/summary-row';
-import { TeamApi } from './team-api';
+import { TeamApi, ViewScope } from './team-api';
 
 @Component({
   selector: 'app-team-attendance-page',
@@ -21,14 +21,14 @@ import { TeamApi } from './team-api';
       <div class="page-title">
         <div>
           <span class="eyebrow">ATTENDANCE RECORDS</span>
-          <h1>Team attendance</h1>
-          <p>Monitor attendance, work hours and anomalies across your team.</p>
+          <h1>{{ scope() === 'company' ? 'Company attendance' : 'Team attendance' }}</h1>
+          <p>Monitor attendance, work hours and anomalies across {{ scope() === 'company' ? 'Opro' : 'your team' }}.</p>
         </div>
         <button type="button" class="download-button" (click)="exportReport()" data-testid="export-report"><app-icon name="download" [size]="17" /> Export report</button>
       </div>
 
       @if (attendance.error()) {
-        <p class="attendance-off">Team attendance didn't load. Refresh the page to try again.</p>
+        <p class="attendance-off">Attendance didn't load. Refresh the page to try again.</p>
       } @else {
         <app-summary-row [summary]="teamSummary()" />
         <section class="card full-table">
@@ -58,7 +58,7 @@ import { TeamApi } from './team-api';
                   @for (row of rows(); track row.id) {
                     <tr data-testid="team-attendance-row">
                       <td>
-                        <a [routerLink]="['/team', row.id]" class="person-cell">
+                        <a [routerLink]="['/' + scope(), row.id]" class="person-cell">
                           <app-avatar [name]="row.name" />
                           <span><strong>{{ row.name }}</strong></span>
                         </a>
@@ -89,12 +89,15 @@ import { TeamApi } from './team-api';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TeamAttendancePage {
+  // Set from route data: an HOD's reports, or everyone for a super admin.
+  readonly scope = input<ViewScope>('team');
+
   private readonly today = maldivesToday();
   protected readonly currentMonth = monthOf(this.today);
   protected readonly month = signal(this.currentMonth);
   protected readonly isCurrentMonth = computed(() => this.month() === this.currentMonth);
   protected readonly monthLabel = computed(() => formatMonth(this.month()).toUpperCase());
-  protected readonly attendance = inject(TeamApi).attendance(this.month);
+  protected readonly attendance = inject(TeamApi).attendance(this.month, this.scope);
 
   private readonly days = computed(() => valueOr(this.attendance, []).filter(({ date }) => date <= this.today));
   protected readonly teamSummary = computed(() => summarise(this.days()));
@@ -123,7 +126,7 @@ export class TeamAttendancePage {
   protected readonly status = statusToday;
 
   protected exportReport() {
-    downloadCsv(`team-attendance-${this.month()}.csv`, [
+    downloadCsv(`${this.scope()}-attendance-${this.month()}.csv`, [
       ['Person', 'Days present', 'Working days', 'Late', 'Missed', 'Work hours', 'On time %'],
       ...this.rows().map((row) => [row.name, row.present, row.workingDays, row.late, row.missed, row.hours, row.onTime]),
     ]);

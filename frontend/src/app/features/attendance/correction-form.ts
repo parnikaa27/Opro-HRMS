@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { FormField, form, maxLength, required, submit, validate } from '@angular/forms/signals';
+import { Session } from '../../core/session';
 import { CorrectionRequest, FixCategory } from '../../models/attendance';
 import { FieldError } from '../../shared/ui/field-error';
 import { Icon } from '../../shared/ui/icon';
@@ -20,7 +21,7 @@ const PLACEHOLDERS: Record<FixCategory, string> = {
   selector: 'app-correction-form',
   imports: [FormField, FieldError, Icon, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="ATTENDANCE RECORDS" heading="Fix a punch" intro="Missed a punch, or punched in late? Tell your manager what really happened." />
+    <app-modal-heading eyebrow="ATTENDANCE RECORDS" heading="Fix a punch" [intro]="isSuperAdmin() ? 'Missed a punch, or punched in late? Put the real time on your record.' : 'Missed a punch, or punched in late? Tell your manager what really happened.'" />
     <form novalidate (submit)="save($event)">
       <label>
         What happened?
@@ -67,7 +68,7 @@ const PLACEHOLDERS: Record<FixCategory, string> = {
       <div class="modal-actions">
         <button type="button" class="secondary-button" (click)="cancelled.emit()">Cancel</button>
         <button type="submit" class="primary-button" [disabled]="fixForm().submitting()" data-testid="fix-submit">
-          {{ fixForm().submitting() ? 'Sending…' : 'Send to my manager' }} <app-icon name="arrow" [size]="16" />
+          {{ fixForm().submitting() ? 'Sending…' : isSuperAdmin() ? 'Fix my record' : 'Send to my manager' }} <app-icon name="arrow" [size]="16" />
         </button>
       </div>
     </form>
@@ -76,6 +77,7 @@ const PLACEHOLDERS: Record<FixCategory, string> = {
 })
 export class CorrectionForm {
   private readonly api = inject(AttendanceApi);
+  protected readonly isSuperAdmin = inject(Session).isSuperAdmin;
 
   readonly date = input('');
   readonly kind = input<CorrectionRequest['kind']>('missed-out');

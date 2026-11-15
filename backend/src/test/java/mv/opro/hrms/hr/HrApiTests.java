@@ -40,7 +40,6 @@ class HrApiTests {
 
     @AfterEach
     void cleanUp() {
-        jdbc.update("delete from punch_edit");
         jdbc.update("delete from punch");
         jdbc.update("delete from balance_adjustment where id <> 'BA-1'");
         jdbc.update("update leave_entitlement set entitled = 32 where employee_id = 'OPR-0021' and type = 'annual' and leave_year = 2026");
@@ -125,6 +124,20 @@ class HrApiTests {
     }
 
     @Test
+    void everyoneButASuperAdminReportsToSomeone() throws Exception {
+        String noManager = NEWCOMER.replace("\"OPR-0004\"", "null");
+        HttpResponse<String> refused = ananya.post("/api/hr/employees", noManager);
+        assertThat(refused.statusCode()).isEqualTo(400);
+        assertThat(refused.body()).isEqualTo("{\"message\":\"Pick their reporting manager.\"}");
+
+        ananya.post("/api/hr/employees", NEWCOMER);
+        jdbc.update("update employee set is_super_admin = true where id = 'OPR-0028'");
+
+        assertThat(ananya.put("/api/hr/employees/OPR-0028", noManager).statusCode()).isEqualTo(200);
+        assertThat(JsonPath.<List<String>>read(ananya.get("/api/hr/employees/OPR-0028").body(), "$.roles")).containsExactly("EMPLOYEE", "SUPER_ADMIN");
+    }
+
+    @Test
     void movingSomeoneTellsThemAndTheirNewManager() throws Exception {
         ananya.post("/api/hr/employees", NEWCOMER);
 
@@ -181,34 +194,23 @@ class HrApiTests {
     // Leave
 
     @Test
-    void recordsLeaveForSomeoneAsApproved() throws Exception {
-        String body = "{\"employeeId\":\"OPR-0018\",\"type\":\"sick\",\"from\":\"2026-11-15\",\"to\":\"2026-11-16\",\"reason\":\"Called in with a fever\"}";
+    void hrSeesEveryRequestButDecidesNoneAndRecordsNoLeaveOrPunches() throws Exception {
+        assertThat(JsonPath.<List<String>>read(ananya.get("/api/hr/leave-requests?status=pending").body(), "$[*].id")).contains("LR-1043");
 
-        String recorded = ananya.post("/api/hr/leave-requests", body).body();
-
-        assertThat(JsonPath.<String>read(recorded, "$.status")).isEqualTo("approved");
-        assertThat(JsonPath.<Boolean>read(recorded, "$.recordedByHr")).isTrue();
-        assertThat(notificationsOf("OPR-0018")).contains("HR recorded 2 days of sick leave for you, Sunday 15 November to Monday 16 November. Called in with a fever.");
+        String leave = "{\"employeeId\":\"OPR-0018\",\"type\":\"sick\",\"from\":\"2026-11-15\",\"to\":\"2026-11-15\",\"reason\":\"Fever\"}";
+        String punch = "{\"employeeId\":\"OPR-0018\",\"date\":\"2026-11-10\",\"action\":\"add\",\"time\":\"09:00\",\"reason\":\"Forgot\"}";
+        assertThat(ananya.post("/api/hr/leave-requests/LR-1043/decision", "{\"decision\":\"approved\"}").statusCode()).isEqualTo(404);
+        assertThat(ananya.post("/api/hr/corrections/AC-301/decision", "{\"decision\":\"approved\"}").statusCode()).isEqualTo(404);
+        assertThat(ananya.post("/api/hr/leave-requests", leave).statusCode()).isEqualTo(405);
+        assertThat(ananya.post("/api/hr/punch-edits", punch).statusCode()).isEqualTo(404);
+        assertThat(jdbc.queryForObject("select status from leave_request where id = 'LR-1043'", String.class)).isEqualTo("pending");
     }
 
     @Test
-    void hrNeverActsOnTheirOwnLeaveOrPunches() throws Exception {
-        String leave = "{\"employeeId\":\"OPR-0002\",\"type\":\"annual\",\"from\":\"2026-11-15\",\"to\":\"2026-11-15\",\"reason\":\"Trip\"}";
+    void hrNeverAdjustsTheirOwnBalance() throws Exception {
         String balance = "{\"employeeId\":\"OPR-0002\",\"type\":\"annual\",\"days\":5,\"reason\":\"Because\"}";
-        String punch = "{\"employeeId\":\"OPR-0002\",\"date\":\"2026-11-10\",\"action\":\"add\",\"time\":\"09:00\",\"reason\":\"Forgot\"}";
 
-        assertThat(ananya.post("/api/hr/leave-requests", leave).statusCode()).isEqualTo(403);
         assertThat(ananya.post("/api/hr/balance-adjustments", balance).statusCode()).isEqualTo(403);
-        assertThat(ananya.post("/api/hr/punch-edits", punch).body()).isEqualTo("{\"message\":\"Your own punches go through your manager.\"}");
-    }
-
-    @Test
-    void decidesAnyRequestWhenTheManagerIsAway() throws Exception {
-        String decided = ananya.post("/api/hr/leave-requests/LR-1043/decision", "{\"decision\":\"approved\"}").body();
-
-        assertThat(JsonPath.<String>read(decided, "$.status")).isEqualTo("approved");
-        assertThat(JsonPath.<String>read(decided, "$.decidedByName")).isEqualTo("Ananya Iyer");
-        assertThat(JsonPath.<List<String>>read(ananya.get("/api/hr/leave-requests?status=approved").body(), "$[*].id")).contains("LR-1043");
     }
 
     @Test
@@ -284,30 +286,7 @@ class HrApiTests {
     // Attendance
 
     @Test
-    void addsAMissingPunchAndVoidsAWrongOneWithALog() throws Exception {
-        String add = "{\"employeeId\":\"OPR-0018\",\"date\":\"2026-11-10\",\"action\":\"add\",\"time\":\"08:55\",\"reason\":\"Device missed him\"}";
-
-        assertThat(ananya.post("/api/hr/punch-edits", add).statusCode()).isEqualTo(200);
-        assertThat(ananya.post("/api/hr/punch-edits", add).statusCode()).isEqualTo(409);
-        String day = ananya.get("/api/hr/attendance?employeeId=OPR-0018&month=2026-11").body();
-        assertThat(JsonPath.<List<Boolean>>read(day, "$[?(@.date == '2026-11-10')].isCorrected")).containsExactly(true);
-        assertThat(JsonPath.<List<String>>read(day, "$[?(@.date == '2026-11-10')].punches[*].direction")).containsExactly("in");
-
-        ananya.post("/api/hr/punch-edits", add.replace("add", "void").replace("Device missed him", "Wrong person"));
-
-        String log = ananya.get("/api/hr/punch-edits?employeeId=OPR-0018&month=2026-11").body();
-        assertThat(JsonPath.<List<String>>read(log, "$[*].action")).containsExactlyInAnyOrder("add", "void");
-        assertThat(JsonPath.<List<String>>read(log, "$[*].time")).containsExactly("08:55", "08:55");
-        assertThat(JsonPath.<List<String>>read(log, "$[*].byName")).containsExactly("Ananya Iyer", "Ananya Iyer");
-        assertThat(jdbc.queryForObject("select voided_by from punch", String.class)).isEqualTo("OPR-0002");
-        assertThat(notificationsOf("OPR-0018")).contains("HR added a punch at 8:55 AM on Tuesday 10 November. Device missed him.");
-    }
-
-    @Test
-    void refusesPunchFixesForDaysToComeAndBadMonths() throws Exception {
-        String future = "{\"employeeId\":\"OPR-0018\",\"date\":\"2026-11-20\",\"action\":\"add\",\"time\":\"09:00\",\"reason\":\"Early\"}";
-
-        assertThat(ananya.post("/api/hr/punch-edits", future).statusCode()).isEqualTo(400);
+    void refusesABadMonth() throws Exception {
         assertThat(ananya.get("/api/hr/attendance?employeeId=OPR-0018&month=November").body()).isEqualTo("{\"message\":\"Month must look like 2026-11\"}");
     }
 

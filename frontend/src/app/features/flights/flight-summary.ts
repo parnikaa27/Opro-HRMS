@@ -7,8 +7,7 @@ import { CURRENCIES, formatMoney, fromUsd } from '../../shared/utils/money';
 import { CurrencyChoice } from './currency-choice';
 
 const STATUS: Record<FlightClaim['status'], { label: string; tone: Tone }> = {
-  pending: { label: 'Waiting for HR', tone: 'late' },
-  approved: { label: 'Approved', tone: 'ok' },
+  approved: { label: 'Claimed', tone: 'ok' },
   rejected: { label: 'Declined', tone: 'danger' },
   cancelled: { label: 'Cancelled', tone: 'neutral' },
 };
@@ -26,7 +25,6 @@ const STATUS: Record<FlightClaim['status'], { label: string; tone: Tone }> = {
     <dl class="flight-stats" data-testid="flight-stats">
       <div><dt>Allowance {{ year().year }}</dt><dd>{{ money(year().allowanceUsd ?? 0) }}</dd></div>
       <div><dt>Used</dt><dd>{{ money(year().usedUsd) }}</dd></div>
-      <div><dt>Waiting</dt><dd>{{ money(year().pendingUsd) }}</dd></div>
       <div><dt>Left</dt><dd data-testid="flight-left">{{ money(left()) }}</dd></div>
     </dl>
     @for (claim of year().claims; track claim.id) {
@@ -46,7 +44,7 @@ const STATUS: Record<FlightClaim['status'], { label: string; tone: Tone }> = {
           @if (claim.hasReceipt) {
             <a [href]="receiptPath() + '/' + claim.id + '/receipt'" target="_blank" rel="noopener" class="text-link">Receipt</a>
           }
-          @if (canCancel() && claim.status === 'pending') {
+          @if (canCancel() && claim.status === 'approved') {
             <button type="button" class="text-link" (click)="cancelled.emit(claim)" data-testid="cancel-claim">Cancel</button>
           }
         </span>
@@ -69,7 +67,7 @@ export class FlightSummary {
 
   protected readonly currencies = CURRENCIES;
   protected readonly status = STATUS;
-  protected readonly left = computed(() => (this.year().allowanceUsd ?? 0) - this.year().usedUsd - this.year().pendingUsd);
+  protected readonly left = computed(() => (this.year().allowanceUsd ?? 0) - this.year().usedUsd);
   protected readonly money = (usd: number) => formatMoney(fromUsd(usd, this.choice.currency(), this.year().ratesPerUsd), this.choice.currency());
   protected readonly formatMoney = formatMoney;
   protected readonly formatShortDate = formatShortDate;

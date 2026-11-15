@@ -18,7 +18,7 @@ const RECEIPT_FAILED = "Your claim is in, but the receipt didn't upload. Give it
   selector: 'app-flight-claim-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="FLIGHT ALLOWANCE" heading="Claim a flight" intro="HR checks the receipt and approves it. Rufiyaa and rupees are counted in dollars at HR's rate today." />
+    <app-modal-heading eyebrow="FLIGHT ALLOWANCE" heading="Claim a flight" intro="It counts straight away, no approval needed. Rufiyaa and rupees are counted in dollars at HR's rate today." />
     <form novalidate (submit)="save($event)">
       <label>
         Route

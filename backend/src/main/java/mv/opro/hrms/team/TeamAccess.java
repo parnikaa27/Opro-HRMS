@@ -1,16 +1,14 @@
 package mv.opro.hrms.team;
 
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 import mv.opro.hrms.common.ApiException;
 import mv.opro.hrms.employee.Employee;
 import mv.opro.hrms.employee.People;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
-// The only gate to team data: a manager reaches their own active direct reports and nobody else.
-// The frontend hides the team view from non managers, but this is what actually protects the data.
+// The only gate to team data: a manager reaches their own active direct reports and nobody else,
+// and a super admin reaches everyone. The frontend hides these views, but this is what actually protects the data.
 @Component
 class TeamAccess {
 
@@ -28,14 +26,10 @@ class TeamAccess {
         return reports;
     }
 
-    Set<String> reportIdsOf(Employee manager) {
-        return reportsOf(manager).stream().map(Employee::getId).collect(Collectors.toUnmodifiableSet());
-    }
-
-    Employee report(Employee manager, String id) {
-        return reportsOf(manager).stream()
-                .filter(report -> report.getId().equals(id))
-                .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Not one of your reports"));
+    List<Employee> everyoneFor(Employee reader) {
+        if (!reader.isSuperAdmin()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Super admins only");
+        }
+        return people.active();
     }
 }

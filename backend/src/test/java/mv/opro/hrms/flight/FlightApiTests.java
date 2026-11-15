@@ -41,7 +41,6 @@ class FlightApiTests {
     @AfterEach
     void cleanUp() {
         jdbc.update("delete from flight_claim where id not in ('FC-1', 'FC-2')");
-        jdbc.update("update flight_claim set status = 'pending', decided_by = null, decided_on = null, decision_note = null where id = 'FC-2'");
         jdbc.update("delete from stored_file where id not in (select file_id from employee_document where file_id is not null)");
         jdbc.update("update flight_allowance set amount_usd = 1200 where employee_id = 'OPR-0018'");
         jdbc.update("delete from flight_allowance where allowance_year <> 2026");
@@ -79,7 +78,7 @@ class FlightApiTests {
         String claim = claim("1542", "MVR").body();
 
         assertThat(field(claim, "$.amountUsd")).isEqualTo(100);
-        assertThat(field(arjun.get("/api/flights").body(), "$.pendingUsd")).isEqualTo(100);
+        assertThat(field(arjun.get("/api/flights").body(), "$.usedUsd")).isEqualTo(500);
     }
 
     @Test
@@ -103,24 +102,22 @@ class FlightApiTests {
     }
 
     @Test
-    void hrApprovesAndTheMoneyIsUsed() throws Exception {
-        String id = JsonPath.read(claim("300", "USD").body(), "$.id");
+    void aClaimIsApprovedAsItIsMadeWithNobodyToDecide() throws Exception {
+        String claim = claim("300", "USD").body();
 
-        assertThat(JsonPath.<List<String>>read(ananya.get("/api/hr/flight-claims?status=pending").body(), "$[*].employeeName")).contains("Arjun Reddy");
-        ananya.post("/api/hr/flight-claims/" + id + "/decision", "{\"decision\":\"approved\"}");
-
+        assertThat(JsonPath.<String>read(claim, "$.status")).isEqualTo("approved");
         assertThat(field(arjun.get("/api/flights").body(), "$.usedUsd")).isEqualTo(700);
-        assertThat(JsonPath.<List<String>>read(arjun.get("/api/notifications").body(), "$[*].text"))
-                .contains("Your flight claim for Malé to Colombo and back ($300.00) was approved.");
+        String id = JsonPath.read(claim, "$.id");
+        assertThat(ananya.post("/api/hr/flight-claims/" + id + "/decision", "{\"decision\":\"rejected\",\"note\":\"No\"}").statusCode()).isEqualTo(404);
     }
 
     @Test
-    void decliningNeedsAReasonAndTheyCanCancelWhileItWaits() throws Exception {
+    void cancellingAClaimGivesTheMoneyBackOnce() throws Exception {
         String id = JsonPath.read(claim("300", "USD").body(), "$.id");
 
-        assertThat(ananya.post("/api/hr/flight-claims/" + id + "/decision", "{\"decision\":\"rejected\"}").statusCode()).isEqualTo(400);
         assertThat(JsonPath.<String>read(arjun.post("/api/flights/claims/" + id + "/cancel", "{}").body(), "$.status")).isEqualTo("cancelled");
-        assertThat(field(arjun.get("/api/flights").body(), "$.pendingUsd")).isZero();
+        assertThat(field(arjun.get("/api/flights").body(), "$.usedUsd")).isEqualTo(400);
+        assertThat(arjun.post("/api/flights/claims/" + id + "/cancel", "{}").statusCode()).isEqualTo(409);
     }
 
     @Test

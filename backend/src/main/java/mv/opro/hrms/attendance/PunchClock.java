@@ -98,9 +98,10 @@ public class PunchClock {
     }
 
     // Working a Friday or a public holiday asks the manager for compensatory off, once for the day.
+    // Super admins have nobody to ask, so they don't earn it.
     private void claimCompOff(Employee employee, LocalDate today) {
         boolean isDayOff = WorkWeek.isWeekend(today) || holidays.datesBetween(today, today).contains(today);
-        if (!isDayOff || compOffs.existsByEmployeeIdAndWorkDate(employee.getId(), today)) {
+        if (!isDayOff || employee.isSuperAdmin() || compOffs.existsByEmployeeIdAndWorkDate(employee.getId(), today)) {
             return;
         }
         compOffs.save(new CompOffClaim(Ids.next("CO"), employee.getId(), today));
@@ -134,12 +135,16 @@ public class PunchClock {
         return nearest;
     }
 
-    // The first home punch of the day starts the approval.
+    // The first home punch of the day starts the approval. A super admin's is approved straight away.
     private void startHomeDay(Employee employee, LocalDate today) {
         if (homeDays.findByEmployeeIdAndWorkDate(employee.getId(), today).isPresent()) {
             return;
         }
-        homeDays.save(new HomeDay(Ids.next("HW"), employee.getId(), today));
+        HomeDay day = homeDays.save(new HomeDay(Ids.next("HW"), employee.getId(), today));
+        if (employee.isSuperAdmin()) {
+            day.decide("approved", employee.getId(), today, null);
+            return;
+        }
         String managerId = employee.getManagerId();
         if (managerId != null && people.findActive(managerId).isPresent()) {
             notifications.tell(managerId, Notification.Kind.APPROVAL, employee.getFullName() + " is working from home today. Approve it from Leave requests.");

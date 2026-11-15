@@ -1,12 +1,11 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { click, employee, fill, NOW, respond, settle, setupHttp, text, texts } from '../../../testing/fixtures';
+import { click, employee, NOW, respond, settle, setupHttp, text, texts } from '../../../testing/fixtures';
 import { HrPersonPage } from './hr-person-page';
 
 const PERSON = '/api/hr/employees/OPR-0021';
 const LEAVE = '/api/hr/leave-requests';
 const ATTENDANCE = '/api/hr/attendance?employeeId=OPR-0021&month=2026-11';
-const EDITS = '/api/hr/punch-edits?employeeId=OPR-0021&month=2026-11';
 const EVERYONE = '/api/hr/employees';
 const TYPES = [
   { code: 'annual', name: 'Annual leave', allowsHalfDay: true },
@@ -35,7 +34,6 @@ describe('HrPersonPage', () => {
     fixture.componentRef.setInput('employeeId', 'OPR-0021');
     await respond(http, {
       [PERSON]: detail,
-      [EDITS]: [{ id: 'PE-1', employeeId: 'OPR-0021', date: '2026-11-10', action: 'add', time: '08:55', reason: 'Device missed him', by: 'OPR-0002', byName: 'Ananya Iyer', on: '2026-11-11' }],
       [EVERYONE]: [employee({ id: 'OPR-0030', fullName: 'Amit Kulkarni', managerId: 'OPR-0021' }), employee()],
       [ATTENDANCE]: [
         { employeeId: 'OPR-0021', date: '2026-11-10', status: 'absent', punches: [], workedMinutes: 0, overtimeMinutes: 0 },
@@ -46,42 +44,21 @@ describe('HrPersonPage', () => {
         { id: 'LR-2', employeeId: 'OTHER', type: 'annual', from: '2026-12-01', to: '2026-12-01', days: 1, reason: 'Other', status: 'pending', appliedOn: '2026-11-10' },
       ],
       '/api/leave/types': TYPES,
-      '/api/holidays?year=2026': [],
-      '/api/holidays?year=2027': [],
     });
     return fixture.nativeElement as HTMLElement;
   };
 
-  it('shows their balances, this month so far, their requests, the change log and visa', async () => {
+  it('shows their balances, this month so far, their requests, the change log and visa, with nothing to decide', async () => {
     const root = await render();
 
     expect(text(root.querySelector('h1') as HTMLElement)).toBe('Rohit Verma');
     expect(texts(root, 'leave-balance')).toEqual(['12 annual days Annual leave 12 of 32 days available']);
-    expect(texts(root, 'attendance-row')).toEqual(['Tuesday 10 Nov, Tue — — — Absent Fix punches']);
+    expect(texts(root, 'attendance-row')).toEqual(['Tuesday 10 Nov, Tue — — — Absent']);
+    expect(root.querySelector('[data-testid=edit-punches]')).toBeNull();
+    expect(root.querySelector('[data-testid=open-record]')).toBeNull();
     expect(texts(root, 'leave-request')).toHaveLength(1);
     expect(texts(root, 'adjustment')).toEqual(['+2 days annual leave Carried forward · Ananya Iyer, 5 Jan']);
     expect(text(root.querySelector('[data-testid=visa-card]') as HTMLElement)).toContain('Their visa has lapsed. Start the renewal today');
-  });
-
-  it('records leave from the types they hold, then shows it', async () => {
-    const root = await render();
-
-    click(root, 'open-record');
-    expect([...root.querySelectorAll('[data-testid=record-type] option')].map((option) => text(option))).toEqual(['Annual leave', 'Unpaid leave']);
-    fill(root, 'record-from', '2026-11-16');
-    fill(root, 'record-to', '2026-11-16');
-    fill(root, 'record-reason', 'Called in sick');
-    click(root, 'record-submit');
-    await settle();
-    const request = http.expectOne((sent) => sent.method === 'POST' && sent.url === LEAVE);
-    expect(request.request.body).toEqual({ employeeId: 'OPR-0021', type: 'annual', from: '2026-11-16', to: '2026-11-16', days: 1, reason: 'Called in sick' });
-    request.flush({});
-    await respond(http, { [PERSON]: DETAIL, [LEAVE]: [] });
-
-    expect(text(root.querySelector('dialog[open]') as HTMLElement)).toContain('Leave recorded');
-    (root.querySelector('[data-testid=success-state] button') as HTMLButtonElement).click();
-    TestBed.tick();
-    expect(root.querySelector('dialog[open]')).toBeNull();
   });
 
   it('adjusts a balance and updates papers through dialogs', async () => {
@@ -94,24 +71,6 @@ describe('HrPersonPage', () => {
 
     click(root, 'open-visa');
     expect((root.querySelector('[data-testid=visa-number]') as HTMLInputElement).value).toBe('MV-EV-4');
-  });
-
-  it('fixes a punch with a reason and shows the log for that day', async () => {
-    const root = await render();
-
-    click(root, 'edit-punches');
-    expect(text(root.querySelector('[data-testid=punch-log]') as HTMLElement)).toBe('Added 08:55 AM · Device missed him · Ananya Iyer, 11 Nov');
-    fill(root, 'punch-time', '17:20');
-    fill(root, 'punch-reason', 'Device offline');
-    click(root, 'punch-submit');
-    await settle();
-    const request = http.expectOne('/api/hr/punch-edits');
-    expect(request.request.body).toEqual({ employeeId: 'OPR-0021', date: '2026-11-10', action: 'add', time: '17:20', reason: 'Device offline' });
-    request.flush({});
-    await settle();
-
-    expect(http.match(ATTENDANCE)).toHaveLength(1);
-    expect(http.match(EDITS)).toHaveLength(1);
   });
 
   it('won’t let someone with reports leave until they are moved', async () => {

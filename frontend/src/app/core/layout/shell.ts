@@ -4,10 +4,10 @@ import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { valueOr } from '../../shared/utils/resource';
 import { HrApi } from '../../features/hr/hr-api';
-import { RequestScope, TeamApi } from '../../features/team/team-api';
+import { TeamApi, ViewScope } from '../../features/team/team-api';
 import { SavedChanges } from '../saved-changes';
 import { PortalView, Session } from '../session';
-import { BadgeKey, EMPLOYEE_NAV, HR_NAV, MANAGER_NAV } from './nav-items';
+import { BadgeKey, COMPANY_NAV, EMPLOYEE_NAV, HR_NAV, MANAGER_NAV } from './nav-items';
 import { Sidebar } from './sidebar';
 import { SiteFooter } from './site-footer';
 import { TopBar } from './top-bar';
@@ -46,22 +46,21 @@ export class Shell {
     { initialValue: this.router.url },
   );
 
-  protected readonly view = computed<PortalView>(() => (this.url().startsWith('/team') ? 'team' : this.url().startsWith('/hr') ? 'hr' : 'mine'));
-  protected readonly navItems = computed(() => ({ mine: EMPLOYEE_NAV, team: MANAGER_NAV, hr: HR_NAV })[this.view()]);
+  protected readonly view = computed<PortalView>(() => (['team', 'hr', 'company'] as const).find((view) => this.url().startsWith(`/${view}`)) ?? 'mine');
+  protected readonly navItems = computed(() => ({ mine: EMPLOYEE_NAV, team: MANAGER_NAV, hr: HR_NAV, company: COMPANY_NAV })[this.view()]);
   protected readonly isNavOpen = signal(false);
 
-  // Counts follow the view: a manager's own team, or the whole company for HR.
-  private readonly scope = computed<RequestScope>(() => (this.view() === 'hr' ? 'hr' : 'team'));
-  private readonly countsWaiting = computed(() => (this.view() === 'hr' ? this.session.isHr() : this.session.isManager()));
+  // What's waiting: an HOD's team, everyone for a super admin, and HR's inbox.
+  private readonly scope = computed<ViewScope>(() => (this.view() === 'company' ? 'company' : 'team'));
+  private readonly countsWaiting = computed(() => (this.view() === 'company' ? this.session.isSuperAdmin() : this.view() === 'team' && this.session.isManager()));
   private readonly pendingLeave = this.team.leaveRequests({ status: 'pending', isEnabled: this.countsWaiting, scope: this.scope });
   private readonly pendingFixes = this.team.corrections({ status: 'pending', isEnabled: this.countsWaiting, scope: this.scope });
   private readonly pendingHomeDays = this.team.homeDays({ status: 'pending', isEnabled: this.countsWaiting, scope: this.scope });
   private readonly pendingCompOffs = this.team.compOffs({ status: 'pending', isEnabled: this.countsWaiting, scope: this.scope });
-  private readonly pendingFlights = this.hr.flightClaims({ status: 'pending', isEnabled: () => this.view() === 'hr' && this.session.isHr() });
   private readonly changeRequests = this.hr.changeRequests({ isEnabled: () => this.view() === 'hr' && this.session.isHr() });
   protected readonly badges = computed<Partial<Record<BadgeKey, number>>>(() => ({
     approvals: [valueOr(this.pendingLeave, []), valueOr(this.pendingFixes, []), valueOr(this.pendingHomeDays, []), valueOr(this.pendingCompOffs, [])].reduce((total, list) => total + list.length, 0),
-    inbox: valueOr(this.changeRequests, []).filter(({ status }) => status === 'open').length + valueOr(this.pendingFlights, []).length,
+    inbox: valueOr(this.changeRequests, []).filter(({ status }) => status === 'open').length,
   }));
 
   constructor() {
@@ -69,7 +68,7 @@ export class Shell {
     const seen = saves();
     effect(() => {
       if (saves() !== seen) {
-        untracked(() => [this.pendingLeave, this.pendingFixes, this.pendingHomeDays, this.pendingCompOffs, this.pendingFlights, this.changeRequests].forEach((counts) => counts.reload()));
+        untracked(() => [this.pendingLeave, this.pendingFixes, this.pendingHomeDays, this.pendingCompOffs, this.changeRequests].forEach((counts) => counts.reload()));
       }
     });
   }

@@ -63,18 +63,28 @@ describe('app shell', () => {
     expect(text(page.querySelector('.profile-button small') as HTMLElement)).toBe('Operations Manager');
   });
 
-  it('gives HR the company nav with waiting leave and open inbox counts', async () => {
+  it('gives HR the company nav with no leave to decide, only open inbox counts', async () => {
     session.user.set(employee({ fullName: 'Ananya Iyer', designation: 'HR Manager', roles: ['EMPLOYEE', 'HR'] }));
-    const page = await render('/hr', {
-      '/api/hr/leave-requests?status=pending': [{ id: 'LR-1' }],
-      '/api/hr/corrections?status=pending': [{ id: 'AC-1' }],
-      '/api/hr/change-requests': [{ id: 'CR-1', status: 'open' }, { id: 'CR-2', status: 'done' }],
-      '/api/hr/flight-claims?status=pending': [{ id: 'FC-1' }],
-    });
+    const page = await render('/hr', { '/api/hr/change-requests': [{ id: 'CR-1', status: 'open' }, { id: 'CR-2', status: 'done' }] });
 
-    expect(navLabels(page)).toEqual(['Overview', 'People', 'Leave 2', 'Calendar', 'Visas', 'Inbox 2', 'Announcements', 'Policies']);
+    expect(navLabels(page)).toEqual(['Overview', 'People', 'Calendar', 'Visas', 'Inbox 1', 'Announcements', 'Policies']);
     expect([...page.querySelectorAll('.role-switch button')].map((button) => text(button))).toEqual(['Employee', 'HR']);
     expect(page.querySelector('[data-testid=view-hr]')?.getAttribute('aria-pressed')).toBe('true');
+    http.expectNone((request) => request.url.includes('leave-requests') || request.url.includes('corrections'));
+  });
+
+  it('gives a super admin who leads a team the HOD and super admin views, counting what is waiting across Opro', async () => {
+    session.user.set(manager({ fullName: 'Rajesh Sharma', designation: 'Director of Operations', roles: ['EMPLOYEE', 'MANAGER', 'SUPER_ADMIN'] }));
+    const page = await render('/company', {
+      '/api/company/leave-requests?status=pending': [{ id: 'LR-1' }, { id: 'LR-2' }],
+      '/api/company/corrections?status=pending': [{ id: 'AC-1' }],
+      '/api/company/home-days?status=pending': [],
+      '/api/company/comp-offs?status=pending': [],
+    });
+
+    expect(navLabels(page)).toEqual(['People', 'Attendance', 'Leave 3', 'Calendar']);
+    expect([...page.querySelectorAll('.role-switch button')].map((button) => text(button))).toEqual(['Employee', 'HOD', 'Super admin']);
+    expect(page.querySelector('[data-testid=view-company]')?.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('refreshes the counts after anything is saved', async () => {

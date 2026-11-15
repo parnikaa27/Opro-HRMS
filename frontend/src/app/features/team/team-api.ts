@@ -20,11 +20,13 @@ export interface TeamMemberDetail extends Employee {
   leaveBalances: LeaveBalance[];
 }
 
-export type RequestScope = 'team' | 'hr';
+// Read only views of other people: an HOD's reports, or everyone for a super admin. Same shapes either way.
+export type ViewScope = 'team' | 'company';
+// HR also reads every leave request, for one person's page.
+export type RequestScope = ViewScope | 'hr';
 
 interface ListOptions {
   status?: DecisionStatus;
-  // Managers see their reports, HR sees everyone. Same shapes either way.
   scope?: () => RequestScope;
   // Lets shared widgets skip the call entirely for people who aren't managers.
   isEnabled?: () => boolean;
@@ -37,11 +39,11 @@ const listRequest = (path: string, { status, isEnabled = () => true, scope = () 
 export class TeamApi {
   private readonly http = inject(HttpClient);
 
-  members = ({ isEnabled = () => true }: Pick<ListOptions, 'isEnabled'> = {}) =>
-    httpResource<TeamMember[]>(() => (isEnabled() ? '/api/team' : undefined), { defaultValue: [] });
-  member = (id: () => string) => httpResource<TeamMemberDetail>(() => `/api/team/${encodeURIComponent(id())}`);
-  attendance = (month: () => string) =>
-    httpResource<AttendanceDay[]>(() => ({ url: '/api/team/attendance', params: { month: month() } }), { defaultValue: [] });
+  members = ({ isEnabled = () => true, scope = () => 'team' }: { isEnabled?: () => boolean; scope?: () => ViewScope } = {}) =>
+    httpResource<TeamMember[]>(() => (isEnabled() ? `/api/${scope()}` : undefined), { defaultValue: [] });
+  member = (id: () => string, scope: () => ViewScope = () => 'team') => httpResource<TeamMemberDetail>(() => `/api/${scope()}/${encodeURIComponent(id())}`);
+  attendance = (month: () => string, scope: () => ViewScope = () => 'team') =>
+    httpResource<AttendanceDay[]>(() => ({ url: `/api/${scope()}/attendance`, params: { month: month() } }), { defaultValue: [] });
 
   leaveRequests = (options: ListOptions = {}) =>
     httpResource<LeaveRequest[]>(listRequest('leave-requests', options), { defaultValue: [] });
@@ -50,12 +52,13 @@ export class TeamApi {
   homeDays = (options: ListOptions = {}) => httpResource<HomeDay[]>(listRequest('home-days', options), { defaultValue: [] });
   compOffs = (options: ListOptions = {}) => httpResource<CompOffClaim[]>(listRequest('comp-offs', options), { defaultValue: [] });
 
-  decideLeave = (id: string, decision: Decision, scope: RequestScope = 'team') =>
+  // An HOD decides for their reports. A super admin can step in for anyone but themselves.
+  decideLeave = (id: string, decision: Decision, scope: ViewScope = 'team') =>
     firstValueFrom(this.http.post<LeaveRequest>(`/api/${scope}/leave-requests/${encodeURIComponent(id)}/decision`, decision));
-  decideCorrection = (id: string, decision: Decision, scope: RequestScope = 'team') =>
+  decideCorrection = (id: string, decision: Decision, scope: ViewScope = 'team') =>
     firstValueFrom(this.http.post<CorrectionRequest>(`/api/${scope}/corrections/${encodeURIComponent(id)}/decision`, decision));
-  decideCompOff = (id: string, decision: Decision, scope: RequestScope = 'team') =>
+  decideCompOff = (id: string, decision: Decision, scope: ViewScope = 'team') =>
     firstValueFrom(this.http.post<CompOffClaim>(`/api/${scope}/comp-offs/${encodeURIComponent(id)}/decision`, decision));
-  decideHomeDay = (id: string, decision: Decision, scope: RequestScope = 'team') =>
+  decideHomeDay = (id: string, decision: Decision, scope: ViewScope = 'team') =>
     firstValueFrom(this.http.post<HomeDay>(`/api/${scope}/home-days/${encodeURIComponent(id)}/decision`, decision));
 }
