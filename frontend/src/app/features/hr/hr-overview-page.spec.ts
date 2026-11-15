@@ -21,11 +21,6 @@ describe('HrOverviewPage', () => {
     const fixture = TestBed.createComponent(HrOverviewPage);
     await respond(http, {
       '/api/hr/employees': PEOPLE,
-      '/api/hr/leave-requests?status=pending': [
-        { id: 'LR-2', employeeId: 'P', employeeName: 'Priya Nair', type: 'annual', from: '2026-12-20', to: '2026-12-24', days: 3, reason: 'Trip', status: 'pending', appliedOn: '2026-11-11' },
-        { id: 'LR-1', employeeId: 'M', employeeName: 'Sneha Kulkarni', type: 'annual', from: '2026-12-22', to: '2026-12-22', days: 1, reason: 'Trip', status: 'pending', appliedOn: '2026-11-09' },
-      ],
-      '/api/hr/corrections?status=pending': [{ id: 'AC-1' }],
       '/api/hr/change-requests': [{ id: 'CR-1', status: 'open' }, { id: 'CR-2', status: 'done' }],
       '/api/holidays?year=2026': [
         { id: 'HD-1', name: 'Mawlid al Nabi', date: '2026-11-20', isTentative: true },
@@ -42,22 +37,24 @@ describe('HrOverviewPage', () => {
     const root = await render();
 
     expect(text(root.querySelector('.welcome') as HTMLElement)).toBe('THURSDAY, 12 NOVEMBER Good morning, Ananya. 4 people at Opro. 2 in today.');
-    expect([texts(root, 'stat-people'), texts(root, 'stat-waiting'), texts(root, 'stat-visas'), texts(root, 'stat-inbox')]).toEqual([['4'], ['3'], ['2'], ['1']]);
+    expect([texts(root, 'stat-people'), texts(root, 'stat-on-leave'), texts(root, 'stat-visas'), texts(root, 'stat-inbox')]).toEqual([['4'], ['1'], ['2'], ['1']]);
+    http.expectNone((request) => request.url.includes('leave-requests') || request.url.includes('corrections'));
   });
 
-  it('lists the oldest waiting leave, visa alerts and holidays to confirm soon', async () => {
+  it('lists who is on leave today, visa alerts and holidays to confirm soon', async () => {
     const root = await render();
 
-    expect(texts(root, 'waiting-leave')).toEqual(['SK Sneha Kulkarni Submitted 3 days ago 22 December 2026 1 day', 'PN Priya Nair Submitted yesterday 20 Dec to 24 December 2026 3 days']);
+    expect(texts(root, 'on-leave')).toEqual(['RS Rajesh Sharma Site Engineer']);
+    expect(root.querySelector('[data-testid=on-leave]')?.getAttribute('href')).toBe('/hr/people/OPR-0001');
     expect(texts(root, 'visa-alert')).toEqual(['RV Rohit Verma Visa expired 02 Nov 2026 Expired', 'AR Arjun Reddy Visa expires 20 Dec 2026 38 days']);
     expect(root.querySelector('[data-testid=visa-alert]')?.getAttribute('href')).toBe('/hr/people/OPR-0021');
     expect(texts(root, 'to-confirm')).toEqual(['Mawlid al Nabi Tentatively 20 Nov in 8 days']);
   });
 
   it('has calm empty states', async () => {
-    const root = await render({ '/api/hr/employees': [], '/api/hr/leave-requests?status=pending': [], '/api/holidays?year=2026': [], '/api/holidays?year=2027': [] });
+    const root = await render({ '/api/hr/employees': [], '/api/holidays?year=2026': [], '/api/holidays?year=2027': [] });
 
-    expect(text(root)).toContain('Every request has a decision.');
+    expect(text(root)).toContain("Nobody's on leave today.");
     expect(text(root)).toContain('Every visa and passport is in date.');
     expect(text(root)).toContain('No tentative holidays in the next two months.');
   });

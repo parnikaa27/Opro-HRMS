@@ -10,9 +10,6 @@ import { valueOr } from '../../shared/utils/resource';
 import { plural } from '../../shared/utils/text';
 import { greetingFor } from '../dashboard/dashboard-page';
 import { HolidaysApi } from '../holidays/holidays-api';
-import { describeDates } from '../leave/leave-format';
-import { submittedAgo } from '../team/request-row';
-import { TeamApi } from '../team/team-api';
 import { visaAlertsFor } from '../team/visa-alerts';
 import { HrApi } from './hr-api';
 
@@ -35,12 +32,12 @@ const IN_OFFICE: readonly AttendanceStatus[] = ['present', 'late', 'half-day', '
           <small><i></i> {{ inToday() }} in today</small>
         </div>
       </a>
-      <a class="stat-card" routerLink="/hr/leave">
-        <div class="stat-icon amber"><app-icon name="clock" /></div>
+      <a class="stat-card" routerLink="/hr/people">
+        <div class="stat-icon amber"><app-icon name="palm" /></div>
         <div>
-          <span>WAITING DECISIONS</span>
-          <strong data-testid="stat-waiting">{{ waitingLeave().length + waitingFixes() }}</strong>
-          <small>Across every team</small>
+          <span>ON LEAVE TODAY</span>
+          <strong data-testid="stat-on-leave">{{ onLeave().length }}</strong>
+          <small>Approved by their HODs</small>
         </div>
       </a>
       <a class="stat-card" routerLink="/hr/visas">
@@ -66,25 +63,21 @@ const IN_OFFICE: readonly AttendanceStatus[] = ['present', 'late', 'half-day', '
         <div class="card-heading">
           <div>
             <span class="eyebrow">ACROSS OPRO</span>
-            <h2>Leave waiting for a decision</h2>
+            <h2>On leave today</h2>
           </div>
-          <a routerLink="/hr/leave" class="text-link">Open <app-icon name="arrow" [size]="15" /></a>
+          <a routerLink="/hr/people" class="text-link">People <app-icon name="arrow" [size]="15" /></a>
         </div>
         <div class="request-list">
-          @for (request of waitingLeave().slice(0, preview); track request.id) {
-            <div class="request-item" data-testid="waiting-leave">
-              <app-avatar [name]="request.employeeName ?? ''" />
+          @for (person of onLeave().slice(0, preview); track person.id) {
+            <a class="request-item" [routerLink]="['/hr/people', person.id]" data-testid="on-leave">
+              <app-avatar [name]="person.fullName" [photoUrl]="person.photoUrl" />
               <div class="request-person">
-                <strong>{{ request.employeeName }}</strong>
-                <span>{{ submittedAgo(request.appliedOn) }}</span>
+                <strong>{{ person.fullName }}</strong>
+                <span>{{ person.designation }}</span>
               </div>
-              <div class="request-dates">
-                <strong>{{ describeDates(request) }}</strong>
-                <span>{{ plural(request.days, 'day') }}</span>
-              </div>
-            </div>
+            </a>
           } @empty {
-            <p class="attendance-off">Every request has a decision.</p>
+            <p class="attendance-off">Nobody's on leave today.</p>
           }
         </div>
       </section>
@@ -143,13 +136,10 @@ const IN_OFFICE: readonly AttendanceStatus[] = ['present', 'late', 'half-day', '
 export class HrOverviewPage {
   private readonly session = inject(Session);
   private readonly hr = inject(HrApi);
-  private readonly team = inject(TeamApi);
   private readonly holidaysApi = inject(HolidaysApi);
   protected readonly today = maldivesToday();
 
   private readonly everyone = this.hr.employees();
-  private readonly pendingLeave = this.team.leaveRequests({ status: 'pending', scope: () => 'hr' });
-  private readonly pendingFixes = this.team.corrections({ status: 'pending', scope: () => 'hr' });
   private readonly changes = this.hr.changeRequests();
   private readonly thisYear = this.holidaysApi.forYear(() => String(yearOf(this.today)));
   private readonly nextYear = this.holidaysApi.forYear(() => String(yearOf(this.today) + 1));
@@ -162,8 +152,7 @@ export class HrOverviewPage {
   protected readonly people = computed(() => valueOr(this.everyone, []));
   protected readonly inToday = computed(() => this.people().filter(({ today }) => today && IN_OFFICE.includes(today.status)).length);
   protected readonly line = computed(() => `${plural(this.people().length, 'person', 'people')} at Opro. ${this.inToday()} in today.`);
-  protected readonly waitingLeave = computed(() => [...valueOr(this.pendingLeave, [])].sort((first, second) => first.appliedOn.localeCompare(second.appliedOn)));
-  protected readonly waitingFixes = computed(() => valueOr(this.pendingFixes, []).length);
+  protected readonly onLeave = computed(() => this.people().filter(({ today }) => today?.status === 'on-leave'));
   protected readonly openChanges = computed(() => valueOr(this.changes, []).filter(({ status }) => status === 'open').length);
   protected readonly visaAlerts = computed(() => visaAlertsFor(this.people(), this.today));
   protected readonly toConfirm = computed(() => {
@@ -173,8 +162,6 @@ export class HrOverviewPage {
       .sort((first, second) => first.date.localeCompare(second.date));
   });
 
-  protected readonly describeDates = describeDates;
-  protected readonly submittedAgo = submittedAgo;
   protected readonly formatShortDate = formatShortDate;
   protected readonly daysUntil = daysUntil;
   protected readonly plural = plural;

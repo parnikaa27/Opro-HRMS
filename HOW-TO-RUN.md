@@ -26,7 +26,7 @@ HRMS/
       styles/dark.css      Generated dark theme. Never edit by hand
       main.ts              Boots the app
       app/
-        app.routes.ts      Every route, with the sign in, manager and HR guards
+        app.routes.ts      Every route, with the sign in, HOD, HR and super admin guards
         core/              Session, guards, config (company details, shift length, expiry warning days), company API, an interceptor that refreshes nav counts after a save
           layout/          Shell, navy sidebar (a slide in menu on phones), top bar with search, view switch, notifications and profile menu, footer
         shared/ui/         Logo, Lucide icons, status pill, avatar, welcome banner, ring, modal dialog, success screen, month picker, list skeleton
@@ -38,19 +38,19 @@ HRMS/
           documents/       Employment documents with download
           leave/           Balance rings, request history with cancel, request modal with day count preview
           attendance/      Summary cards, attendance log, punch in and out, punch fixes, CSV export
-          calendar/        Company calendar: holidays, events, and team leave for managers
+          calendar/        Company calendar: holidays, events, and who is away for HODs and super admins
           holidays/        API for holidays and company events
           profile/         Two sided printable ID card, visa and work permit status, change request to HR
           flights/         Flight allowance: the profile card, claim form, and the summary HR's pages share, with a USD, MVR or INR switch
-          team/            Manager pages: overview, people directory, leave requests with tabs, team attendance table, one person's page. People and leave requests also serve HR
-          hr/              HR pages: overview, one person (record leave, adjust balance, visa, punch fixes, photo, leaving), add and edit a person, holiday calendar, visas, inbox, announcements, policies with the work schedule. Also leave days per person, flight allowances and claims, exchange rates
+          team/            HOD pages: overview, people directory, leave requests with tabs, team attendance table, one person's page. People, attendance, leave requests, the person page and the calendar also serve the super admin's company view (/company), and People serves HR
+          hr/              HR pages: overview, one person (leave days, adjust balance, visa, photo, leaving, flight allowance), add and edit a person, holiday calendar, visas, inbox, announcements, policies with the work schedule and exchange rates. HR decides no leave or punch fixes
             forms/         The HR dialogs' forms
       testing/             Test helpers, fixtures and setup.ts (a dialog shim, since jsdom has none). Never shipped
     public/                Static files served as is (favicon, robots.txt)
     e2e/                   Playwright tests
     dev-server/            Mock API that stands in for Spring
       server.mjs           Routes, sessions, XSRF check. Node built ins only
-      attendance.mjs       Generates the last 62 days of punches relative to today, and works a day out again after an HR punch fix, using the schedule in force
+      attendance.mjs       Generates the last 62 days of punches relative to today, and works a day out again after an approved punch fix, using the schedule in force
       data/                JSON fixtures: employees, visas, leave, flight allowances and claims, exchange rates, holidays, events, corrections, announcements, notifications, change requests, balance adjustments, work schedules, punch edits. Uploaded photos and certificates stay in memory until restart
     proxy.conf.mjs         Sends /api to the mock or to Spring
     scripts/
@@ -64,16 +64,16 @@ HRMS/
     src/main/java/mv/opro/hrms/
       employee/            Employees and visas, and roles worked out from reporting lines
       holiday/             The holiday calendar, used by attendance and leave, and CalendarEditor for HR's changes
-      attendance/          Punches, PunchClock (punching from the office or home), home days, days worked out by DayCalculator, punch fix requests, the dev punch seeder, and HR's PunchEditor and ScheduleEditor, compensatory off claims (CompOffs)
+      attendance/          Punches, PunchClock (punching from the office or home), home days, days worked out by DayCalculator, punch fix requests, the dev punch seeder, HR's ScheduleEditor, compensatory off claims (CompOffs)
       leave/               Leave types HR manages, balances with carry forward, years that open by themselves, applying, cancelling and deciding, the working day count, HR's balance adjustments and per person days
       flight/              Flight allowances in USD, claims with receipts, and HR's exchange rates
       notification/        The notifications panel, and the service every feature uses to tell people things, and VisaReminders
-      team/                The manager's view: TeamAccess limits everything to their own active direct reports
+      team/                The HOD's view (/api/team) and the super admin's company view (/api/company), one set of endpoints: TeamAccess limits an HOD to their own active direct reports and lets only super admins reach everyone
       files/               Stored files (in PostgreSQL for now), upload checks, and serving them safely
       document/            Someone's own employment documents and their downloads
       announcement/        Notes from HR on everyone's overview, and AnnouncementEditor for posting them
       profile/             Change requests people send to HR from their profile, and HR's inbox of them
-      hr/                  HR only endpoints, behind HrAccess: people, leave and balances, calendar, punch fixes and schedules, inbox, announcements, photos
+      hr/                  HR only endpoints, behind HrAccess: people, leave balances and policy, calendar, schedules, inbox, announcements, photos, flight allowances
       session/             Who is signed in, /api/me, and the dev only pick a user sign in
       security/            Session cookie, XSRF check, JSON errors instead of redirects
       common/              Error shape ({"message": ...}) shared by every endpoint
@@ -181,14 +181,14 @@ Everyone has an Indian name. Sneha and Karan are Maldivian nationals, so they se
 | Employee | Role | Good for testing |
 |---|---|---|
 | Ananya Iyer (OPR-0002) | HR | HR view: everyone, holidays, visas, inbox, announcements, leave policy |
-| Vikram Singh (OPR-0004) | Manager | Team view, approvals, visa alerts for the team |
-| Rajesh Sharma (OPR-0001) | Manager | Approving Vikram's leave |
+| Vikram Singh (OPR-0004) | HOD | Team view, approvals, visa alerts for the team |
+| Rajesh Sharma (OPR-0001) | Super admin and HOD | The company view, stepping in on anyone's request, approving Vikram's and Ananya's leave, his own leave approved as he sends it |
 | Arjun Reddy (OPR-0018) | Employee | Visa expiring soon, a $1,200 flight allowance with one flight approved |
 | Rohit Verma (OPR-0021) | Employee | Visa already expired, pending correction |
 | Kavya Menon (OPR-0027) | Employee | Passport expiring soon, rejected leave |
 | Sneha Kulkarni (OPR-0011) | Employee | Maldivian, no visa section, no flight allowance |
 | Karan Mehta (OPR-0023) | Employee | Maldivian, no visa section |
-| Priya Nair (OPR-0015) | Employee | A flight claim waiting in HR's inbox |
+| Priya Nair (OPR-0015) | Employee | A flight claim, counted against her allowance |
 
 ## Environment variables
 

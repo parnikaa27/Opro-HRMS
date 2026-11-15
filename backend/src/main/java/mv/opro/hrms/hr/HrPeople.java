@@ -57,7 +57,7 @@ class HrPeople {
         employees.lockNewIds();
         String id = nextId();
         checkEmail(details.email(), id);
-        checkManager(id, details.managerId());
+        checkManager(id, details.managerId(), false);
         Employee employee = employees.save(Employee.hire(id, details));
         leave.openYearFor(employee.getId());
         return employee;
@@ -67,7 +67,7 @@ class HrPeople {
     Employee update(String id, Employee.Details details) {
         Employee employee = find(id);
         checkEmail(details.email(), id);
-        checkManager(id, details.managerId());
+        checkManager(id, details.managerId(), employee.isSuperAdmin());
         boolean isNewManager = details.managerId() != null && !details.managerId().equals(employee.getManagerId());
         employee.update(details);
         notifications.tell(id, Notification.Kind.RECORD, "HR updated your details."
@@ -129,10 +129,13 @@ class HrPeople {
         }
     }
 
-    // A manager has to be someone active, and never the person or anyone below them.
-    private void checkManager(String id, String managerId) {
+    // Everyone but a super admin reports to someone: active, and never the person or anyone below them.
+    private void checkManager(String id, String managerId, boolean isSuperAdmin) {
         if (managerId == null) {
-            return;
+            if (isSuperAdmin) {
+                return;
+            }
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Pick their reporting manager.");
         }
         boolean isActive = people.findActive(managerId).isPresent();
         if (!isActive || managerId.equals(id) || below(id).contains(managerId)) {

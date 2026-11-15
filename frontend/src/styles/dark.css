@@ -624,9 +624,6 @@
 :root[data-theme='dark'] .chart-area i.future {
   background: #222e36;
 }
-:root[data-theme='dark'] .punch-log li {
-  background: #1e2a32;
-}
 :root[data-theme='dark'] :is(.employee-form, .inline-form) label {
   color: #b0c2c9;
 }
@@ -1311,9 +1308,6 @@
 }
 :root:not([data-theme='light']) .chart-area i.future {
   background: #222e36;
-}
-:root:not([data-theme='light']) .punch-log li {
-  background: #1e2a32;
 }
 :root:not([data-theme='light']) :is(.employee-form, .inline-form) label {
   color: #b0c2c9;

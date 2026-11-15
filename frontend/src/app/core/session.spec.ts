@@ -77,6 +77,17 @@ describe('Session', () => {
     expect(navigate).toHaveBeenLastCalledWith('/');
   });
 
+  it('sends a super admin back to the company view', async () => {
+    localStorage.setItem('opro.view', 'company');
+    const signingIn = session.signIn('OPR-0001');
+    http.expectOne('/api/session/login').flush(null);
+    await Promise.resolve();
+    http.expectOne('/api/me').flush(employee({ roles: ['EMPLOYEE', 'SUPER_ADMIN'] }));
+    await signingIn;
+
+    expect(navigate).toHaveBeenLastCalledWith('/company');
+  });
+
   it('starts employees on home even if a team preference is stored', async () => {
     localStorage.setItem('opro.view', 'team');
     const signingIn = session.signIn('OPR-0018');

@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { CanMatchFn, Router, UrlTree } from '@angular/router';
 import { employee, manager, setupHttp } from '../../testing/fixtures';
-import { isHr, isManager, isSignedIn } from './guards';
+import { isHr, isManager, isSignedIn, isSuperAdmin } from './guards';
 import { Session } from './session';
 
 // The guards ignore the route snapshot, so an empty stand in is enough.
@@ -41,5 +41,14 @@ describe('route guards', () => {
 
     session.user.set(employee({ roles: ['EMPLOYEE', 'HR'] }));
     expect(run(isHr)).toBe(true);
+  });
+
+  it('only lets super admins into the company view', () => {
+    const session = TestBed.inject(Session);
+    session.user.set(employee({ roles: ['EMPLOYEE', 'HR'] }));
+    expect(TestBed.inject(Router).serializeUrl(run(isSuperAdmin) as UrlTree)).toBe('/');
+
+    session.user.set(employee({ roles: ['EMPLOYEE', 'SUPER_ADMIN'] }));
+    expect(run(isSuperAdmin)).toBe(true);
   });
 });

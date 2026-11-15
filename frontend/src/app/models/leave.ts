@@ -44,7 +44,6 @@ export interface LeaveRequest {
   decidedByName?: string;
   decidedOn?: string;
   decisionNote?: string;
-  recordedByHr?: boolean;
   hasCertificate?: boolean;
 }
 

@@ -8,7 +8,7 @@ const signInAsHr = async (page: Page) => {
   await expect(page.getByTestId('stat-people')).toBeVisible();
 };
 
-test('HR adjusts a balance and records leave for someone', async ({ page }) => {
+test('HR adjusts a balance, but leaves leave and punches to the HOD', async ({ page }) => {
   await signInAsHr(page);
   await page.goto('/hr/people/OPR-0027');
 
@@ -20,16 +20,9 @@ test('HR adjusts a balance and records leave for someone', async ({ page }) => {
   await page.getByRole('button', { name: 'Done' }).click();
   await expect(page.getByTestId('adjustment').first()).toContainText('Worked the Victory Day event');
 
-  await page.getByTestId('open-record').click();
-  await expect(page.getByTestId('record-type')).toHaveValue('sick');
-  await page.getByTestId('record-from').fill('2027-01-12');
-  await page.getByTestId('record-to').fill('2027-01-13');
-  await page.getByTestId('record-reason').fill('Called in from hospital');
-  await expect(page.getByTestId('record-preview')).toContainText('2 working days');
-  await page.getByTestId('record-submit').click();
-  await expect(page.getByTestId('success-state')).toContainText('Leave recorded');
-  await page.getByRole('button', { name: 'Done' }).click();
-  await expect(page.getByTestId('leave-request').filter({ hasText: '12 Jan to 13 January 2027' })).toContainText('Approved');
+  await expect(page.getByTestId('open-record')).toHaveCount(0);
+  await expect(page.getByTestId('edit-punches')).toHaveCount(0);
+  await expect(page.getByTestId('nav-leave')).toHaveCount(0);
 });
 
 test('HR starts a new holiday year and removes a date', async ({ page }) => {

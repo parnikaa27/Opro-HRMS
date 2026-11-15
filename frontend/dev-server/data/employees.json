@@ -12,7 +12,8 @@
     "workLocation": "Malé office",
     "employmentType": "Full-time",
     "roles": [
-      "EMPLOYEE"
+      "EMPLOYEE",
+      "SUPER_ADMIN"
     ],
     "emergencyContact": {
       "name": "Meera Sharma",

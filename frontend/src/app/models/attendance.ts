@@ -82,18 +82,6 @@ export interface WorkSchedule {
   setOn: string;
 }
 
-export interface PunchEdit {
-  id: string;
-  employeeId: string;
-  date: string;
-  action: 'add' | 'void';
-  time: string;
-  reason: string;
-  by: string;
-  byName?: string;
-  on: string;
-}
-
 export interface CorrectionRequest {
   id: string;
   employeeId: string;

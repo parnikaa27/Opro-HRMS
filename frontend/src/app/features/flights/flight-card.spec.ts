@@ -7,11 +7,10 @@ import { FlightCard } from './flight-card';
 const YEAR: FlightYear = {
   year: 2026,
   allowanceUsd: 1200,
-  usedUsd: 400,
-  pendingUsd: 100,
+  usedUsd: 500,
   ratesPerUsd: { MVR: 15.42, INR: 88 },
   claims: [
-    { id: 'FC-2', employeeId: 'E', flightDate: '2026-12-18', route: 'Malé to Colombo', amount: 1542, currency: 'MVR', amountUsd: 100, hasReceipt: true, status: 'pending', raisedOn: '2026-11-12' },
+    { id: 'FC-2', employeeId: 'E', flightDate: '2026-12-18', route: 'Malé to Colombo', amount: 1542, currency: 'MVR', amountUsd: 100, hasReceipt: true, status: 'approved', raisedOn: '2026-11-12' },
     { id: 'FC-1', employeeId: 'E', flightDate: '2026-04-10', route: 'Malé to Kochi', amount: 400, currency: 'USD', amountUsd: 400, hasReceipt: false, status: 'rejected', raisedOn: '2026-04-12', decisionNote: 'Wrong receipt' },
   ],
 };
@@ -47,9 +46,9 @@ describe('FlightCard', () => {
   it('shows the allowance, what is used and left, and every claim', async () => {
     const root = await render();
 
-    expect(text(root.querySelector('[data-testid=flight-stats]') as HTMLElement)).toBe('Allowance 2026 $1,200.00 Used $400.00 Waiting $100.00 Left $700.00');
+    expect(text(root.querySelector('[data-testid=flight-stats]') as HTMLElement)).toBe('Allowance 2026 $1,200.00 Used $500.00 Left $700.00');
     expect(texts(root, 'flight-claim')).toEqual([
-      'Malé to Colombo 18 Dec · MVR 1,542.00 ($100.00) Waiting for HR Receipt Cancel',
+      'Malé to Colombo 18 Dec · MVR 1,542.00 ($100.00) Claimed Receipt Cancel',
       'Malé to Kochi 10 Apr · $400.00 · Wrong receipt Declined',
     ]);
   });
@@ -71,7 +70,7 @@ describe('FlightCard', () => {
     expect(root.querySelector('[data-testid=flight-card]')).toBeNull();
   });
 
-  it('claims a flight with its receipt and shows it waiting', async () => {
+  it('claims a flight with its receipt, counted straight away', async () => {
     const root = await render();
     openForm(root);
     pickFile(root, 'claim-receipt', pdf('ticket.pdf'));
@@ -85,7 +84,7 @@ describe('FlightCard', () => {
     http.expectOne('/api/flights/claims/FC-9/receipt').flush({});
     await settle();
 
-    expect(text(root.querySelector('dialog[open]') as HTMLElement)).toContain('Sent to HR');
+    expect(text(root.querySelector('dialog[open]') as HTMLElement)).toContain('Flight claimed');
     (root.querySelector('[data-testid=success-state] button') as HTMLButtonElement).click();
     await settle();
     expect(http.match('/api/flights')).toHaveLength(1);

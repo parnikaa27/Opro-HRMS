@@ -198,15 +198,15 @@ class PunchApiTests {
     }
 
     @Test
-    void onlyTheirManagerOrHrDecides() throws Exception {
+    void onlyTheirManagerDecides() throws Exception {
         punchedFromHomeAt("08:50");
 
         assertThat(as("OPR-0001").post("/api/team/home-days/HW-TEST/decision", "{\"decision\":\"approved\"}").statusCode()).isEqualTo(404);
-        String approved = as("OPR-0002").post("/api/hr/home-days/HW-TEST/decision", "{\"decision\":\"approved\"}").body();
+        assertThat(as("OPR-0002").post("/api/hr/home-days/HW-TEST/decision", "{\"decision\":\"approved\"}").statusCode()).isEqualTo(404);
+        String approved = as("OPR-0004").post("/api/team/home-days/HW-TEST/decision", "{\"decision\":\"approved\"}").body();
 
         assertThat(JsonPath.<String>read(approved, "$.status")).isEqualTo("approved");
-        assertThat(as("OPR-0004").post("/api/team/home-days/HW-TEST/decision", "{\"decision\":\"approved\"}").statusCode()).isEqualTo(409);
         assertThat(JsonPath.<List<String>>read(arjun.get("/api/notifications").body(), "$[*].text"))
-                .contains("Ananya Iyer approved working from home on Thursday 12 November.");
+                .contains("Vikram Singh approved working from home on Thursday 12 November.");
     }
 }

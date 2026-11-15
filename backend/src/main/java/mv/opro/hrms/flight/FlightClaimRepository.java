@@ -10,10 +10,6 @@ interface FlightClaimRepository extends JpaRepository<FlightClaim, String> {
 
     List<FlightClaim> findByEmployeeIdOrderByFlightDateDescIdDesc(String employeeId);
 
-    List<FlightClaim> findAllByOrderByRaisedOnDescIdDesc();
-
-    List<FlightClaim> findByStatusOrderByRaisedOnDescIdDesc(String status);
-
     @Query("""
             select coalesce(sum(c.amountUsd), 0) from FlightClaim c
             where c.employeeId = :employeeId and c.status = :status and c.flightDate between :yearStart and :yearEnd""")

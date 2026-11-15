@@ -52,11 +52,6 @@ public class CompOffs {
         return found.stream().map(this::view).toList();
     }
 
-    // Everyone's, for HR.
-    public List<Claim> all(String status) {
-        return (status == null ? claims.findAllByOrderByWorkDateDesc() : claims.findByStatusOrderByWorkDateDesc(status)).stream().map(this::view).toList();
-    }
-
     @Transactional
     public Claim decide(Employee decider, String id, Collection<String> inScope, Corrections.Decision decision) {
         CompOffClaim claim = claims.findById(id).filter(found -> inScope.contains(found.getEmployeeId()))

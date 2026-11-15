@@ -13,7 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// Days worked from home: listed for the manager or HR, and decided by them.
+// Days worked from home: listed for the manager and decided by them.
 @Service
 @Transactional(readOnly = true)
 public class HomeDays {
@@ -32,11 +32,6 @@ public class HomeDays {
 
     public List<HomeDay> of(Collection<String> employeeIds, String status) {
         return status == null ? days.findByEmployeeIdInOrderByWorkDateDesc(employeeIds) : days.findByEmployeeIdInAndStatusOrderByWorkDateDesc(employeeIds, status);
-    }
-
-    // Everyone's, for HR.
-    public List<HomeDay> all(String status) {
-        return status == null ? days.findAllByOrderByWorkDateDesc() : days.findByStatusOrderByWorkDateDesc(status);
     }
 
     // Declining needs a reason, since it turns the day into an absence.

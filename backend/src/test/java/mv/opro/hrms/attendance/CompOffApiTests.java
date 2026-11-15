@@ -122,11 +122,21 @@ class CompOffApiTests {
     }
 
     @Test
-    void onlyTheirManagerOrHrDecides() throws Exception {
+    void onlyTheirManagerDecides() throws Exception {
         workedFriday("09:00", "15:00");
 
         assertThat(as("OPR-0001").post("/api/team/comp-offs/CO-TEST/decision", "{\"decision\":\"approved\"}").statusCode()).isEqualTo(404);
-        assertThat(JsonPath.<String>read(as("OPR-0002").post("/api/hr/comp-offs/CO-TEST/decision", "{\"decision\":\"approved\"}").body(), "$.status"))
+        assertThat(as("OPR-0002").post("/api/hr/comp-offs/CO-TEST/decision", "{\"decision\":\"approved\"}").statusCode()).isEqualTo(404);
+        assertThat(JsonPath.<String>read(vikram.post("/api/team/comp-offs/CO-TEST/decision", "{\"decision\":\"approved\"}").body(), "$.status"))
                 .isEqualTo("approved");
+    }
+
+    @Test
+    void aSuperAdminHasNobodyToAskSoEarnsNone() throws Exception {
+        jdbc.update("insert into holiday (id, holiday_date, name, is_tentative) values ('HD-TEST', '2026-11-12', 'Test holiday', false)");
+
+        as("OPR-0001").post("/api/attendance/punch", "{\"mode\":\"home\"}");
+
+        assertThat(jdbc.queryForObject("select count(*) from comp_off_claim", Integer.class)).isZero();
     }
 }

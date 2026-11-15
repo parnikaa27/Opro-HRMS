@@ -7,24 +7,13 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import mv.opro.hrms.attendance.CompOffResponse;
-import mv.opro.hrms.attendance.CompOffs;
-import mv.opro.hrms.attendance.CorrectionRequest;
-import mv.opro.hrms.attendance.CorrectionResponse;
-import mv.opro.hrms.attendance.Corrections;
-import mv.opro.hrms.attendance.HomeDay;
-import mv.opro.hrms.attendance.HomeDayResponse;
-import mv.opro.hrms.attendance.HomeDays;
 import mv.opro.hrms.common.ApiException;
 import mv.opro.hrms.employee.Employee;
 import mv.opro.hrms.employee.People;
@@ -48,24 +37,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-// HR's leave work: every request in the company, recording leave for someone, balances and the policy.
-// HR never acts on their own leave here: that still goes to their manager.
+// HR's leave work: every request in the company (read only, decisions are the manager's), balances and the policy.
+// HR never changes their own leave here.
 @RestController
 class HrLeaveController {
 
     private static final int MAX_NOTE = 300;
     private static final String MAX_DAYS = "365";
     private static final int MAX_DAYS_WHOLE = 365;
-
-    record RecordLeave(
-            @NotBlank String employeeId,
-            @NotBlank String type,
-            @NotNull LocalDate from,
-            @NotNull LocalDate to,
-            @Pattern(regexp = "first|second") String halfDay,
-            @NotBlank @Size(max = MAX_NOTE) String reason) {}
-
-    record DecisionBody(@NotNull @Pattern(regexp = "approved|rejected") String decision, @Size(max = MAX_NOTE) String note) {}
 
     record AdjustBody(
             @NotBlank String employeeId,
@@ -97,20 +76,13 @@ class HrLeaveController {
     private final CurrentUser currentUser;
     private final People people;
     private final LeaveService leave;
-    private final Corrections corrections;
-    private final HomeDays homeDays;
-    private final CompOffs compOffs;
     private final Files files;
 
-    HrLeaveController(HrAccess hr, CurrentUser currentUser, People people, LeaveService leave, Corrections corrections, HomeDays homeDays, CompOffs compOffs,
-            Files files) {
+    HrLeaveController(HrAccess hr, CurrentUser currentUser, People people, LeaveService leave, Files files) {
         this.hr = hr;
         this.currentUser = currentUser;
         this.people = people;
         this.leave = leave;
-        this.corrections = corrections;
-        this.homeDays = homeDays;
-        this.compOffs = compOffs;
         this.files = files;
     }
 
@@ -123,74 +95,6 @@ class HrLeaveController {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet()));
         return requests.stream().map(request -> LeaveRequestResponse.of(request, names.get(request.getEmployeeId()), names)).toList();
-    }
-
-    @PostMapping("/api/hr/leave-requests")
-    LeaveRequestResponse record(@Valid @RequestBody RecordLeave body) {
-        Employee me = hr.require(currentUser.get());
-        Employee employee = someoneElse(me, body.employeeId());
-        LeaveRequest recorded = leave.recordFor(me, employee,
-                new LeaveService.Application(body.type(), body.from(), body.to(), body.halfDay(), body.reason()));
-        return LeaveRequestResponse.of(recorded, employee.getFullName(), Map.of(me.getId(), me.getFullName()));
-    }
-
-    @PostMapping("/api/hr/leave-requests/{id}/decision")
-    LeaveRequestResponse decideLeave(@PathVariable String id, @Valid @RequestBody DecisionBody body) {
-        Employee me = hr.require(currentUser.get());
-        LeaveRequest decided = leave.decide(me, id, everyoneBut(me), new LeaveService.Decision(body.decision(), body.note()));
-        return LeaveRequestResponse.of(decided, people.namesOf(Set.of(decided.getEmployeeId())).get(decided.getEmployeeId()),
-                Map.of(me.getId(), me.getFullName()));
-    }
-
-    @GetMapping("/api/hr/corrections")
-    List<CorrectionResponse> corrections(@RequestParam(required = false) String status) {
-        hr.require(currentUser.get());
-        List<CorrectionRequest> all = corrections.all(status);
-        Map<String, String> names = people.namesOf(all.stream().map(CorrectionRequest::getEmployeeId).collect(Collectors.toSet()));
-        return all.stream().map(request -> CorrectionResponse.of(request, names.get(request.getEmployeeId()))).toList();
-    }
-
-    @PostMapping("/api/hr/corrections/{id}/decision")
-    CorrectionResponse decideCorrection(@PathVariable String id, @Valid @RequestBody DecisionBody body) {
-        Employee me = hr.require(currentUser.get());
-        CorrectionRequest decided = corrections.decide(me, id, everyoneBut(me), new Corrections.Decision(body.decision(), body.note()));
-        return CorrectionResponse.of(decided, people.namesOf(Set.of(decided.getEmployeeId())).get(decided.getEmployeeId()));
-    }
-
-    @GetMapping("/api/hr/home-days")
-    List<HomeDayResponse> homeDays(@RequestParam(required = false) String status) {
-        hr.require(currentUser.get());
-        List<HomeDay> days = homeDays.all(status);
-        Map<String, String> names = people.namesOf(days.stream()
-                .flatMap(day -> Stream.of(day.getEmployeeId(), day.getDecidedBy()))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet()));
-        return days.stream().map(day -> HomeDayResponse.of(day, names)).toList();
-    }
-
-    @PostMapping("/api/hr/home-days/{id}/decision")
-    HomeDayResponse decideHomeDay(@PathVariable String id, @Valid @RequestBody DecisionBody body) {
-        Employee me = hr.require(currentUser.get());
-        HomeDay decided = homeDays.decide(me, id, everyoneBut(me), new Corrections.Decision(body.decision(), body.note()));
-        return HomeDayResponse.of(decided, people.namesOf(Set.of(decided.getEmployeeId(), me.getId())));
-    }
-
-    @GetMapping("/api/hr/comp-offs")
-    List<CompOffResponse> compOffs(@RequestParam(required = false) String status) {
-        hr.require(currentUser.get());
-        List<CompOffs.Claim> claims = compOffs.all(status);
-        Map<String, String> names = people.namesOf(claims.stream()
-                .flatMap(claim -> Stream.of(claim.claim().getEmployeeId(), claim.claim().getDecidedBy()))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet()));
-        return claims.stream().map(claim -> CompOffResponse.of(claim, names)).toList();
-    }
-
-    @PostMapping("/api/hr/comp-offs/{id}/decision")
-    CompOffResponse decideCompOff(@PathVariable String id, @Valid @RequestBody DecisionBody body) {
-        Employee me = hr.require(currentUser.get());
-        CompOffs.Claim decided = compOffs.decide(me, id, everyoneBut(me), new Corrections.Decision(body.decision(), body.note()));
-        return CompOffResponse.of(decided, people.namesOf(Set.of(decided.claim().getEmployeeId(), me.getId())));
     }
 
     @PostMapping("/api/hr/balance-adjustments")
@@ -247,11 +151,6 @@ class HrLeaveController {
     ResponseEntity<byte[]> certificate(@PathVariable String id) {
         hr.require(currentUser.get());
         return files.serve(leave.certificateOfAnyone(id), "certificate-" + id, false, CacheControl.noStore());
-    }
-
-    // Everyone HR may act for: active people, apart from themselves.
-    private Set<String> everyoneBut(Employee me) {
-        return people.active().stream().map(Employee::getId).filter(id -> !id.equals(me.getId())).collect(Collectors.toUnmodifiableSet());
     }
 
     private Employee someoneElse(Employee me, String employeeId) {

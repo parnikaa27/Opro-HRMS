@@ -45,6 +45,28 @@ describe('PeoplePage', () => {
     http.expectNone('/api/team');
   });
 
+  it('shows a super admin where everyone is today, linking to their read only page', async () => {
+    const at = (workMode: string, status = 'present') => ({ status, workMode, punches: [{ at: '2026-11-12T09:00:00+05:00', direction: 'in' }] });
+    const fixture = TestBed.createComponent(PeoplePage);
+    fixture.componentRef.setInput('scope', 'company');
+    await respond(http, {
+      '/api/company': [
+        { ...employee({ id: 'A', fullName: 'Karan Mehta' }), today: at('office') },
+        { ...employee({ id: 'B', fullName: 'Priya Nair' }), today: at('home', 'late') },
+        { ...employee({ id: 'C', fullName: 'Arjun Reddy' }), today: at('resort') },
+        { ...employee({ id: 'D', fullName: 'Rohit Verma' }), today: at('home', 'absent') },
+        { ...employee({ id: 'E', fullName: 'Kavya Menon' }), today: { status: 'on-leave', punches: [] } },
+        employee({ id: 'F', fullName: 'Sneha Kulkarni' }),
+      ],
+    });
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(text(root.querySelector('[data-testid=where-today]') as HTMLElement)).toBe('1 at the office 1 from home 1 at a resort 1 on leave 2 not in');
+    expect(root.querySelector('[data-testid=person-card] a')?.getAttribute('href')).toBe('/company/C');
+    expect(root.querySelector('[data-testid=add-person]')).toBeNull();
+    http.expectNone('/api/team');
+  });
+
   it('lets HR include people who have left, marked as such', async () => {
     const fixture = TestBed.createComponent(PeoplePage);
     fixture.componentRef.setInput('scope', 'hr');

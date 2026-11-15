@@ -11,7 +11,8 @@ export interface FlightClaim {
   currency: Currency;
   amountUsd: number;
   hasReceipt: boolean;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  // Claims count as soon as they're made. Declined ones are from before that, when HR approved them.
+  status: 'approved' | 'rejected' | 'cancelled';
   raisedOn: string;
   decidedByName?: string;
   decidedOn?: string;
@@ -23,7 +24,6 @@ export interface FlightYear {
   year: number;
   allowanceUsd?: number;
   usedUsd: number;
-  pendingUsd: number;
   // How much one US dollar buys, set by HR.
   ratesPerUsd: Partial<Record<Currency, number>>;
   claims: FlightClaim[];

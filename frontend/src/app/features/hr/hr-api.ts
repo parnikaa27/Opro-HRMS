@@ -1,11 +1,11 @@
 import { HttpClient, httpResource } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { AttendanceDay, PunchEdit, WorkSchedule } from '../../models/attendance';
+import { AttendanceDay, WorkSchedule } from '../../models/attendance';
 import { Announcement, ChangeRequest, CompanyEvent, Holiday } from '../../models/company';
 import { Employee, EmployeeDetails, Visa } from '../../models/employee';
-import { FlightClaim, FlightYear } from '../../models/flight';
-import { BalanceAdjustment, LeaveBalance, LeaveRequest, LeaveType } from '../../models/leave';
+import { FlightYear } from '../../models/flight';
+import { BalanceAdjustment, LeaveBalance, LeaveType } from '../../models/leave';
 
 export interface HrEmployee extends Employee {
   today?: AttendanceDay;
@@ -16,10 +16,8 @@ export interface HrEmployeeDetail extends Employee {
   adjustments: BalanceAdjustment[];
 }
 
-export type RecordedLeave = Pick<LeaveRequest, 'employeeId' | 'type' | 'from' | 'to' | 'halfDay' | 'days' | 'reason'>;
 export type NewAdjustment = Pick<BalanceAdjustment, 'employeeId' | 'type' | 'days' | 'reason'>;
 export type NewSchedule = Omit<WorkSchedule, 'id' | 'setBy' | 'setByName' | 'setOn'>;
-export type NewPunchEdit = Pick<PunchEdit, 'employeeId' | 'date' | 'action' | 'time' | 'reason'>;
 
 const enc = encodeURIComponent;
 
@@ -40,10 +38,7 @@ export class HrApi {
   announcements = () => httpResource<Announcement[]>(() => '/api/announcements', { defaultValue: [] });
   leaveTypes = () => httpResource<LeaveType[]>(() => '/api/leave/types', { defaultValue: [] });
   schedules = () => httpResource<WorkSchedule[]>(() => '/api/hr/schedules', { defaultValue: [] });
-  punchEdits = (employeeId: () => string, month: () => string) =>
-    httpResource<PunchEdit[]>(() => ({ url: '/api/hr/punch-edits', params: { employeeId: employeeId(), month: month() } }), { defaultValue: [] });
 
-  recordLeave = (leave: RecordedLeave) => this.send<LeaveRequest>('POST', '/api/hr/leave-requests', leave);
   adjustBalance = (adjustment: NewAdjustment) => this.send<BalanceAdjustment>('POST', '/api/hr/balance-adjustments', adjustment);
   addEmployee = (details: EmployeeDetails) => this.send<Employee>('POST', '/api/hr/employees', details);
   updateEmployee = (id: string, details: EmployeeDetails) => this.send<Employee>('PUT', `/api/hr/employees/${enc(id)}`, details);
@@ -64,17 +59,12 @@ export class HrApi {
     this.send<void>('POST', `/api/hr/employees/${enc(employeeId)}/leave/${enc(type)}/remove`, { reason });
 
   employeeFlights = (id: () => string) => httpResource<FlightYear>(() => `/api/hr/employees/${enc(id())}/flights`);
-  flightClaims = ({ status, isEnabled = () => true }: { status?: FlightClaim['status']; isEnabled?: () => boolean } = {}) =>
-    httpResource<FlightClaim[]>(() => (isEnabled() ? { url: '/api/hr/flight-claims', ...(status && { params: { status } }) } : undefined), { defaultValue: [] });
   setFlightAllowance = (employeeId: string, year: number, amountUsd: number) =>
     this.send<void>('PUT', `/api/hr/employees/${enc(employeeId)}/flight-allowance`, { year, amountUsd });
-  decideFlightClaim = (id: string, decision: 'approved' | 'rejected', note?: string) =>
-    this.send<FlightClaim>('POST', `/api/hr/flight-claims/${enc(id)}/decision`, { decision, ...(note && { note }) });
   saveRates = (rates: { mvr: number; inr: number }) => this.send<Record<string, number>>('PUT', '/api/hr/exchange-rates', rates);
 
   saveSchedule = (schedule: NewSchedule) => this.send<WorkSchedule>('POST', '/api/hr/schedules', schedule);
   cancelSchedule = (id: string) => this.send<void>('DELETE', `/api/hr/schedules/${enc(id)}`);
-  editPunch = (edit: NewPunchEdit) => this.send<PunchEdit>('POST', '/api/hr/punch-edits', edit);
 
   saveHoliday = ({ id, ...holiday }: Partial<Holiday>) =>
     id ? this.send<Holiday>('PUT', `/api/hr/holidays/${enc(id)}`, holiday) : this.send<Holiday>('POST', '/api/hr/holidays', holiday);

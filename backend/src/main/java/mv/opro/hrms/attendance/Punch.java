@@ -50,15 +50,6 @@ public class Punch {
         return punch;
     }
 
-    // Added by HR, with the reason kept in the punch edit log.
-    static Punch addedByHr(String employeeId, OffsetDateTime punchedAt) {
-        Punch punch = new Punch();
-        punch.employeeId = employeeId;
-        punch.punchedAt = punchedAt;
-        punch.source = "manual";
-        return punch;
-    }
-
     void voidBy(String employeeId, OffsetDateTime at) {
         voidedAt = at;
         voidedBy = employeeId;

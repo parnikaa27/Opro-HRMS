@@ -1,9 +1,11 @@
 import { Routes } from '@angular/router';
-import { isHr, isManager, isSignedIn } from './core/guards';
+import { isHr, isManager, isSignedIn, isSuperAdmin } from './core/guards';
 import { Shell } from './core/layout/shell';
 
 const peoplePage = () => import('./features/team/people-page').then((page) => page.PeoplePage);
 const approvalsPage = () => import('./features/team/approvals-page').then((page) => page.ApprovalsPage);
+const attendancePage = () => import('./features/team/team-attendance-page').then((page) => page.TeamAttendancePage);
+const memberPage = () => import('./features/team/team-member-page').then((page) => page.TeamMemberPage);
 const employeePage = () => import('./features/hr/hr-employee-page').then((page) => page.HrEmployeePage);
 const calendarPage = () => import('./features/calendar/calendar-page').then((page) => page.CalendarPage);
 
@@ -34,7 +36,6 @@ export const routes: Routes = [
           { path: 'people/new', title: 'Add a person · Opro HRMS', loadComponent: employeePage },
           { path: 'people/:employeeId/edit', title: 'Edit details · Opro HRMS', loadComponent: employeePage },
           { path: 'people/:employeeId', title: 'Person · Opro HRMS', loadComponent: () => import('./features/hr/hr-person-page').then((page) => page.HrPersonPage) },
-          { path: 'leave', title: 'All leave · Opro HRMS', loadComponent: approvalsPage, data: { scope: 'hr' } },
           { path: 'calendar', title: 'Holiday calendar · Opro HRMS', loadComponent: () => import('./features/hr/hr-calendar-page').then((page) => page.HrCalendarPage) },
           { path: 'visas', title: 'Visas · Opro HRMS', loadComponent: () => import('./features/hr/hr-visas-page').then((page) => page.HrVisasPage) },
           { path: 'inbox', title: 'Inbox · Opro HRMS', loadComponent: () => import('./features/hr/hr-inbox-page').then((page) => page.HrInboxPage) },
@@ -49,9 +50,20 @@ export const routes: Routes = [
           { path: '', title: 'Team · Opro HRMS', loadComponent: () => import('./features/team/team-overview-page').then((page) => page.TeamOverviewPage) },
           { path: 'people', title: 'People · Opro HRMS', loadComponent: peoplePage, data: { scope: 'team' } },
           { path: 'approvals', title: 'Approvals · Opro HRMS', loadComponent: approvalsPage, data: { scope: 'team' } },
-          { path: 'attendance', title: 'Team attendance · Opro HRMS', loadComponent: () => import('./features/team/team-attendance-page').then((page) => page.TeamAttendancePage) },
-          { path: 'calendar', title: 'Team calendar · Opro HRMS', loadComponent: calendarPage, data: { showsTeamLeave: true } },
-          { path: ':employeeId', title: 'Team member · Opro HRMS', loadComponent: () => import('./features/team/team-member-page').then((page) => page.TeamMemberPage) },
+          { path: 'attendance', title: 'Team attendance · Opro HRMS', loadComponent: attendancePage, data: { scope: 'team' } },
+          { path: 'calendar', title: 'Team calendar · Opro HRMS', loadComponent: calendarPage, data: { showsTeamLeave: true, scope: 'team' } },
+          { path: ':employeeId', title: 'Team member · Opro HRMS', loadComponent: memberPage, data: { scope: 'team' } },
+        ],
+      },
+      {
+        path: 'company',
+        canMatch: [isSuperAdmin],
+        children: [
+          { path: '', title: 'Everyone · Opro HRMS', loadComponent: peoplePage, data: { scope: 'company' } },
+          { path: 'attendance', title: 'Company attendance · Opro HRMS', loadComponent: attendancePage, data: { scope: 'company' } },
+          { path: 'leave', title: 'All leave · Opro HRMS', loadComponent: approvalsPage, data: { scope: 'company' } },
+          { path: 'calendar', title: 'Who’s away · Opro HRMS', loadComponent: calendarPage, data: { showsTeamLeave: true, scope: 'company' } },
+          { path: ':employeeId', title: 'Person · Opro HRMS', loadComponent: memberPage, data: { scope: 'company' } },
         ],
       },
     ],

@@ -27,20 +27,6 @@ test('HR changes the work schedule from a future date, then takes it back', asyn
   await expect(change).toHaveCount(0);
 });
 
-test('HR adds a missing punch with a reason, and the day says it was corrected', async ({ page }) => {
-  await signInAs(page, 'OPR-0002');
-  await page.goto('/hr/people/OPR-0023');
-
-  await page.getByTestId('edit-punches').first().click();
-  await page.getByTestId('punch-time').fill('23:58');
-  await page.getByTestId('punch-reason').fill('Late shift at the port, device was down');
-  await page.getByTestId('punch-submit').click();
-  await expect(page.getByTestId('punch-log')).toContainText('Late shift at the port');
-  await page.getByRole('button', { name: 'Done' }).click();
-
-  await expect(page.getByTestId('attendance-row').first()).toContainText('Corrected');
-});
-
 test('HR adds a person, gives them a photo, and marks them as leaving', async ({ page }) => {
   // A whole journey across several screens or three sign ins, so it gets the longer timeout.
   test.slow();
@@ -105,9 +91,9 @@ test('a sick note goes up with the request, and only HR can open it', async ({ p
 
   await page.getByTestId('sidebar-sign-out').click();
   await signInAs(page, 'OPR-0002');
-  await page.goto('/hr/leave');
-  const asHr = page.getByTestId('leave-row').filter({ hasText: 'Karan Mehta' }).filter({ hasText: 'Sick leave' });
-  const href = await asHr.getByTestId('certificate').getByRole('link', { name: 'View' }).getAttribute('href');
+  await page.goto('/hr/people/OPR-0023');
+  const asHr = page.getByTestId('leave-request').filter({ hasText: '14 Feb to 16 February 2027' });
+  const href = await asHr.getByTestId('view-certificate').getAttribute('href');
   const file = await page.request.get(href ?? '');
   expect(file.headers()['content-type']).toBe('application/pdf');
 });

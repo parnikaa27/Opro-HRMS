@@ -14,7 +14,6 @@ import { AnnouncementForm } from './announcement-form';
 import { EventForm } from './event-form';
 import { HolidayForm } from './holiday-form';
 import { PolicyForm } from './policy-form';
-import { RecordLeaveForm } from './record-leave-form';
 import { VisaForm } from './visa-form';
 
 const TYPES: LeaveType[] = [
@@ -83,55 +82,6 @@ describe('HR forms', () => {
 
       expect(text(root.querySelector('[role=alert]') as HTMLElement)).toBe("That didn't save. Try again in a moment.");
       expect(saved).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('RecordLeaveForm', () => {
-    const inputs = { employeeId: 'OPR-0021', name: 'Rohit Verma', types: TYPES, holidays: new Set(['2026-11-17']) };
-
-    it('starts on sick leave and shows it as selected', async () => {
-      const { root } = await render(RecordLeaveForm, inputs);
-      const select = root.querySelector('[data-testid=record-type]') as HTMLSelectElement;
-
-      expect(select.options[select.selectedIndex].textContent).toBe('Sick leave');
-    });
-
-    it('falls back to the first type when sick leave is not on offer', async () => {
-      const { root } = await render(RecordLeaveForm, { ...inputs, types: [TYPES[2]] });
-      const select = root.querySelector('[data-testid=record-type]') as HTMLSelectElement;
-
-      expect(select.value).toBe('unpaid');
-    });
-
-    it('counts working days, checks the order of dates, and records the leave', async () => {
-      const { root, saved } = await render(RecordLeaveForm, inputs);
-      await submit(root);
-      expect(errors(root)).toEqual(['Pick the first day.', 'Pick the last day.', 'Add a short reason for the record.']);
-
-      fill(root, 'record-from', '2026-11-16');
-      fill(root, 'record-to', '2026-11-14');
-      expect(errors(root)).toContain("The last day can't be before the first.");
-
-      fill(root, 'record-to', '2026-11-18');
-      fill(root, 'record-reason', 'Hospital admission');
-      expect(text(root.querySelector('[data-testid=record-preview]') as HTMLElement)).toContain('2 working days');
-
-      await submit(root);
-      const request = http.expectOne('/api/hr/leave-requests');
-      expect(request.request.body).toEqual({ employeeId: 'OPR-0021', type: 'sick', from: '2026-11-16', to: '2026-11-18', days: 2, reason: 'Hospital admission' });
-      request.flush({});
-      await settle();
-
-      expect(saved).toHaveBeenCalled();
-    });
-
-    it('rejects a range of only Fridays and holidays', async () => {
-      const { root } = await render(RecordLeaveForm, inputs);
-      fill(root, 'record-from', '2026-11-13');
-      fill(root, 'record-to', '2026-11-13');
-      await submit(root);
-
-      expect(errors(root)).toContain('Those dates are all Fridays or public holidays.');
     });
   });
 
@@ -411,7 +361,7 @@ describe('HR forms', () => {
 
   describe('EmployeeForm', () => {
     const PEOPLE = [
-      employee({ id: 'OPR-0001', fullName: 'Rajesh Sharma', department: 'Operations', managerId: undefined }),
+      employee({ id: 'OPR-0001', fullName: 'Rajesh Sharma', department: 'Operations', managerId: undefined, roles: ['EMPLOYEE', 'SUPER_ADMIN'] }),
       employee({ id: 'OPR-0004', fullName: 'Vikram Singh', managerId: 'OPR-0001' }),
       employee({ id: 'OPR-0018', fullName: 'Arjun Reddy', department: 'Site', managerId: 'OPR-0004' }),
     ];
@@ -426,7 +376,7 @@ describe('HR forms', () => {
       await submit(root);
 
       expect(errors(root)).toEqual([
-        'Enter their full name.', 'Enter their job title.', 'Enter their department.', 'Pick who they report to.', 'Enter their work email.', 'Pick the day they start.',
+        'Enter their full name.', 'Enter their job title.', 'Enter their department.', 'Pick their reporting manager.', 'Enter their work email.', 'Pick the day they start.',
         'Enter their phone number.', 'Enter their nationality.', 'Enter who to call in an emergency.', 'Say how they’re related.', 'Enter a number to call.',
       ]);
       expect([...root.querySelectorAll('#departments option')].map((option) => option.getAttribute('value'))).toEqual(['Operations', 'Site']);
@@ -457,16 +407,16 @@ describe('HR forms', () => {
     it('edits a person, never offering them or their reports as manager', async () => {
       const { root } = await render(EmployeeForm, { people: PEOPLE, employee: PEOPLE[1] });
 
-      expect([...root.querySelectorAll('[data-testid=employee-manager] option')].map((option) => text(option))).toEqual(['Pick their manager', 'Rajesh Sharma, Site Engineer']);
+      expect([...root.querySelectorAll('[data-testid=employee-manager] option')].map((option) => text(option))).toEqual(['Pick their reporting manager', 'Rajesh Sharma, Site Engineer']);
       expect((root.querySelector('[data-testid=employee-name]') as HTMLInputElement).value).toBe('Vikram Singh');
       await submit(root);
       expect(http.expectOne('/api/hr/employees/OPR-0004').request.method).toBe('PUT');
     });
 
-    it('lets the person at the top stay without a manager, and says when saving fails', async () => {
+    it('lets a super admin stay without a manager, and says when saving fails', async () => {
       vi.spyOn(console, 'error').mockImplementation(() => undefined);
       const { root } = await render(EmployeeForm, { people: PEOPLE, employee: PEOPLE[0] });
-      expect(text(root.querySelector('[data-testid=employee-manager] option') as HTMLElement)).toBe('Nobody, they lead the company');
+      expect(text(root.querySelector('[data-testid=employee-manager] option') as HTMLElement)).toBe('Nobody, they’re a super admin');
 
       await submit(root);
       const request = http.expectOne('/api/hr/employees/OPR-0001');
@@ -474,6 +424,14 @@ describe('HR forms', () => {
       request.flush('', { status: 500, statusText: 'Server Error' });
       await settle();
       expect(text(root.querySelector('[role=alert]') as HTMLElement)).toBe("That didn't save. Try again in a moment.");
+    });
+
+    it('needs a manager for anyone else who has none yet', async () => {
+      const { root } = await render(EmployeeForm, { people: PEOPLE, employee: { ...PEOPLE[1], managerId: undefined } });
+      await submit(root);
+
+      expect(errors(root)).toEqual(['Pick their reporting manager.']);
+      http.expectNone('/api/hr/employees/OPR-0004');
     });
   });
 

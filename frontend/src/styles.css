@@ -459,49 +459,13 @@ app-work-schedule-card + app-exchange-rates-card > .card {
   }
 }
 
-/* Days whose punches were changed by hand (by HR, or an approved punch fix) say so, for the employee as much as for HR. */
+/* Days whose punches were changed by hand (an approved punch fix) say so, for the employee as much as for HR. */
 .edited-note {
   display: block;
   margin-top: 4px;
   color: var(--muted);
   font-size: 9px;
   font-weight: 600;
-}
-
-/* The punch fix dialog: today's punches and what HR changed, which the design doesn't have. */
-.punch-list,
-.punch-log {
-  margin: 0 0 14px;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-
-  li {
-    padding: 5px 9px;
-    border-radius: 7px;
-    background: var(--aqua-light);
-    color: var(--ink);
-    font-size: 11px;
-    font-weight: 700;
-  }
-
-  span {
-    color: var(--muted);
-    font-weight: 500;
-  }
-}
-
-.punch-log {
-  margin: 16px 0 0;
-  flex-direction: column;
-
-  li {
-    background: #f4f7f8;
-    color: var(--muted);
-    font-weight: 500;
-  }
 }
 
 /* Adding or editing a person is too long for a modal, so it sits on a page with the modal's field styles.
@@ -840,9 +804,12 @@ td.row-actions {
   align-items: center;
 }
 
-/* The inbox's flight claims under its detail changes keep the design's 19px gap between cards. */
-app-flight-claims-inbox > .card {
-  margin-top: 19px;
+/* A super admin's count of where everyone is today, above the people cards. */
+.where-today {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block-end: 18px;
 }
 
 /* A short note under a table, inside the same card. */

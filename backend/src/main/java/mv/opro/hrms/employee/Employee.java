@@ -27,6 +27,9 @@ public class Employee {
     @Column(name = "is_hr")
     private boolean hr;
 
+    @Column(name = "is_super_admin")
+    private boolean superAdmin;
+
     @Embedded
     private EmergencyContact emergencyContact;
 
@@ -127,6 +130,10 @@ public class Employee {
 
     public boolean isHr() {
         return hr;
+    }
+
+    public boolean isSuperAdmin() {
+        return superAdmin;
     }
 
     public EmergencyContact getEmergencyContact() {

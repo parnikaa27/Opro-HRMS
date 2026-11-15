@@ -6,20 +6,15 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import mv.opro.hrms.common.ApiException;
 import mv.opro.hrms.employee.Employee;
 import mv.opro.hrms.employee.People;
 import mv.opro.hrms.files.Files;
-import mv.opro.hrms.flight.FlightClaim;
 import mv.opro.hrms.flight.FlightResponses;
 import mv.opro.hrms.flight.Flights;
 import mv.opro.hrms.session.CurrentUser;
@@ -28,22 +23,17 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-// HR's side of flight allowances: everyone's claims, each person's allowance, and the exchange rates.
-// Like leave, HR never decides or sets anything for themselves.
+// HR's side of flight allowances: each person's allowance and claims, and the exchange rates. Claims need no approval.
+// HR never sets their own allowance.
 @RestController
 class HrFlightController {
 
-    private static final int MAX_NOTE = 300;
     private static final int FIRST_YEAR = 2020;
     private static final int LAST_YEAR = 2100;
-
-    record DecisionBody(@NotNull @Pattern(regexp = "approved|rejected") String decision, @Size(max = MAX_NOTE) String note) {}
 
     record AllowanceBody(@NotNull @Min(FIRST_YEAR) @Max(LAST_YEAR) Integer year, @NotNull @DecimalMin("0") @DecimalMax("1000000") BigDecimal amountUsd) {}
 
@@ -63,26 +53,6 @@ class HrFlightController {
         this.hrPeople = hrPeople;
         this.flights = flights;
         this.files = files;
-    }
-
-    @GetMapping("/api/hr/flight-claims")
-    List<FlightResponses.ClaimResponse> claims(@RequestParam(required = false) String status) {
-        hr.require(currentUser.get());
-        List<FlightClaim> claims = flights.all(status);
-        Map<String, String> names = people.namesOf(claims.stream()
-                .flatMap(claim -> Stream.of(claim.getEmployeeId(), claim.getDecidedBy()))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet()));
-        return claims.stream().map(claim -> FlightResponses.ClaimResponse.of(claim, names)).toList();
-    }
-
-    @PostMapping("/api/hr/flight-claims/{id}/decision")
-    FlightResponses.ClaimResponse decide(@PathVariable String id, @Valid @RequestBody DecisionBody body) {
-        Employee me = hr.require(currentUser.get());
-        Set<String> everyoneBut = people.active().stream().map(Employee::getId).filter(employeeId -> !employeeId.equals(me.getId()))
-                .collect(Collectors.toUnmodifiableSet());
-        FlightClaim claim = flights.decide(me, id, everyoneBut, body.decision(), body.note());
-        return FlightResponses.ClaimResponse.of(claim, people.namesOf(Set.of(claim.getEmployeeId(), me.getId())));
     }
 
     @GetMapping("/api/hr/flight-claims/{id}/receipt")

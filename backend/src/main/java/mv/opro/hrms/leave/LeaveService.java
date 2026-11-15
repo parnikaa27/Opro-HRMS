@@ -116,27 +116,18 @@ public class LeaveService {
                 .toList();
     }
 
+    // Super admins need nobody's approval, so theirs is approved as it's saved.
     @Transactional
     public LeaveRequest apply(Employee employee, Application application) {
-        Checked checked = check(employee, application, true);
+        Checked checked = check(employee, application);
         LeaveRequest request = LeaveRequest.apply(Ids.next("LR"), employee.getId(), checked.type().getCode(), application.from(), application.to(),
                 application.halfDay(), checked.days(), application.reason().strip(), today());
-        if (employee.getManagerId() != null) {
+        if (employee.isSuperAdmin()) {
+            request.decide(LeaveRequest.APPROVED, employee.getId(), today(), null);
+        } else if (employee.getManagerId() != null) {
             notifications.tell(employee.getManagerId(), Notification.Kind.APPROVAL, employee.getFullName() + " asked for " + Wording.days(checked.days())
                     + " of " + checked.type().getName().toLowerCase() + " " + Wording.when(application.from(), application.to()));
         }
-        return requests.save(request);
-    }
-
-    // HR recording leave for someone who can't apply themselves. Same rules as applying, saved as approved.
-    @Transactional
-    public LeaveRequest recordFor(Employee hr, Employee employee, Application application) {
-        Checked checked = check(employee, application, false);
-        LeaveRequest request = LeaveRequest.recordedByHr(Ids.next("LR"), employee.getId(), checked.type().getCode(), application.from(),
-                application.to(), application.halfDay(), checked.days(), application.reason().strip(), hr.getId(), today());
-        notifications.tell(employee.getId(), Notification.Kind.LEAVE, "HR recorded " + Wording.days(checked.days()) + " of "
-                + checked.type().getName().toLowerCase() + " for you, " + Wording.dates(application.from(), application.to()) + ". "
-                + Wording.sentence(application.reason()));
         return requests.save(request);
     }
 
@@ -284,7 +275,7 @@ public class LeaveService {
     private record Checked(LeaveType type, BigDecimal days) {}
 
     // Every rule a request has to pass, worded for the person applying or for HR recording it for them.
-    private Checked check(Employee employee, Application application, boolean isOwn) {
+    private Checked check(Employee employee, Application application) {
         // One change at a time per person, so two requests sent at once can't both spend the same days.
         employees.lockById(employee.getId());
         LeaveType type = types.findById(application.type()).orElseThrow(() -> refused(HttpStatus.BAD_REQUEST, "Pick a type of leave."));
@@ -311,15 +302,15 @@ public class LeaveService {
             throw refused(HttpStatus.BAD_REQUEST, "Those dates are all Fridays or public holidays. Nothing to take.");
         }
         if (requests.overlaps(employee.getId(), from, to)) {
-            throw refused(HttpStatus.CONFLICT, (isOwn ? "You already have" : "They already have") + " leave on some of those days.");
+            throw refused(HttpStatus.CONFLICT, "You already have leave on some of those days.");
         }
         if (!type.isUnlimited()) {
             openYear(employee.getId(), today().getYear());
-            Balance balance = balance(employee.getId(), type, entitlementFor(employee.getId(), type, from.getYear(), isOwn), from.getYear());
+            Balance balance = balance(employee.getId(), type, entitlementFor(employee.getId(), type, from.getYear()), from.getYear());
             BigDecimal available = balance.entitled().subtract(balance.taken()).subtract(balance.pending());
             if (days.compareTo(available) > 0) {
                 String left = plural(available) + " of " + type.getName().toLowerCase() + " left.";
-                throw refused(HttpStatus.CONFLICT, isOwn ? "You only have " + left : "They only have " + left + " Adjust their balance first if they're owed more.");
+                throw refused(HttpStatus.CONFLICT, "You only have " + left);
             }
         }
         return new Checked(type, days);
@@ -374,8 +365,8 @@ public class LeaveService {
 
     // The year's entitlement. Next year's is opened from the policy the first time someone books into it,
     // as long as they hold that type this year.
-    private LeaveEntitlement entitlementFor(String employeeId, LeaveType type, int year, boolean isOwn) {
-        Supplier<ApiException> none = () -> refused(HttpStatus.BAD_REQUEST, (isOwn ? "You don't" : "They don't") + " have " + type.getName().toLowerCase() + " to take.");
+    private LeaveEntitlement entitlementFor(String employeeId, LeaveType type, int year) {
+        Supplier<ApiException> none = () -> refused(HttpStatus.BAD_REQUEST, "You don't have " + type.getName().toLowerCase() + " to take.");
         LeaveEntitlement held = entitlements.findByEmployeeIdAndTypeAndLeaveYear(employeeId, type.getCode(), year).orElseGet(() -> {
             boolean holdsItNow = entitlements.findByEmployeeIdAndTypeAndLeaveYear(employeeId, type.getCode(), today().getYear())
                     .filter(entitlement -> !entitlement.isRemoved()).isPresent();

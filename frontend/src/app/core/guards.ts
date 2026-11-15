@@ -12,3 +12,5 @@ export const isSignedIn: CanMatchFn = async () => {
 export const isManager: CanMatchFn = () => inject(Session).isManager() || inject(Router).parseUrl('/');
 
 export const isHr: CanMatchFn = () => inject(Session).isHr() || inject(Router).parseUrl('/');
+
+export const isSuperAdmin: CanMatchFn = () => inject(Session).isSuperAdmin() || inject(Router).parseUrl('/');

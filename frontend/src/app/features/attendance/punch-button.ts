@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { Session } from '../../core/session';
 import { AttendanceDay, WorkMode } from '../../models/attendance';
 import { Dialog } from '../../shared/ui/dialog';
 import { Icon } from '../../shared/ui/icon';
@@ -39,7 +40,7 @@ const FAILED = "That punch didn't save. Try again in a moment.";
         <button type="button" [disabled]="busy() !== undefined" (click)="punch('home')" data-testid="punch-home">
           <app-icon name="house" [size]="22" />
           <strong>From home</strong>
-          <span>No location needed. Your manager approves the day afterwards.</span>
+          <span>No location needed.{{ isSuperAdmin() ? '' : ' Your manager approves the day afterwards.' }}</span>
         </button>
       </div>
       @if (error()) {
@@ -52,6 +53,7 @@ const FAILED = "That punch didn't save. Try again in a moment.";
 })
 export class PunchButton {
   private readonly api = inject(AttendanceApi);
+  protected readonly isSuperAdmin = inject(Session).isSuperAdmin;
 
   readonly day = input<AttendanceDay>();
   readonly punched = output<AttendanceDay>();

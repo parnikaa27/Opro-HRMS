@@ -71,8 +71,9 @@ export class PortalSearch {
   protected readonly isOpen = signal(false);
   private readonly closeOnDismiss = inject(Dismiss).dismissed.subscribe(() => this.isOpen.set(false));
   private readonly needle = computed(() => this.query().trim().toLowerCase());
-  // People only load once someone types, so search costs nothing until used. HR searches everyone, managers their team.
+  // People only load once someone types, so search costs nothing until used. HR and super admins search everyone, HODs their team.
   private readonly teamPeople = inject(TeamApi).members({ isEnabled: () => this.view() === 'team' && this.session.isManager() && this.needle() !== '' });
+  private readonly company = inject(TeamApi).members({ isEnabled: () => this.view() === 'company' && this.session.isSuperAdmin() && this.needle() !== '', scope: () => 'company' });
   private readonly everyone = inject(HrApi).employees({ isEnabled: () => this.view() === 'hr' && this.session.isHr() && this.needle() !== '' });
 
   protected readonly results = computed<SearchResult[]>(() => {
@@ -83,6 +84,7 @@ export class PortalSearch {
     const people = [
       ...valueOr(this.teamPeople, []).map(({ fullName, id }) => ({ fullName, path: `/team/${id}` })),
       ...valueOr(this.everyone, []).map(({ fullName, id }) => ({ fullName, path: `/hr/people/${id}` })),
+      ...valueOr(this.company, []).map(({ fullName, id }) => ({ fullName, path: `/company/${id}` })),
     ]
       .filter(({ fullName }) => fullName.toLowerCase().includes(needle))
       .map(({ fullName, path }) => ({ label: fullName, path, kind: 'Person' as const }));

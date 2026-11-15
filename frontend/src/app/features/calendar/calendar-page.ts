@@ -6,7 +6,7 @@ import { Icon } from '../../shared/ui/icon';
 import { addDays, addMonths, datesBetween, dayOfMonth, formatMonth, formatShortDate, formatWeekday, maldivesToday, monthOf, weekdayOf, yearOf } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { HolidaysApi } from '../holidays/holidays-api';
-import { TeamApi } from '../team/team-api';
+import { TeamApi, ViewScope } from '../team/team-api';
 
 const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 const DAYS_PER_WEEK = 7;
@@ -29,7 +29,7 @@ interface CalendarCell {
         <div>
           <span class="eyebrow">COMPANY CALENDAR</span>
           <h1>Holidays &amp; events</h1>
-          <p>{{ showsTeamLeave() ? 'Public holidays, company dates and who on your team is away.' : 'Public holidays and important company dates in the Maldives.' }}</p>
+          <p>{{ showsTeamLeave() ? 'Public holidays, company dates and who ' + (scope() === 'company' ? 'at Opro' : 'on your team') + ' is away.' : 'Public holidays and important company dates in the Maldives.' }}</p>
         </div>
         <div class="calendar-nav">
           <button type="button" [attr.aria-label]="'Show ' + formatMonth(previous())" (click)="month.set(previous())" data-testid="previous-month"><app-icon name="chevronLeft" /></button>
@@ -99,8 +99,9 @@ export class CalendarPage {
   private readonly api = inject(HolidaysApi);
   private readonly session = inject(Session);
 
-  // Set from route data on the manager's calendar.
+  // Set from route data on the HOD's and the super admin's calendars.
   readonly showsTeamLeave = input(false);
+  readonly scope = input<ViewScope>('team');
 
   protected readonly today = maldivesToday();
   protected readonly month = signal(monthOf(this.today));
@@ -112,7 +113,10 @@ export class CalendarPage {
   private readonly events = this.api.eventsForYear(this.shownYear);
   private readonly thisYearHolidays = this.api.forYear(() => String(yearOf(this.today)));
   private readonly nextYearHolidays = this.api.forYear(() => String(yearOf(this.today) + 1));
-  private readonly teamLeave = inject(TeamApi).leaveRequests({ isEnabled: () => this.showsTeamLeave() && this.session.isManager() });
+  private readonly teamLeave = inject(TeamApi).leaveRequests({
+    isEnabled: () => this.showsTeamLeave() && (this.scope() === 'company' ? this.session.isSuperAdmin() : this.session.isManager()),
+    scope: this.scope,
+  });
 
   protected readonly cells = computed<CalendarCell[]>(() => {
     const first = `${this.month()}-01`;

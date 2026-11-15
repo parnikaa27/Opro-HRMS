@@ -5,7 +5,6 @@ import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.time.Clock;
 import java.time.LocalDate;
-import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -13,7 +12,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import mv.opro.hrms.common.ApiException;
 import mv.opro.hrms.common.Ids;
-import mv.opro.hrms.common.Wording;
 import mv.opro.hrms.employee.Employee;
 import mv.opro.hrms.employee.EmployeeRepository;
 import mv.opro.hrms.files.Files;
@@ -32,11 +30,10 @@ public class Flights {
 
     public static final String USD = "USD";
     private static final String APPROVED = "approved";
-    private static final String PENDING = "pending";
     private static final int CENTS = 2;
 
-    // One person's year: what they get, what's approved, what's waiting, and every claim.
-    public record Year(int year, BigDecimal allowanceUsd, BigDecimal usedUsd, BigDecimal pendingUsd, List<FlightClaim> claims) {}
+    // One person's year: what they get, what they've claimed, and every claim.
+    public record Year(int year, BigDecimal allowanceUsd, BigDecimal usedUsd, List<FlightClaim> claims) {}
 
     public record NewClaim(LocalDate flightDate, String route, BigDecimal amount, String currency) {}
 
@@ -67,15 +64,10 @@ public class Flights {
     public Year yearOf(String employeeId) {
         int year = today().getYear();
         BigDecimal allowance = allowances.findById(new FlightAllowance.Key(employeeId, year)).map(FlightAllowance::getAmountUsd).orElse(null);
-        return new Year(year, allowance, total(employeeId, APPROVED, year), total(employeeId, PENDING, year),
-                claims.findByEmployeeIdOrderByFlightDateDescIdDesc(employeeId));
+        return new Year(year, allowance, total(employeeId, year), claims.findByEmployeeIdOrderByFlightDateDescIdDesc(employeeId));
     }
 
-    public List<FlightClaim> all(String status) {
-        return status == null ? claims.findAllByOrderByRaisedOnDescIdDesc() : claims.findByStatusOrderByRaisedOnDescIdDesc(status);
-    }
-
-    // A claim counts against the year of the flight. It can't go past what's left once waiting claims are counted.
+    // A claim counts against the year of the flight and is approved as it's made, as long as it fits in what's left.
     @Transactional
     public FlightClaim claim(Employee employee, NewClaim claim) {
         employees.lockById(employee.getId());
@@ -83,7 +75,7 @@ public class Flights {
         BigDecimal allowance = allowances.findById(new FlightAllowance.Key(employee.getId(), year)).map(FlightAllowance::getAmountUsd)
                 .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "You don't have a flight allowance for " + year + ". Ask HR about it."));
         BigDecimal usd = toUsd(claim.amount(), claim.currency());
-        BigDecimal left = allowance.subtract(total(employee.getId(), APPROVED, year)).subtract(total(employee.getId(), PENDING, year));
+        BigDecimal left = allowance.subtract(total(employee.getId(), year));
         if (usd.compareTo(left) > 0) {
             throw new ApiException(HttpStatus.CONFLICT, "That's " + dollars(usd) + ", more than the " + dollars(left.max(BigDecimal.ZERO))
                     + " you have left for " + year + ".");
@@ -95,8 +87,8 @@ public class Flights {
     @Transactional
     public FlightClaim attachReceipt(Employee employee, String id, Upload upload) {
         FlightClaim claim = own(employee, id);
-        if (!claim.isPending()) {
-            throw new ApiException(HttpStatus.CONFLICT, "Receipts go on claims that are still waiting.");
+        if (!claim.isApproved()) {
+            throw new ApiException(HttpStatus.CONFLICT, "Receipts go on claims that still count.");
         }
         UUID previous = claim.attachReceipt(files.store(upload, employee.getId()));
         if (previous != null) {
@@ -108,8 +100,8 @@ public class Flights {
     @Transactional
     public FlightClaim cancel(Employee employee, String id) {
         FlightClaim claim = own(employee, id);
-        if (!claim.isPending()) {
-            throw new ApiException(HttpStatus.CONFLICT, "Only a claim that's still waiting can be cancelled.");
+        if (!claim.isApproved()) {
+            throw new ApiException(HttpStatus.CONFLICT, "This claim is already off your allowance.");
         }
         claim.cancel();
         return claim;
@@ -123,39 +115,11 @@ public class Flights {
         return receipt(claims.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Claim not found")));
     }
 
-    // HR decides. Approving checks the allowance again, in case it was lowered since. Declining needs a reason.
-    @Transactional
-    public FlightClaim decide(Employee hr, String id, Collection<String> inScope, String decision, String note) {
-        FlightClaim claim = claims.findById(id).filter(found -> inScope.contains(found.getEmployeeId()))
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Claim not found"));
-        if (!claim.isPending()) {
-            throw new ApiException(HttpStatus.CONFLICT, "This claim has already been decided.");
-        }
-        String cleanNote = note == null || note.isBlank() ? null : note.strip();
-        boolean isApproved = APPROVED.equals(decision);
-        if (!isApproved && cleanNote == null) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Give a short reason so they know what to do next.");
-        }
-        int year = claim.getFlightDate().getYear();
-        if (isApproved) {
-            BigDecimal allowance = allowances.findById(new FlightAllowance.Key(claim.getEmployeeId(), year)).map(FlightAllowance::getAmountUsd)
-                    .orElse(BigDecimal.ZERO);
-            if (total(claim.getEmployeeId(), APPROVED, year).add(claim.getAmountUsd()).compareTo(allowance) > 0) {
-                throw new ApiException(HttpStatus.CONFLICT, "Approving it would go over their allowance. Raise their allowance first.");
-            }
-        }
-        claim.decide(decision, hr.getId(), today(), cleanNote);
-        String what = "Your flight claim for " + claim.getRoute() + " (" + dollars(claim.getAmountUsd()) + ")";
-        notifications.tell(claim.getEmployeeId(), Notification.Kind.FLIGHT,
-                isApproved ? what + " was approved." : what + " was declined: " + Wording.sentence(cleanNote));
-        return claim;
-    }
-
-    // Never below what's already approved or waiting for that year.
+    // Never below what's already claimed for that year.
     @Transactional
     public void setAllowance(Employee hr, String employeeId, int year, BigDecimal amountUsd) {
         employees.lockById(employeeId);
-        BigDecimal claimed = total(employeeId, APPROVED, year).add(total(employeeId, PENDING, year));
+        BigDecimal claimed = total(employeeId, year);
         if (amountUsd.compareTo(claimed) < 0) {
             throw new ApiException(HttpStatus.CONFLICT, "They've already claimed " + dollars(claimed) + " for " + year + ", so it can't go below that.");
         }
@@ -180,8 +144,8 @@ public class Flights {
         return amount.divide(rate, CENTS, RoundingMode.HALF_UP);
     }
 
-    private BigDecimal total(String employeeId, String status, int year) {
-        return claims.usdIn(employeeId, status, LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31));
+    private BigDecimal total(String employeeId, int year) {
+        return claims.usdIn(employeeId, APPROVED, LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31));
     }
 
     private FlightClaim own(Employee employee, String id) {

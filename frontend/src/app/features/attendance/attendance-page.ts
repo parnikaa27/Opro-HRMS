@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { Session } from '../../core/session';
 import { Dialog } from '../../shared/ui/dialog';
 import { Icon } from '../../shared/ui/icon';
 import { ListSkeleton } from '../../shared/ui/list-skeleton';
@@ -65,7 +66,11 @@ import { SummaryRow } from './summary-row';
 
     <app-dialog heading="Fix a punch" [(isOpen)]="isFixing">
       @if (wasRaised()) {
-        <app-success-state heading="Fix requested" body="Your manager has been told. You'll see the decision here and in your notifications." (done)="closeFix()" />
+        @if (isSuperAdmin()) {
+          <app-success-state heading="Punch fixed" body="It’s on your record now, as yours need nobody’s sign off." (done)="closeFix()" />
+        } @else {
+          <app-success-state heading="Fix requested" body="Your manager has been told. You'll see the decision here and in your notifications." (done)="closeFix()" />
+        }
       } @else {
         <app-correction-form [date]="today" (raised)="onRaised()" (cancelled)="closeFix()" />
       }
@@ -75,6 +80,7 @@ import { SummaryRow } from './summary-row';
 })
 export class AttendancePage {
   private readonly api = inject(AttendanceApi);
+  protected readonly isSuperAdmin = inject(Session).isSuperAdmin;
 
   protected readonly today = maldivesToday();
   protected readonly currentMonth = monthOf(this.today);

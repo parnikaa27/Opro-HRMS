@@ -8,8 +8,9 @@ import { ProfileMenu } from './profile-menu';
 
 const VIEW_OPTIONS: readonly { value: PortalView; label: string }[] = [
   { value: 'mine', label: 'Employee' },
-  { value: 'team', label: 'Manager' },
+  { value: 'team', label: 'HOD' },
   { value: 'hr', label: 'HR' },
+  { value: 'company', label: 'Super admin' },
 ];
 
 @Component({
@@ -47,10 +48,14 @@ const VIEW_OPTIONS: readonly { value: PortalView; label: string }[] = [
 })
 export class TopBar {
   protected readonly session = inject(Session);
-  // Everyone has their own view. Managers and HR get theirs on top.
-  protected readonly viewOptions = computed(() =>
-    VIEW_OPTIONS.filter(({ value }) => value === 'mine' || (value === 'team' && this.session.isManager()) || (value === 'hr' && this.session.isHr())),
-  );
+  // Everyone has their own view. HODs, HR and super admins get theirs on top.
+  private readonly hasView: Record<PortalView, () => boolean> = {
+    mine: () => true,
+    team: this.session.isManager,
+    hr: this.session.isHr,
+    company: this.session.isSuperAdmin,
+  };
+  protected readonly viewOptions = computed(() => VIEW_OPTIONS.filter(({ value }) => this.hasView[value]()));
   readonly view = input.required<PortalView>();
   readonly navItems = input.required<readonly NavItem[]>();
   readonly menuOpened = output();

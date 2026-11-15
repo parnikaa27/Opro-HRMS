@@ -19,7 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// Punch fix requests: raised by the employee, decided by their manager (later HR too).
+// Punch fix requests: raised by the employee, decided by their manager. A super admin's are approved as they're raised.
 @Service
 @Transactional(readOnly = true)
 public class Corrections {
@@ -55,11 +55,6 @@ public class Corrections {
                 : corrections.findByEmployeeIdInAndStatusOrderByRaisedOnDesc(employeeIds, status);
     }
 
-    // Everyone's, for HR.
-    public List<CorrectionRequest> all(String status) {
-        return status == null ? corrections.findAllByOrderByRaisedOnDesc() : corrections.findByStatusOrderByRaisedOnDesc(status);
-    }
-
     // Working from a resort and forgetting to punch speak for themselves. A late punch and anything else need a reason.
     @Transactional
     public CorrectionRequest raise(Employee employee, LocalDate date, String kind, String category, LocalTime time, String reason) {
@@ -78,7 +73,9 @@ public class Corrections {
             throw new ApiException(HttpStatus.BAD_REQUEST, "That's before you joined.");
         }
         CorrectionRequest request = corrections.save(CorrectionRequest.raise(Ids.next("AC"), employee.getId(), date, kind, category, time, cleanReason, today));
-        if (employee.getManagerId() != null) {
+        if (employee.isSuperAdmin()) {
+            approve(employee, request);
+        } else if (employee.getManagerId() != null) {
             notifications.tell(employee.getManagerId(), Notification.Kind.APPROVAL,
                     employee.getFullName() + " asked for a punch fix (" + CATEGORY_NAMES.get(category) + ") " + Wording.when(date, date));
         }
@@ -100,20 +97,28 @@ public class Corrections {
         if (!isApproved && note == null) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Give a short reason so they know what to do next.");
         }
-        OffsetDateTime at = request.getPunchDate().atTime(request.getRequestedTime()).atZone(clock.getZone()).toOffsetDateTime();
-        if (isApproved && request.isLatePunch()) {
-            voidLatePunchIn(decider, request, at);
-        }
-        request.decide(decision.decision(), decider.getId(), LocalDate.now(clock), note);
-        // The punch may already be there. Then there is nothing to add.
-        if (isApproved && !punches.existsByEmployeeIdAndPunchedAt(request.getEmployeeId(), at)) {
-            punches.save(Punch.fromApprovedFix(request.getEmployeeId(), at, request.getId()));
+        if (isApproved) {
+            approve(decider, request);
+        } else {
+            request.decide(decision.decision(), decider.getId(), LocalDate.now(clock), note);
         }
         String day = Wording.date(request.getPunchDate());
         notifications.tell(request.getEmployeeId(), Notification.Kind.CORRECTION, isApproved
                 ? "Your punch fix for " + day + " was approved. The " + Wording.time(request.getRequestedTime()) + " punch is now on your record."
                 : "Your punch fix for " + day + " was declined: " + Wording.sentence(note));
         return request;
+    }
+
+    private void approve(Employee decider, CorrectionRequest request) {
+        OffsetDateTime at = request.getPunchDate().atTime(request.getRequestedTime()).atZone(clock.getZone()).toOffsetDateTime();
+        if (request.isLatePunch()) {
+            voidLatePunchIn(decider, request, at);
+        }
+        request.decide(APPROVED, decider.getId(), LocalDate.now(clock), null);
+        // The punch may already be there. Then there is nothing to add.
+        if (!punches.existsByEmployeeIdAndPunchedAt(request.getEmployeeId(), at)) {
+            punches.save(Punch.fromApprovedFix(request.getEmployeeId(), at, request.getId()));
+        }
     }
 
     // Their first punch that day, if it came after the time they say they arrived.
