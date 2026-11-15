@@ -19,6 +19,13 @@ public class LeaveType {
 
     protected LeaveType() {}
 
+    // A new entitlement applies from the next leave year. This year's balances stay as they are.
+    void update(String name, boolean allowsHalfDay, BigDecimal defaultEntitlement) {
+        this.name = name;
+        this.allowsHalfDay = allowsHalfDay;
+        this.defaultEntitlement = isUnlimited ? null : defaultEntitlement;
+    }
+
     public String getCode() {
         return code;
     }

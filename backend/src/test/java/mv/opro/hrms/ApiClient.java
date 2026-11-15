@@ -7,6 +7,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 
 // A browser stand in: keeps cookies, and echoes the XSRF-TOKEN cookie in the header the way Angular does.
 public final class ApiClient {
@@ -39,6 +40,10 @@ public final class ApiClient {
     public HttpResponse<String> put(String path, byte[] body, String contentType) throws IOException, InterruptedException {
         return http.send(withXsrf(HttpRequest.newBuilder(URI.create(base + path)).header("Content-Type", contentType)
                 .PUT(HttpRequest.BodyPublishers.ofByteArray(body))).build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    public HttpResponse<String> put(String path, String json) throws IOException, InterruptedException {
+        return put(path, json.getBytes(StandardCharsets.UTF_8), "application/json");
     }
 
     public HttpResponse<String> delete(String path) throws IOException, InterruptedException {

@@ -52,6 +52,14 @@ public class LeaveRequest {
         return request;
     }
 
+    static LeaveRequest recordedByHr(String id, String employeeId, String type, LocalDate from, LocalDate to, String halfDay, BigDecimal days,
+            String reason, String hrId, LocalDate today) {
+        LeaveRequest request = apply(id, employeeId, type, from, to, halfDay, days, reason, today);
+        request.decide(APPROVED, hrId, today, null);
+        request.recordedByHr = true;
+        return request;
+    }
+
     // Pending can always be withdrawn. Approved only while it hasn't started.
     boolean canBeCancelledOn(LocalDate today) {
         return PENDING.equals(status) || (APPROVED.equals(status) && fromDate.isAfter(today));

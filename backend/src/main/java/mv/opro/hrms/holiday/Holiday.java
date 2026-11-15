@@ -16,6 +16,22 @@ public class Holiday {
 
     protected Holiday() {}
 
+    Holiday(String id, LocalDate date, String name, boolean isTentative) {
+        this.id = id;
+        this.holidayDate = date;
+        this.name = name;
+        this.isTentative = isTentative;
+    }
+
+    // Returns true when this change confirms a date that was tentative, so everyone can be told.
+    boolean update(LocalDate date, String name, boolean isTentative) {
+        boolean isConfirming = this.isTentative && !isTentative;
+        this.holidayDate = date;
+        this.name = name;
+        this.isTentative = isTentative;
+        return isConfirming;
+    }
+
     public String getId() {
         return id;
     }

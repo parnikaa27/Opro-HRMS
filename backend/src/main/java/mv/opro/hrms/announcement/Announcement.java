@@ -17,6 +17,18 @@ public class Announcement {
 
     protected Announcement() {}
 
+    Announcement(String id, String title, String body, LocalDate publishedOn) {
+        this.id = id;
+        this.title = title;
+        this.body = body;
+        this.publishedOn = publishedOn;
+    }
+
+    void update(String title, String body) {
+        this.title = title;
+        this.body = body;
+    }
+
     public String getId() {
         return id;
     }

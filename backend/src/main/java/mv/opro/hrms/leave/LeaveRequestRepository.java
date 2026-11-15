@@ -27,6 +27,15 @@ interface LeaveRequestRepository extends JpaRepository<LeaveRequest, String> {
 
     @Query("""
             select r from LeaveRequest r
+            where r.employeeId = :employeeId and r.status in ('pending', 'approved') and r.fromDate > :day""")
+    List<LeaveRequest> openAfter(String employeeId, LocalDate day);
+
+    List<LeaveRequest> findAllByOrderByFromDateDesc();
+
+    List<LeaveRequest> findByStatusOrderByFromDateDesc(String status);
+
+    @Query("""
+            select r from LeaveRequest r
             where r.employeeId = :employeeId and r.status = 'approved' and r.fromDate <= :to and r.toDate >= :from""")
     List<LeaveRequest> approvedBetween(String employeeId, LocalDate from, LocalDate to);
 }

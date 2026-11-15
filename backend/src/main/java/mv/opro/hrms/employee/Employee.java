@@ -35,6 +35,43 @@ public class Employee {
 
     protected Employee() {}
 
+    // What HR sets on a person. Roles are worked out, the visa and photo have their own steps.
+    public record Details(String fullName, String designation, String department, String email, String phone, LocalDate joinedOn,
+            String bloodGroup, String nationality, String workLocation, String employmentType, String managerId,
+            EmergencyContact emergencyContact) {}
+
+    public static Employee hire(String id, Details details) {
+        Employee employee = new Employee();
+        employee.id = id;
+        employee.update(details);
+        return employee;
+    }
+
+    public void update(Details details) {
+        fullName = details.fullName();
+        designation = details.designation();
+        department = details.department();
+        email = details.email();
+        phone = details.phone();
+        joinedOn = details.joinedOn();
+        bloodGroup = details.bloodGroup();
+        nationality = details.nationality();
+        workLocation = details.workLocation();
+        employmentType = details.employmentType();
+        managerId = details.managerId();
+        emergencyContact = details.emergencyContact();
+    }
+
+    public void leave(LocalDate day, String reason) {
+        lastDay = day;
+        leavingReason = reason;
+    }
+
+    public void stay() {
+        lastDay = null;
+        leavingReason = null;
+    }
+
     // Someone past their last day keeps their records but can no longer sign in or show up in live lists.
     public boolean isActiveOn(LocalDate day) {
         return lastDay == null || !lastDay.isBefore(day);

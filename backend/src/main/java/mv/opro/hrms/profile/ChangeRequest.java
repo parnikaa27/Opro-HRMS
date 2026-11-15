@@ -33,6 +33,29 @@ public class ChangeRequest {
         return request;
     }
 
+    void decide(String decision, String by, LocalDate on, String note) {
+        status = decision;
+        decidedBy = by;
+        decidedOn = on;
+        decisionNote = note;
+    }
+
+    boolean isOpen() {
+        return "open".equals(status);
+    }
+
+    public String getDecidedBy() {
+        return decidedBy;
+    }
+
+    public LocalDate getDecidedOn() {
+        return decidedOn;
+    }
+
+    public String getDecisionNote() {
+        return decisionNote;
+    }
+
     public String getId() {
         return id;
     }

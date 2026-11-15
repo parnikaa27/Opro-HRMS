@@ -16,6 +16,17 @@ public class CompanyEvent {
 
     protected CompanyEvent() {}
 
+    CompanyEvent(String id, LocalDate date, String name) {
+        this.id = id;
+        this.eventDate = date;
+        this.name = name;
+    }
+
+    void update(LocalDate date, String name) {
+        this.eventDate = date;
+        this.name = name;
+    }
+
     public String getId() {
         return id;
     }

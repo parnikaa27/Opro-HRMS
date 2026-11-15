@@ -40,6 +40,10 @@ public class LeaveEntitlement {
         return entitlement;
     }
 
+    void adjust(BigDecimal days) {
+        entitled = entitled.add(days);
+    }
+
     public String getType() {
         return type;
     }

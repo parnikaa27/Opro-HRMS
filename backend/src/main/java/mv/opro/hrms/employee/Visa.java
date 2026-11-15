@@ -24,6 +24,21 @@ public class Visa {
 
     protected Visa() {}
 
+    public Visa(String employeeId) {
+        this.employeeId = employeeId;
+    }
+
+    // Only the last 4 passport characters are ever kept.
+    public void renew(String workPermitNumber, String visaNumber, String passportLast4, LocalDate passportExpiry, LocalDate visaIssuedOn,
+            LocalDate visaExpiry) {
+        this.workPermitNumber = workPermitNumber;
+        this.visaNumber = visaNumber;
+        this.passportLast4 = passportLast4;
+        this.passportExpiry = passportExpiry;
+        this.visaIssuedOn = visaIssuedOn;
+        this.visaExpiry = visaExpiry;
+    }
+
     public String getEmployeeId() {
         return employeeId;
     }

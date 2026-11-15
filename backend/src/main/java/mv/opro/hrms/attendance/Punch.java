@@ -20,6 +20,7 @@ public class Punch {
     private String source;
     private OffsetDateTime voidedAt;
     private String correctionRequestId;
+    private String voidedBy;
 
     protected Punch() {}
 
@@ -40,6 +41,20 @@ public class Punch {
         punch.source = "manual";
         punch.correctionRequestId = correctionRequestId;
         return punch;
+    }
+
+    // Added by HR, with the reason kept in the punch edit log.
+    static Punch addedByHr(String employeeId, OffsetDateTime punchedAt) {
+        Punch punch = new Punch();
+        punch.employeeId = employeeId;
+        punch.punchedAt = punchedAt;
+        punch.source = "manual";
+        return punch;
+    }
+
+    void voidBy(String employeeId, OffsetDateTime at) {
+        voidedAt = at;
+        voidedBy = employeeId;
     }
 
     public String getEmployeeId() {

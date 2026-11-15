@@ -10,7 +10,7 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 | `frontend/` | Angular 22, Tailwind CSS v4, Vitest, Playwright | Employee, manager and HR views built. Employee and manager pages match the Figma design; HR pages reuse its classes |
 | `design/figma-make/` | `App.tsx` and `index.css` copied from the Figma Make file "Opro HRMS Portal" | The visual source of truth |
 | `frontend/dev-server/` | Plain Node mock API serving JSON fixtures | In progress |
-| `backend/` | Java 25, Spring Boot 4.1, PostgreSQL 18, Flyway, Maven | Every employee and manager endpoint is live: session, profile with photo, holidays and events, attendance, leave with medical certificates, documents, announcements, change requests, notifications and the team view. Only HR still runs on the mock, apart from photo upload |
+| `backend/` | Java 25, Spring Boot 4.1, PostgreSQL 18, Flyway, Maven | Every endpoint is live: session, profile with photo, holidays and events, attendance, leave with medical certificates, documents, announcements, change requests, notifications, the team view and the HR view. The mock stays for frontend work and the e2e tests |
 
 ---
 
@@ -117,7 +117,7 @@ Sidebar: Overview, People, Leave (count waiting), Calendar, Visas, Inbox (count 
 - The backend sends `expectedOut` and `scheduledMinutes` with each day, from the version in force. The frontend shows them and never works out a shift itself.
 - **Punch fixes by HR:** add a missing punch or void a wrong one, one change at a time, always with a reason. Device punches are never overwritten, every change is logged with who, when and why, and the backend works the day out again. An approved punch fix request goes through the same path, logged as approved by whoever decided it. Corrected days show "Corrected" to everyone who sees them.
 - Raw punches are never edited. A wrong one is voided and a missing one is added with source `manual`. Each day is worked out per request from the punches, the schedule version in force, holidays, approved full day leave and the weekend (`DayCalculator`).
-- Ramadan hours are stored on the schedule but not applied yet: that needs the holiday calendar to mark Ramadan's start and end reliably, which comes with the HR holiday work.
+- Ramadan hours are stored on the schedule but not applied yet. HR now confirms the first day of Ramadan and Eid al Fitr in the calendar, so the next step is applying those dates when a day is worked out.
 - Until a device is connected, the dev profile fills recent weeks with believable punches on start up (`DevPunchSeeder`). Real devices replace it.
 - The biometric device (model not yet known) pushes raw punches to the backend. A day may have **many punches** (breaks). The backend pairs them and works out first in, last out, time worked and status. **The frontend only displays these values. It never calculates attendance status.**
 
@@ -176,6 +176,7 @@ Logo, "People first, always.", "© year Opro Pvt Ltd · Malé, Republic of Maldi
 - **Visa records:** add or update visa, work permit and passport details on renewal.
 - **Profile change requests:** an inbox for the requests employees send from their profile.
 - **Announcements:** post and edit the notes from HR.
+- HR never acts on their own record: their own leave, balance and punch fixes go through their manager like anyone else's. The server refuses it.
 - Out of scope for now: granting the HR role from the portal (set on the record by the backend team), changing the work week.
 
 ### Exports

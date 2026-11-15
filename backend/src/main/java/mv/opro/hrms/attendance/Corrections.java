@@ -47,6 +47,11 @@ public class Corrections {
                 : corrections.findByEmployeeIdInAndStatusOrderByRaisedOnDesc(employeeIds, status);
     }
 
+    // Everyone's, for HR.
+    public List<CorrectionRequest> all(String status) {
+        return status == null ? corrections.findAllByOrderByRaisedOnDesc() : corrections.findByStatusOrderByRaisedOnDesc(status);
+    }
+
     @Transactional
     public CorrectionRequest raise(Employee employee, LocalDate date, String kind, LocalTime time, String reason) {
         LocalDate today = LocalDate.now(clock);

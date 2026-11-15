@@ -61,16 +61,16 @@ HRMS/
     pom.xml                Dependencies, pinned by Spring Boot's own version list
     src/main/java/mv/opro/hrms/
       employee/            Employees and visas, and roles worked out from reporting lines
-      holiday/             The holiday calendar, used by attendance and leave
-      attendance/          Punches, days worked out by DayCalculator, punch fix requests, devices, and the dev punch seeder
-      leave/               Leave types, balances, applying, cancelling and deciding, the working day count
+      holiday/             The holiday calendar, used by attendance and leave, and CalendarEditor for HR's changes
+      attendance/          Punches, days worked out by DayCalculator, punch fix requests, devices, the dev punch seeder, and HR's PunchEditor and ScheduleEditor
+      leave/               Leave types, balances, applying, cancelling and deciding, the working day count, HR's balance adjustments
       notification/        The notifications panel, and the service every feature uses to tell people things
       team/                The manager's view: TeamAccess limits everything to their own active direct reports
       files/               Stored files (in PostgreSQL for now), upload checks, and serving them safely
       document/            Someone's own employment documents and their downloads
-      announcement/        Notes from HR on everyone's overview
-      profile/             Change requests people send to HR from their profile
-      hr/                  HR only endpoints, behind HrAccess. So far: ID card photo upload
+      announcement/        Notes from HR on everyone's overview, and AnnouncementEditor for posting them
+      profile/             Change requests people send to HR from their profile, and HR's inbox of them
+      hr/                  HR only endpoints, behind HrAccess: people, leave and balances, calendar, punch fixes and schedules, inbox, announcements, photos
       session/             Who is signed in, /api/me, and the dev only pick a user sign in
       security/            Session cookie, XSRF check, JSON errors instead of redirects
       common/              Error shape ({"message": ...}) shared by every endpoint
@@ -126,7 +126,7 @@ Then the frontend, from `frontend/`:
 USE_MOCK_BACKEND=false npm start
 ```
 
-That sends `/api` to Spring on `http://localhost:8080` instead. Nothing else changes. Every employee and manager page works end to end on Spring. The HR view still needs the mock, apart from uploading ID card photos.
+That sends `/api` to Spring on `http://localhost:8080` instead. Nothing else changes. Every page works end to end on Spring, the HR view included.
 
 Unlike the mock, Spring keeps what you do in the database. To start again from the seed data, run this inside `backend/` (it removes only the `opro-hrms` project's volume):
 
