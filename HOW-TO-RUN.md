@@ -7,7 +7,8 @@
 | Node.js | 26 LTS (Angular 22 needs 24.15 or newer) |
 | npm | 11 or newer |
 | Google Chrome | Any recent version, used by the Playwright tests |
-| Java | 21 or newer, once the Spring backend exists |
+| Java | 25 (LTS), Eclipse Temurin: `brew install --cask temurin@25` |
+| Docker Desktop | Runs PostgreSQL for development and a throwaway one for backend tests |
 
 ## Folder structure
 
@@ -15,37 +16,71 @@
 HRMS/
   CLAUDE.md                Requirements and coding rules. Read this first.
   HOW-TO-RUN.md            This file.
+  design/figma-make/       App.tsx and index.css copied from the Figma Make file. The design to match, not built
   frontend/                Angular 22 app
     src/
       index.html           Page shell, carries the noindex tag
-      styles.css           Tailwind entry, self hosted fonts and design tokens (palette, light and dark)
+      styles.css           Tailwind, self hosted fonts (DM Sans, Manrope), tokens, and our additions to the design
+      styles/portal.css    The Figma stylesheet, ported as is
+      styles/dark.css      Generated dark theme. Never edit by hand
       main.ts              Boots the app
       app/
-        app.routes.ts      Every route, with the sign in and manager guards
-        core/              Session, guards, theme, config (footer details, expiry warning days), company API
-          layout/          Shell, top bar with view switch, notifications and account menus, side rail and tab bar, footer
-        shared/ui/         Card, status pill, avatar, icon, dialog, field error
-        shared/utils/      Date and time in Maldives time, expiry status, preferences, safe resource reads
+        app.routes.ts      Every route, with the sign in, manager and HR guards
+        core/              Session, guards, config (company details, shift length, expiry warning days), company API, an interceptor that refreshes nav counts after a save
+          layout/          Shell, navy sidebar (a slide in menu on phones), top bar with search, view switch, notifications and profile menu, footer
+        shared/ui/         Logo, Lucide icons, status pill, avatar, welcome banner, ring, modal dialog, success screen, month picker, list skeleton
+        shared/utils/      Date and time in Maldives time, expiry status, initials, CSV export, preferences, safe resource reads
         models/            Types that mirror the API responses
         features/
           login/           Test sign in (pick any employee)
-          dashboard/       Home: today, leave left, needs your attention, coming up, from HR
-          leave/           Balances, apply form with day count preview, requests with cancel
-          attendance/      Month view of punches, summary, punch fix form and list
-          holidays/ team/  API services so far, pages come next
-          not-built/       Temporary page for routes not built yet
+          dashboard/       Overview: welcome banner, today's attendance, leave balance, visa, recent attendance, staff card, next holiday, latest request
+          documents/       Employment documents with download
+          leave/           Balance rings, request history with cancel, request modal with day count preview
+          attendance/      Summary cards, attendance log, punch fixes, device status, CSV export
+          calendar/        Company calendar: holidays, events, and team leave for managers
+          holidays/        API for holidays and company events
+          profile/         Two sided printable ID card, visa and work permit status, change request to HR
+          team/            Manager pages: overview, people directory, leave requests with tabs, team attendance table, one person's page. People and leave requests also serve HR
+          hr/              HR pages: overview, one person (record leave, adjust balance, visa, punch fixes, photo, leaving), add and edit a person, holiday calendar, visas, inbox, announcements, policies with the work schedule
+            forms/         The HR dialogs' forms
       testing/             Test helpers, fixtures and setup.ts (a dialog shim, since jsdom has none). Never shipped
     public/                Static files served as is (favicon, robots.txt)
     e2e/                   Playwright tests
     dev-server/            Mock API that stands in for Spring
       server.mjs           Routes, sessions, XSRF check. Node built ins only
-      attendance.mjs       Generates the last 62 days of punches relative to today
-      data/                JSON fixtures: employees, visas, leave, holidays, corrections, announcements, notifications
+      attendance.mjs       Generates the last 62 days of punches relative to today, and works a day out again after an HR punch fix, using the schedule in force
+      data/                JSON fixtures: employees, visas, leave, holidays, events, corrections, announcements, notifications, change requests, balance adjustments, work schedules, punch edits. Uploaded photos and certificates stay in memory until restart
     proxy.conf.mjs         Sends /api to the mock or to Spring
+    scripts/
+      build-dark-theme.mjs Writes src/styles/dark.css from portal.css and styles.css (see theme:dark)
     playwright.config.ts   Starts the mock and the app, then runs e2e tests in Chrome
     eslint.config.js       Lint rules
     .postcssrc.json        Plugs Tailwind into the Angular build
-  backend/                 Spring Boot, not started yet
+  backend/                 Spring Boot 4.1 API on Java 25. Maven, with its own wrapper (mvnw)
+    compose.yaml           PostgreSQL 18.7 for development
+    pom.xml                Dependencies, pinned by Spring Boot's own version list
+    src/main/java/mv/opro/hrms/
+      employee/            Employees and visas, and roles worked out from reporting lines
+      holiday/             The holiday calendar, used by attendance and leave, and CalendarEditor for HR's changes
+      attendance/          Punches, days worked out by DayCalculator, punch fix requests, devices, the dev punch seeder, and HR's PunchEditor and ScheduleEditor
+      leave/               Leave types, balances, applying, cancelling and deciding, the working day count, HR's balance adjustments
+      notification/        The notifications panel, and the service every feature uses to tell people things
+      team/                The manager's view: TeamAccess limits everything to their own active direct reports
+      files/               Stored files (in PostgreSQL for now), upload checks, and serving them safely
+      document/            Someone's own employment documents and their downloads
+      announcement/        Notes from HR on everyone's overview, and AnnouncementEditor for posting them
+      profile/             Change requests people send to HR from their profile, and HR's inbox of them
+      hr/                  HR only endpoints, behind HrAccess: people, leave and balances, calendar, punch fixes and schedules, inbox, announcements, photos
+      session/             Who is signed in, /api/me, and the dev only pick a user sign in
+      security/            Session cookie, XSRF check, JSON errors instead of redirects
+      common/              Error shape ({"message": ...}) shared by every endpoint
+      config/              The Maldives time clock
+    src/main/resources/
+      application.yml      Settings for every environment. The database comes from DB_URL, DB_USER, DB_PASSWORD
+      application-dev.yml  Local database, the dev sign in, and generated punches (opro.dev.generate-punches)
+      db/migration/        Flyway migrations, the schema
+      db/dev/              Development seed data, the same people as the mock. Never loaded outside dev
+    src/test/java/         Integration tests: a real server against a throwaway PostgreSQL (Testcontainers)
 ```
 
 ## First time setup
@@ -75,11 +110,39 @@ Everything you change (approving leave, applying, cancelling, asking for punch f
 
 ### Against the real backend
 
+Start the database and Spring, from `backend/`:
+
+```bash
+docker compose up -d
+```
+
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+Then the frontend, from `frontend/`:
+
 ```bash
 USE_MOCK_BACKEND=false npm start
 ```
 
-That sends `/api` to Spring on `http://localhost:8080` instead. Nothing else changes.
+That sends `/api` to Spring on `http://localhost:8080` instead. Nothing else changes. Every page works end to end on Spring, the HR view included.
+
+Unlike the mock, Spring keeps what you do in the database. To start again from the seed data, run this inside `backend/` (it removes only the `opro-hrms` project's volume):
+
+```bash
+docker compose down -v && docker compose up -d
+```
+
+To see a working day on a weekend, pin Spring's clock the way `MOCK_NOW` pins the mock's: add `-Dspring-boot.run.jvmArguments="-Dopro.fixed-time=2026-11-12T10:30:00+05:00"`.
+
+### Backend tests (inside `backend/`)
+
+```bash
+./mvnw verify
+```
+
+Needs Docker Desktop running: each run starts its own PostgreSQL and throws it away afterwards.
 
 ## Scripts (inside `frontend/`)
 
@@ -89,11 +152,13 @@ That sends `/api` to Spring on `http://localhost:8080` instead. Nothing else cha
 | `npm run mock` | Mock API on port 4300 |
 | `npm run build` | Production build into `dist/` |
 | `npm run lint` / `lint:fix` | ESLint for TypeScript and templates |
+| `npm run theme:dark` | Regenerates the dark theme after changing colours in `portal.css` or `styles.css`, and lists any text under 4.5:1 contrast |
+| `npm run theme:check` | Fails if `dark.css` is out of date. Part of `npm run check` |
 | `npm run check:type` | Type checks app code, templates, unit tests and e2e tests |
 | `npm run test:unit` / `test:unit:watch` | Vitest |
 | `npm run test:coverage` | Vitest with coverage. Fails under 80% |
 | `npm run test:e2e` | Playwright. Starts its own fresh mock on 4310 and app on 4210, so it never clashes with your dev servers or their state |
-| `npm run check` | Lint, types, coverage and e2e in one go |
+| `npm run check` | Dark theme freshness, lint, types, coverage and e2e in one go |
 
 In CI, run `npx playwright install chromium` and drop `channel: 'chrome'` from `playwright.config.ts`, since CI machines won't have Chrome installed.
 
@@ -101,6 +166,7 @@ In CI, run `npx playwright install chromium` and drop `channel: 'chrome'` from `
 
 | Employee | Role | Good for testing |
 |---|---|---|
+| Aishath Shifa (OPR-0002) | HR | HR view: everyone, holidays, visas, inbox, announcements, leave policy |
 | Ibrahim Rasheed (OPR-0004) | Manager | Team view, approvals, visa alerts for the team |
 | Hassan Waheed (OPR-0001) | Manager | Approving Ibrahim's leave |
 | Kasun Perera (OPR-0018) | Employee | Visa expiring soon |
@@ -114,6 +180,7 @@ In CI, run `npx playwright install chromium` and drop `channel: 'chrome'` from `
 |---|---|---|
 | `USE_MOCK_BACKEND` | `true` | `true` sends `/api` to the mock, `false` sends it to Spring on 8080 |
 | `MOCK_PORT` | `4300` | Port for the mock API |
+| `MOCK_NOW` | unset | Pins the mock's clock, for example `MOCK_NOW=2026-11-12T15:10:00+05:00 npm run mock`. Handy on weekends, when every screen shows days off |
 
 ## Version notes
 

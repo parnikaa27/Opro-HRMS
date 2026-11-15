@@ -1,0 +1,8 @@
+[
+  { "id": "EV-1", "date": "2026-10-01", "name": "Office social" },
+  { "id": "EV-2", "date": "2026-10-14", "name": "Team review" },
+  { "id": "EV-3", "date": "2026-11-19", "name": "Team review" },
+  { "id": "EV-4", "date": "2026-12-03", "name": "Office social" },
+  { "id": "EV-5", "date": "2026-12-17", "name": "Year end dinner" },
+  { "id": "EV-6", "date": "2027-01-14", "name": "Town hall" }
+]

@@ -1,110 +1,117 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { AttendanceDay, AttendanceStatus } from '../../models/attendance';
+import { Session } from '../../core/session';
 import { Dialog } from '../../shared/ui/dialog';
-import { addMonths, formatDuration, formatMonth, maldivesToday, monthOf } from '../../shared/utils/date-time';
+import { Icon } from '../../shared/ui/icon';
+import { ListSkeleton } from '../../shared/ui/list-skeleton';
+import { MonthPicker } from '../../shared/ui/month-picker';
+import { SuccessState } from '../../shared/ui/success-state';
+import { downloadCsv } from '../../shared/utils/csv';
+import { formatMonth, maldivesToday, monthOf } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { AttendanceApi } from './attendance-api';
-import { AttendanceDays, FixRequest } from './attendance-days';
+import { toAttendanceRow } from './attendance-rows';
+import { summarise } from './attendance-summary';
+import { AttendanceTable } from './attendance-table';
 import { CorrectionForm } from './correction-form';
 import { CorrectionList } from './correction-list';
+import { DeviceNote } from './device-note';
+import { SummaryRow } from './summary-row';
 
 @Component({
   selector: 'app-attendance-page',
-  imports: [Dialog, AttendanceDays, CorrectionForm, CorrectionList],
+  imports: [AttendanceTable, CorrectionForm, CorrectionList, DeviceNote, Dialog, Icon, ListSkeleton, MonthPicker, SuccessState, SummaryRow],
   template: `
-    <header class="mb-8 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 class="font-display text-3xl tracking-tight sm:text-4xl">Attendance</h1>
-        <p class="mt-2 text-soft">Every punch the device recorded, day by day.</p>
+    <div class="page-view">
+      <div class="page-title">
+        <div>
+          <span class="eyebrow">BIOMETRIC RECORDS</span>
+          <h1>My attendance</h1>
+          <p>Review your punches, work hours and monthly attendance record.</p>
+        </div>
+        <div class="title-actions">
+          <button type="button" class="secondary-button" (click)="isFixing.set(true)" data-testid="open-fix">Fix a punch</button>
+          <button type="button" class="download-button" (click)="exportReport()" data-testid="export-report"><app-icon name="download" [size]="17" /> Export report</button>
+        </div>
       </div>
-      <button type="button" class="btn-primary" (click)="openFix({ date: today, kind: 'missed-out' })" data-testid="open-fix">Fix a punch</button>
-    </header>
 
-    <div class="mb-4 flex items-center justify-between gap-3">
-      <button type="button" class="btn-quiet" [attr.aria-label]="'Show ' + formatMonth(previousMonth())" (click)="month.set(previousMonth())" data-testid="previous-month">
-        ‹ <span class="hidden sm:inline">{{ formatMonth(previousMonth()) }}</span>
-      </button>
-      <h2 class="font-display text-xl whitespace-nowrap" aria-live="polite" data-testid="month-label">{{ formatMonth(month()) }}</h2>
-      <button type="button" class="btn-quiet" [class.invisible]="isCurrentMonth()" [disabled]="isCurrentMonth()" [attr.aria-label]="'Show ' + formatMonth(nextMonth())" (click)="month.set(nextMonth())" data-testid="next-month">
-        <span class="hidden sm:inline">{{ formatMonth(nextMonth()) }}</span> ›
-      </button>
-    </div>
-
-    @if (attendance.error()) {
-      <p class="text-sm text-danger">This month's attendance didn't load. Refresh the page to try again.</p>
-    } @else {
-      <div class="@container mb-4">
-        <dl class="grid grid-cols-2 gap-3 @md:grid-cols-3 @4xl:grid-cols-6" [attr.aria-busy]="attendance.isLoading()">
-          @for (stat of summary(); track stat.label) {
-            <div class="rounded-2xl bg-card px-4 py-3 shadow-lift">
-              <dt class="eyebrow">{{ stat.label }}</dt>
-              <dd class="mt-1 text-2xl font-medium whitespace-nowrap" [attr.data-testid]="'stat-' + stat.key">{{ stat.value }}</dd>
+      @if (attendance.error()) {
+        <p class="attendance-off">This month's attendance didn't load. Refresh the page to try again.</p>
+      } @else {
+        <app-summary-row [summary]="summary()" />
+        <section class="card full-table">
+          <div class="card-heading">
+            <div>
+              <span class="eyebrow">{{ monthLabel() }}</span>
+              <h2>Attendance log</h2>
             </div>
+            <app-month-picker [(month)]="month" [latest]="currentMonth" />
+          </div>
+          @if (attendance.isLoading() && rows().length === 0) {
+            <app-list-skeleton [count]="5" />
+          } @else {
+            <app-attendance-table [rows]="rows()" />
           }
-        </dl>
-      </div>
-      <app-attendance-days [days]="days()" (fix)="openFix($event)" />
-    }
+        </section>
+      }
 
-    <section class="mt-10" aria-labelledby="fixes-heading">
-      <h2 id="fixes-heading" class="eyebrow mb-3">Punch fixes you asked for</h2>
       @if (corrections.error()) {
-        <p class="text-sm text-danger">These didn't load. Refresh the page to try again.</p>
+        <p class="attendance-off">Your punch fixes didn't load. Refresh the page to try again.</p>
       } @else {
         <app-correction-list [corrections]="correctionList()" />
       }
-    </section>
+
+      <app-device-note [location]="session.user()?.workLocation ?? ''" />
+    </div>
 
     <app-dialog heading="Fix a punch" [(isOpen)]="isFixing">
-      <app-correction-form [date]="fixing().date" [kind]="fixing().kind" (raised)="onRaised()" />
+      @if (wasRaised()) {
+        <app-success-state heading="Fix requested" body="Your manager has been told. You'll see the decision here and in your notifications." (done)="closeFix()" />
+      } @else {
+        <app-correction-form [date]="today" (raised)="onRaised()" (cancelled)="closeFix()" />
+      }
     </app-dialog>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AttendancePage {
+  protected readonly session = inject(Session);
   private readonly api = inject(AttendanceApi);
 
   protected readonly today = maldivesToday();
-  protected readonly month = signal(monthOf(this.today));
-  protected readonly previousMonth = computed(() => addMonths(this.month(), -1));
-  protected readonly nextMonth = computed(() => addMonths(this.month(), 1));
-  protected readonly isCurrentMonth = computed(() => this.month() === monthOf(this.today));
+  protected readonly currentMonth = monthOf(this.today);
+  protected readonly month = signal(this.currentMonth);
+  protected readonly monthLabel = computed(() => formatMonth(this.month()).toUpperCase());
 
   protected readonly attendance = this.api.month(this.month);
   protected readonly corrections = this.api.corrections();
   protected readonly correctionList = computed(() => valueOr(this.corrections, []));
 
-  protected readonly days = computed(() =>
-    valueOr(this.attendance, [])
-      .filter((day) => day.date <= this.today)
-      .sort((first, second) => second.date.localeCompare(first.date)),
+  private readonly days = computed(() => valueOr(this.attendance, []).filter(({ date }) => date <= this.today));
+  protected readonly summary = computed(() => summarise(this.days()));
+  protected readonly rows = computed(() =>
+    this.days()
+      .filter(({ status }) => status !== 'weekend')
+      .sort((first, second) => second.date.localeCompare(first.date))
+      .map((day) => toAttendanceRow(day, this.today)),
   );
 
-  protected readonly summary = computed(() => {
-    const days = this.days();
-    const count = (statuses: AttendanceStatus[]) => String(days.filter((day) => statuses.includes(day.status)).length);
-    const total = (pick: (day: AttendanceDay) => number) => formatDuration(days.reduce((sum, day) => sum + pick(day), 0));
-    return [
-      { key: 'on-time', label: 'On time', value: count(['present']) },
-      { key: 'late', label: 'Late', value: count(['late', 'half-day']) },
-      { key: 'missed', label: 'Missed', value: count(['absent', 'incomplete']) },
-      { key: 'leave', label: 'On leave', value: count(['on-leave']) },
-      { key: 'worked', label: 'Worked', value: total((day) => day.workedMinutes) },
-      { key: 'overtime', label: 'Overtime', value: total((day) => day.overtimeMinutes) },
-    ];
-  });
-
   protected readonly isFixing = signal(false);
-  protected readonly fixing = signal<FixRequest>({ date: this.today, kind: 'missed-out' });
-  protected readonly formatMonth = formatMonth;
-
-  protected openFix(request: FixRequest) {
-    this.fixing.set(request);
-    this.isFixing.set(true);
-  }
+  protected readonly wasRaised = signal(false);
 
   protected onRaised() {
-    this.isFixing.set(false);
+    this.wasRaised.set(true);
     this.corrections.reload();
+  }
+
+  protected closeFix() {
+    this.isFixing.set(false);
+    this.wasRaised.set(false);
+  }
+
+  protected exportReport() {
+    downloadCsv(`attendance-${this.month()}.csv`, [
+      ['Date', 'Day', 'Punch in', 'Punch out', 'Work hours', 'Status'],
+      ...this.rows().map((row) => [row.date, row.day, row.punchIn, row.punchOut, row.hours, row.status.label]),
+    ]);
   }
 }

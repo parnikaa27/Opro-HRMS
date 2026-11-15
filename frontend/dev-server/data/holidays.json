@@ -16,5 +16,21 @@
   { "date": "2026-09-12", "name": "The Day Maldives Embraced Islam", "isTentative": true },
   { "date": "2026-11-03", "name": "Victory Day", "isTentative": false },
   { "date": "2026-11-11", "name": "Republic Day", "isTentative": false },
-  { "date": "2027-01-01", "name": "New Year's Day", "isTentative": false }
+  { "date": "2027-01-01", "name": "New Year's Day", "isTentative": false },
+  { "date": "2027-02-08", "name": "First day of Ramadan", "isTentative": true },
+  { "date": "2027-03-10", "name": "Eid al Fitr", "isTentative": true },
+  { "date": "2027-03-11", "name": "Eid al Fitr holiday", "isTentative": true },
+  { "date": "2027-03-12", "name": "Eid al Fitr holiday", "isTentative": true },
+  { "date": "2027-05-16", "name": "Hajj Day", "isTentative": true },
+  { "date": "2027-05-17", "name": "Eid al Adha", "isTentative": true },
+  { "date": "2027-05-18", "name": "Eid al Adha holiday", "isTentative": true },
+  { "date": "2027-05-19", "name": "Eid al Adha holiday", "isTentative": true },
+  { "date": "2027-05-20", "name": "Eid al Adha holiday", "isTentative": true },
+  { "date": "2027-06-06", "name": "Islamic New Year", "isTentative": true },
+  { "date": "2027-07-26", "name": "Independence Day", "isTentative": false },
+  { "date": "2027-08-04", "name": "National Day", "isTentative": true },
+  { "date": "2027-08-15", "name": "Mawlid al Nabi", "isTentative": true },
+  { "date": "2027-09-02", "name": "The Day Maldives Embraced Islam", "isTentative": true },
+  { "date": "2027-11-03", "name": "Victory Day", "isTentative": false },
+  { "date": "2027-11-11", "name": "Republic Day", "isTentative": false }
 ]

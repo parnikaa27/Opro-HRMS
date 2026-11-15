@@ -25,7 +25,8 @@ describe('Dialog', () => {
     expect(dialog.getAttribute('aria-label')).toBe('Apply for leave');
     expect(element.querySelector('[data-testid=content]')).not.toBeNull();
 
-    (element.querySelector('dialog header button') as HTMLButtonElement).click();
+    expect(element.querySelector('dialog .modal-close')?.getAttribute('aria-label')).toBe('Close');
+    (element.querySelector('dialog .modal-close') as HTMLButtonElement).click();
     await settle();
     expect(dialog.open).toBe(false);
     expect(fixture.componentInstance.isOpen()).toBe(false);

@@ -2,7 +2,7 @@ import { AttendanceStatus } from '../../models/attendance';
 import { Tone } from '../ui/status-pill';
 
 export const ATTENDANCE_STATUS: Record<AttendanceStatus, { label: string; tone: Tone }> = {
-  present: { label: 'On time', tone: 'ok' },
+  present: { label: 'Present', tone: 'ok' },
   late: { label: 'Late', tone: 'late' },
   'half-day': { label: 'Half day', tone: 'late' },
   absent: { label: 'Absent', tone: 'danger' },

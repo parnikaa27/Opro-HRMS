@@ -2,8 +2,10 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output, si
 import { FormField, form, hidden, maxLength, required, submit, validate } from '@angular/forms/signals';
 import { LeaveBalance, LeaveType } from '../../models/leave';
 import { FieldError } from '../../shared/ui/field-error';
+import { Icon } from '../../shared/ui/icon';
+import { ModalHeading } from '../../shared/ui/modal-heading';
 import { plural } from '../../shared/utils/text';
-import { LeaveApi } from './leave-api';
+import { CERTIFICATE_ACCEPT, certificateProblem, LeaveApi, needsCertificate } from './leave-api';
 import { countLeaveDays } from './leave-days';
 
 const MAX_REASON = 300;
@@ -18,74 +20,75 @@ interface LeaveDraft {
 
 @Component({
   selector: 'app-leave-form',
-  imports: [FormField, FieldError],
+  imports: [FormField, FieldError, Icon, ModalHeading],
   template: `
-    <form class="space-y-5" novalidate (submit)="save($event)">
-      <div>
-        <label class="field-label" for="leave-type">Type of leave</label>
-        <select id="leave-type" class="field-input" [formField]="leaveForm.type" data-testid="leave-type"
-          [attr.aria-invalid]="leaveForm.type().touched() && leaveForm.type().invalid()" aria-describedby="leave-type-error">
+    <app-modal-heading eyebrow="TIME OFF" heading="Request leave" intro="Submit your leave dates for manager approval." />
+    <form novalidate (submit)="save($event)">
+      <label>
+        Leave type
+        <select [formField]="leaveForm.type" data-testid="leave-type" [attr.aria-invalid]="leaveForm.type().touched() && leaveForm.type().invalid()" aria-describedby="leave-type-error">
           @for (type of offeredTypes(); track type.code) {
-            <option [value]="type.code">{{ type.name }}</option>
+            <option [value]="type.code" [selected]="type.code === draft().type">{{ type.name }}</option>
           }
         </select>
-        <app-field-error id="leave-type-error" [errors]="leaveForm.type().errors()" [isTouched]="leaveForm.type().touched()" />
-      </div>
+      </label>
+      <app-field-error id="leave-type-error" [errors]="leaveForm.type().errors()" [isTouched]="leaveForm.type().touched()" />
 
-      <div class="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label class="field-label" for="leave-from">First day</label>
-          <input id="leave-from" type="date" class="field-input" [formField]="leaveForm.from" data-testid="leave-from"
-            [attr.aria-invalid]="leaveForm.from().touched() && leaveForm.from().invalid()" aria-describedby="leave-from-error" />
-          <app-field-error id="leave-from-error" [errors]="leaveForm.from().errors()" [isTouched]="leaveForm.from().touched()" />
-        </div>
-        <div>
-          <label class="field-label" for="leave-to">Last day</label>
-          <input id="leave-to" type="date" class="field-input" [formField]="leaveForm.to" [min]="draft().from" data-testid="leave-to"
-            [attr.aria-invalid]="leaveForm.to().touched() && leaveForm.to().invalid()" aria-describedby="leave-to-error" />
-          <app-field-error id="leave-to-error" [errors]="leaveForm.to().errors()" [isTouched]="leaveForm.to().touched()" />
-        </div>
+      <div class="form-row">
+        <label>
+          From
+          <input type="date" [formField]="leaveForm.from" data-testid="leave-from" [attr.aria-invalid]="leaveForm.from().touched() && leaveForm.from().invalid()" aria-describedby="leave-from-error" />
+        </label>
+        <label>
+          To
+          <input type="date" [formField]="leaveForm.to" [min]="draft().from" data-testid="leave-to" [attr.aria-invalid]="leaveForm.to().touched() && leaveForm.to().invalid()" aria-describedby="leave-to-error" />
+        </label>
       </div>
+      <app-field-error id="leave-from-error" [errors]="leaveForm.from().errors()" [isTouched]="leaveForm.from().touched()" />
+      <app-field-error id="leave-to-error" [errors]="leaveForm.to().errors()" [isTouched]="leaveForm.to().touched()" />
 
       @if (!leaveForm.halfDay().hidden()) {
-        <div>
-          <label class="field-label" for="leave-half">How much of the day?</label>
-          <select id="leave-half" class="field-input" [formField]="leaveForm.halfDay" data-testid="leave-half">
+        <label>
+          How much of the day?
+          <select [formField]="leaveForm.halfDay" data-testid="leave-half">
             <option value="">The whole day</option>
             <option value="first">Morning only</option>
             <option value="second">Afternoon only</option>
           </select>
-        </div>
+        </label>
       }
 
-      <div>
-        <label class="field-label" for="leave-reason">Reason</label>
-        <textarea id="leave-reason" rows="3" class="field-input" [formField]="leaveForm.reason" placeholder="Going home for my sister's wedding" data-testid="leave-reason"
-          [attr.aria-invalid]="leaveForm.reason().touched() && leaveForm.reason().invalid()" aria-describedby="leave-reason-error"></textarea>
-        <app-field-error id="leave-reason-error" [errors]="leaveForm.reason().errors()" [isTouched]="leaveForm.reason().touched()" />
-      </div>
+      <label>
+        Reason
+        <textarea [formField]="leaveForm.reason" placeholder="Add a short note for your manager…" data-testid="leave-reason" [attr.aria-invalid]="leaveForm.reason().touched() && leaveForm.reason().invalid()" aria-describedby="leave-reason-error"></textarea>
+      </label>
+      <app-field-error id="leave-reason-error" [errors]="leaveForm.reason().errors()" [isTouched]="leaveForm.reason().touched()" />
 
-      <div class="rounded-xl bg-canvas px-4 py-3 text-sm" aria-live="polite" data-testid="leave-preview">
-        @if (days() > 0) {
-          That's <strong class="font-medium">{{ plural(days(), 'working day') }}</strong>.
-          @if (available() !== undefined) {
-            You'll have {{ remaining() }} left.
-          }
-        } @else {
-          Pick your dates and we'll count the working days. Weekends and public holidays don't count.
-        }
-        @if (needsCertificate()) {
-          <span class="mt-1 block text-soft">Sick leave longer than {{ plural(selectedType()?.documentRequiredAfterDays ?? 0, 'day') }} needs a medical certificate. Hand it to HR when you're back.</span>
-        }
+      <div class="form-summary" aria-live="polite" data-testid="leave-preview">
+        <app-icon name="calendar" [size]="19" />
+        <div>
+          <strong>{{ days() > 0 ? plural(days(), 'day') + ' requested' : 'Pick your dates' }}</strong>
+          <span>{{ summaryLine() }}</span>
+        </div>
       </div>
+      @if (needsCertificate()) {
+        <label>
+          Medical certificate, if you have it
+          <input type="file" [accept]="certificateAccept" (change)="pickCertificate($event)" data-testid="leave-certificate" aria-describedby="leave-certificate-note" />
+        </label>
+        <p class="modal-intro" id="leave-certificate-note">
+          {{ certificateProblem() ?? 'Sick leave longer than ' + plural(selectedType()?.documentRequiredAfterDays ?? 0, 'day') + ' needs one. Only you and HR can open it. No certificate yet? Add it later from your request history.' }}
+        </p>
+      }
 
       @if (submitFailed()) {
-        <p class="text-sm text-danger" role="alert">That didn't go through. Check your connection and try again.</p>
+        <p role="alert">That didn't go through. Check your connection and try again.</p>
       }
 
-      <div class="flex justify-end">
-        <button type="submit" class="btn-primary" [disabled]="leaveForm().submitting()" data-testid="leave-submit">
-          {{ leaveForm().submitting() ? 'Sending…' : 'Send to my manager' }}
+      <div class="modal-actions">
+        <button type="button" class="secondary-button" (click)="cancelled.emit()">Cancel</button>
+        <button type="submit" class="primary-button" [disabled]="leaveForm().submitting()" data-testid="leave-submit">
+          {{ leaveForm().submitting() ? 'Sending…' : 'Submit request' }} <app-icon name="arrow" [size]="16" />
         </button>
       </div>
     </form>
@@ -98,7 +101,9 @@ export class LeaveForm {
   readonly types = input.required<readonly LeaveType[]>();
   readonly balances = input.required<readonly LeaveBalance[]>();
   readonly holidays = input.required<ReadonlySet<string>>();
-  readonly applied = output();
+  // True when the request went in but its certificate is still missing.
+  readonly applied = output<boolean>();
+  readonly cancelled = output();
 
   protected readonly draft = signal<LeaveDraft>({ type: 'annual', from: '', to: '', halfDay: '', reason: '' });
   protected readonly submitFailed = signal(false);
@@ -119,11 +124,17 @@ export class LeaveForm {
     const balance = this.balances().find((entry) => entry.type === this.draft().type);
     return balance ? balance.entitled - balance.taken - balance.pending : undefined;
   });
-  protected readonly remaining = computed(() => plural((this.available() ?? 0) - this.days(), 'day'));
-  protected readonly needsCertificate = computed(() => {
-    const limit = this.selectedType()?.documentRequiredAfterDays;
-    return limit !== undefined && this.days() > limit;
+  protected readonly summaryLine = computed(() => {
+    const available = this.available();
+    if (this.days() === 0) {
+      return 'Weekends and public holidays don’t count.';
+    }
+    return available === undefined ? 'Unpaid, so it doesn’t use a balance.' : `${plural(available - this.days(), 'day')} will remain after approval`;
   });
+  protected readonly needsCertificate = computed(() => needsCertificate(this.selectedType(), this.days()));
+  protected readonly certificateAccept = CERTIFICATE_ACCEPT;
+  private readonly certificate = signal<File | undefined>(undefined);
+  protected readonly certificateProblem = signal<string | undefined>(undefined);
 
   protected readonly leaveForm = form(this.draft, (path) => {
     required(path.type, { message: 'Pick a type of leave.' });
@@ -152,14 +163,36 @@ export class LeaveForm {
 
   protected readonly plural = plural;
 
+  protected pickCertificate(event: Event) {
+    const file = event.target instanceof HTMLInputElement ? event.target.files?.[0] : undefined;
+    const problem = file && certificateProblem(file);
+    this.certificateProblem.set(problem);
+    this.certificate.set(problem ? undefined : file);
+  }
+
+  // The request is already in when this runs, so a failed upload doesn't undo it.
+  private async attach(id: string) {
+    const file = this.certificate();
+    if (!file) {
+      return false;
+    }
+    try {
+      await this.api.attachCertificate(id, file);
+      return true;
+    } catch (error) {
+      console.error('Attaching a certificate failed', error);
+      return false;
+    }
+  }
+
   protected async save(event: Event) {
     event.preventDefault();
     this.submitFailed.set(false);
     await submit(this.leaveForm, async () => {
       try {
         const { type, from, to, halfDay, reason } = this.draft();
-        await this.api.apply({ type, from, to, days: this.days(), reason: reason.trim(), ...(this.isHalfDay() && halfDay !== '' && { halfDay }) });
-        this.applied.emit();
+        const request = await this.api.apply({ type, from, to, days: this.days(), reason: reason.trim(), ...(this.isHalfDay() && halfDay !== '' && { halfDay }) });
+        this.applied.emit(this.needsCertificate() && !(await this.attach(request.id)));
       } catch (error) {
         console.error('Applying for leave failed', error);
         this.submitFailed.set(true);

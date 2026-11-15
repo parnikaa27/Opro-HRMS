@@ -1,20 +1,26 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { COMPANY } from '../config';
+import { Logo } from '../../shared/ui/logo';
 import { maldivesToday, yearOf } from '../../shared/utils/date-time';
 
 @Component({
   selector: 'app-site-footer',
+  imports: [Logo],
   template: `
-    <footer class="border-t border-line no-print">
-      <div class="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-sm text-soft sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-        <p>© {{ year }} {{ company.name }}, {{ company.address }}</p>
-        <p>
-          Questions about leave or your visa? Write to
-          <a [href]="'mailto:' + company.hrEmail" class="text-sea underline-offset-4 hover:underline">{{ company.hrEmail }}</a>
-        </p>
+    <footer class="no-print">
+      <div>
+        <app-logo />
+        <span>{{ company.tagline }}</span>
+      </div>
+      <p>© {{ year }} {{ company.legalName }} · {{ company.address }}</p>
+      <div>
+        <a [href]="company.privacyUrl">Privacy</a>
+        <a [href]="company.policiesUrl">HR policies</a>
+        <a [href]="'mailto:' + company.hrEmail">Support</a>
       </div>
     </footer>
   `,
+  host: { class: 'contents' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SiteFooter {

@@ -1,7 +1,52 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "mock-api", "runtimeExecutable": "npm", "runtimeArgs": ["--prefix", "frontend", "run", "mock"], "port": 4300 },
-    { "name": "frontend", "runtimeExecutable": "npm", "runtimeArgs": ["--prefix", "frontend", "start"], "port": 4200 }
+    {
+      "name": "mock-api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "mock"
+      ],
+      "port": 4300
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "start"
+      ],
+      "port": 4200
+    },
+    {
+      "name": "spring-api",
+      "runtimeExecutable": "backend/mvnw",
+      "runtimeArgs": [
+        "-f",
+        "backend/pom.xml",
+        "spring-boot:run",
+        "-Dspring-boot.run.profiles=dev"
+      ],
+      "port": 8080
+    },
+    {
+      "name": "frontend-on-spring",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "USE_MOCK_BACKEND=false",
+        "npm",
+        "--prefix",
+        "frontend",
+        "start",
+        "--",
+        "--port",
+        "4201"
+      ],
+      "port": 4201
+    }
   ]
 }

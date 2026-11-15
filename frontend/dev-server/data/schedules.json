@@ -1,0 +1,15 @@
+[
+  {
+    "id": "WS-1",
+    "effectiveFrom": "2024-01-01",
+    "shiftStart": "09:00",
+    "shiftEnd": "17:00",
+    "graceMinutes": 15,
+    "halfDayMinutes": 240,
+    "ramadanStart": "09:00",
+    "ramadanEnd": "14:00",
+    "reason": "Company hours since 2024",
+    "setBy": "OPR-0002",
+    "setOn": "2023-12-10"
+  }
+]

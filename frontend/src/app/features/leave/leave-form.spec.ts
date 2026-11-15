@@ -2,7 +2,7 @@ import { Component, signal } from '@angular/core';
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { LeaveBalance, LeaveType } from '../../models/leave';
-import { fill, setupHttp, settle, text } from '../../../testing/fixtures';
+import { fill, pdf, pickFile, setupHttp, settle, text } from '../../../testing/fixtures';
 import { LeaveForm } from './leave-form';
 
 const TYPES: LeaveType[] = [
@@ -18,13 +18,15 @@ const BALANCES: LeaveBalance[] = [
 
 @Component({
   imports: [LeaveForm],
-  template: `<app-leave-form [types]="types" [balances]="balances" [holidays]="holidays" (applied)="applied.set(true)" />`,
+  template: `<app-leave-form [types]="types" [balances]="balances" [holidays]="holidays" (applied)="applied.set(true); missing.set($event)" (cancelled)="cancelled.set(true)" />`,
 })
 class Host {
   types = TYPES;
   balances = BALANCES;
   holidays = new Set(['2026-12-01']);
   readonly applied = signal(false);
+  readonly missing = signal<boolean | undefined>(undefined);
+  readonly cancelled = signal(false);
 }
 
 describe('LeaveForm', () => {
@@ -90,9 +92,55 @@ describe('LeaveForm', () => {
     fill(root, 'leave-from', '2026-12-06');
     fill(root, 'leave-to', '2026-12-08');
 
-    const preview = text(root.querySelector('[data-testid=leave-preview]') as HTMLElement);
-    expect(preview).toContain("That's 3 working days . You'll have 27 days left.");
-    expect(preview).toContain('needs a medical certificate');
+    expect(text(root.querySelector('[data-testid=leave-preview]') as HTMLElement)).toBe('3 days requested 27 days will remain after approval');
+    expect(text(root)).toContain('Sick leave longer than 2 days needs one. Only you and HR can open it.');
+  });
+
+  it('turns away a certificate that isn’t a PDF, JPG or PNG under 5 MB', () => {
+    fill(root, 'leave-type', 'sick');
+    fill(root, 'leave-from', '2026-12-06');
+    fill(root, 'leave-to', '2026-12-08');
+
+    pickFile(root, 'leave-certificate', new File(['x'], 'notes.txt', { type: 'text/plain' }));
+    expect(text(root)).toContain('Attach a PDF, JPG or PNG under 5 MB.');
+    pickFile(root, 'leave-certificate', pdf('big.pdf', 6_000_000));
+    expect(text(root)).toContain('Attach a PDF, JPG or PNG under 5 MB.');
+  });
+
+  it('applies, then attaches the certificate to the new request', async () => {
+    fill(root, 'leave-type', 'sick');
+    fill(root, 'leave-from', '2026-12-06');
+    fill(root, 'leave-to', '2026-12-08');
+    fill(root, 'leave-reason', 'Dengue');
+    pickFile(root, 'leave-certificate', pdf());
+    await submitForm();
+
+    http.expectOne('/api/leave/requests').flush({ id: 'LR-9' });
+    await settle();
+    const upload = http.expectOne('/api/leave/requests/LR-9/certificate');
+    expect(upload.request.method).toBe('PUT');
+    expect(upload.request.body).toBeInstanceOf(File);
+    upload.flush({});
+    await settle();
+
+    expect(host.missing()).toBe(false);
+  });
+
+  it('still applies when the certificate fails or is missing, and says it is missing', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    fill(root, 'leave-type', 'sick');
+    fill(root, 'leave-from', '2026-12-06');
+    fill(root, 'leave-to', '2026-12-08');
+    fill(root, 'leave-reason', 'Dengue');
+    pickFile(root, 'leave-certificate', pdf());
+    await submitForm();
+
+    http.expectOne('/api/leave/requests').flush({ id: 'LR-9' });
+    await settle();
+    http.expectOne('/api/leave/requests/LR-9/certificate').flush('', { status: 500, statusText: 'Server Error' });
+    await settle();
+
+    expect(host.missing()).toBe(true);
   });
 
   it('offers half days only for a single day', () => {
@@ -121,6 +169,7 @@ describe('LeaveForm', () => {
     fill(root, 'leave-type', 'unpaid');
     fill(root, 'leave-from', '2026-12-06');
     fill(root, 'leave-to', '2026-12-17');
+    expect(text(root.querySelector('[data-testid=leave-preview]') as HTMLElement)).toBe('10 days requested Unpaid, so it doesn’t use a balance.');
     fill(root, 'leave-reason', 'Family emergency');
     await submitForm();
 
@@ -139,5 +188,13 @@ describe('LeaveForm', () => {
 
     expect(root.querySelector('[role=alert]')).not.toBeNull();
     expect(host.applied()).toBe(false);
+  });
+
+  it('hints at what counts before dates are picked, and can be cancelled', () => {
+    expect(text(root.querySelector('[data-testid=leave-preview]') as HTMLElement)).toBe('Pick your dates Weekends and public holidays don’t count.');
+
+    (root.querySelector('.secondary-button') as HTMLButtonElement).click();
+
+    expect(host.cancelled()).toBe(true);
   });
 });

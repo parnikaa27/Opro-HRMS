@@ -1,19 +1,21 @@
 import { NOW } from '../../../testing/fixtures';
 import {
   addDays,
+  formatBannerDate,
+  formatClock,
+  formatCompactDate,
+  formatHours,
   addMonths,
   datesBetween,
   daysUntil,
+  dayOfMonth,
   formatDayShort,
   formatMonth,
   formatDuration,
   formatFullDate,
-  formatLongDate,
   formatShortDate,
-  formatTime,
   maldivesHour,
   maldivesToday,
-  minuteOfDay,
   minutesWorkedSoFar,
   monthOf,
   weekdayOf,
@@ -29,10 +31,11 @@ describe('date and time helpers', () => {
   });
 
   it('formats times and dates the way people read them', () => {
-    expect(formatTime('2026-11-12T09:05:00+05:00')).toBe('09:05');
-    expect(minuteOfDay('2026-11-12T09:05:00+05:00')).toBe(545);
-    expect(formatLongDate('2026-11-12')).toBe('Thursday 12 November');
     expect(formatShortDate('2026-11-12')).toBe('12 Nov');
+    expect(formatClock('2026-11-12T13:05:00+05:00')).toBe('01:05 PM');
+    expect(formatBannerDate('2026-11-12')).toBe('Thursday, 12 November');
+    expect(formatCompactDate('2026-03-31')).toBe('31 Mar 2026');
+    expect(formatHours(65)).toBe('01h 05m');
     expect(formatFullDate('2027-01-10')).toBe('10 January 2027');
   });
 
@@ -74,6 +77,7 @@ describe('calendar helpers', () => {
     expect(formatMonth('2026-11')).toBe('November 2026');
     expect(formatDayShort('2026-11-12')).toBe('Thu 12 Nov');
     expect(weekdayOf('2026-11-13')).toBe(5);
+    expect(dayOfMonth('2026-11-03')).toBe(3);
     expect(yearOf('2026-11-12')).toBe(2026);
     expect(monthOf('2026-11-12')).toBe('2026-11');
   });

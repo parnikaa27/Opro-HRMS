@@ -18,6 +18,7 @@ export const employee = (overrides: Partial<Employee> = {}): Employee => ({
   bloodGroup: 'O-',
   nationality: 'Sri Lankan',
   workLocation: 'Hulhumalé site',
+  employmentType: 'Contract',
   managerId: 'OPR-0004',
   roles: ['EMPLOYEE'],
   emergencyContact: { name: 'Dilani Perera', relation: 'Spouse', phone: '+94 77 120 1018' },
@@ -68,3 +69,16 @@ export const click = (root: HTMLElement, testId: string) => {
   (root.querySelector(`[data-testid=${testId}]`) as HTMLElement).click();
   TestBed.tick();
 };
+
+export const byTestId = (root: HTMLElement, testId: string) => [...root.querySelectorAll<HTMLElement>(`[data-testid=${testId}]`)];
+export const texts = (root: HTMLElement, testId: string) => byTestId(root, testId).map((element) => text(element));
+
+// jsdom has no DataTransfer, so a picked file is set on the input directly.
+export const pickFile = (root: HTMLElement, testId: string, file: File) => {
+  const input = root.querySelector(`[data-testid=${testId}]`) as HTMLInputElement;
+  Object.defineProperty(input, 'files', { value: [file], configurable: true });
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+  TestBed.tick();
+};
+
+export const pdf = (name = 'certificate.pdf', size = 0) => new File([size ? new Uint8Array(size) : '%PDF-1.4'], name, { type: 'application/pdf' });
