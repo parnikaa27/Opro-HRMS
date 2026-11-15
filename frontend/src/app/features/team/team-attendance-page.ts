@@ -1,28 +1,26 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { AttendanceDay } from '../../models/attendance';
 import { Avatar } from '../../shared/ui/avatar';
 import { Icon } from '../../shared/ui/icon';
 import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { MonthPicker } from '../../shared/ui/month-picker';
 import { StatusPill } from '../../shared/ui/status-pill';
-import { ATTENDANCE_STATUS } from '../../shared/utils/attendance-status';
+import { statusToday } from '../../shared/utils/attendance-status';
 import { downloadCsv } from '../../shared/utils/csv';
 import { formatHours, formatMonth, maldivesToday, monthOf } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
-import { DeviceNote } from '../attendance/device-note';
 import { summarise } from '../attendance/attendance-summary';
 import { SummaryRow } from '../attendance/summary-row';
 import { TeamApi } from './team-api';
 
 @Component({
   selector: 'app-team-attendance-page',
-  imports: [Avatar, DeviceNote, Icon, ListSkeleton, MonthPicker, RouterLink, StatusPill, SummaryRow],
+  imports: [Avatar, Icon, ListSkeleton, MonthPicker, RouterLink, StatusPill, SummaryRow],
   template: `
     <div class="page-view">
       <div class="page-title">
         <div>
-          <span class="eyebrow">BIOMETRIC RECORDS</span>
+          <span class="eyebrow">ATTENDANCE RECORDS</span>
           <h1>Team attendance</h1>
           <p>Monitor attendance, work hours and anomalies across your team.</p>
         </div>
@@ -86,8 +84,6 @@ import { TeamApi } from './team-api';
           }
         </section>
       }
-
-      <app-device-note />
     </div>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -124,7 +120,7 @@ export class TeamAttendancePage {
       .sort((first, second) => first.name.localeCompare(second.name));
   });
 
-  protected readonly status = (day: AttendanceDay) => ATTENDANCE_STATUS[day.status];
+  protected readonly status = statusToday;
 
   protected exportReport() {
     downloadCsv(`team-attendance-${this.month()}.csv`, [

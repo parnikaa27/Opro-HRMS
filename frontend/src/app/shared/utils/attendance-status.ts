@@ -1,4 +1,4 @@
-import { AttendanceStatus } from '../../models/attendance';
+import { AttendanceDay, AttendanceStatus } from '../../models/attendance';
 import { Tone } from '../ui/status-pill';
 
 export const ATTENDANCE_STATUS: Record<AttendanceStatus, { label: string; tone: Tone }> = {
@@ -11,4 +11,10 @@ export const ATTENDANCE_STATUS: Record<AttendanceStatus, { label: string; tone: 
   'on-leave': { label: 'On leave', tone: 'leave' },
   holiday: { label: 'Holiday', tone: 'sea' },
   weekend: { label: 'Weekend', tone: 'neutral' },
+};
+
+// Someone's pill for today, saying "from home" when that's where they are. A declined home day is just absent.
+export const statusToday = (day: AttendanceDay | undefined) => {
+  const status = ATTENDANCE_STATUS[day?.status ?? 'not-in-yet'];
+  return day?.workMode === 'home' && day.homeStatus !== 'rejected' ? { ...status, label: `${status.label} · from home` } : status;
 };

@@ -27,14 +27,17 @@ public class AttendanceService {
     private final PunchRepository punches;
     private final WorkScheduleRepository schedules;
     private final DeviceRepository devices;
+    private final HomeDayRepository homeDays;
     private final Holidays holidays;
     private final LeaveCalendar leave;
     private final Clock clock;
 
-    AttendanceService(PunchRepository punches, WorkScheduleRepository schedules, DeviceRepository devices, Holidays holidays, LeaveCalendar leave, Clock clock) {
+    AttendanceService(PunchRepository punches, WorkScheduleRepository schedules, DeviceRepository devices, HomeDayRepository homeDays, Holidays holidays,
+            LeaveCalendar leave, Clock clock) {
         this.punches = punches;
         this.schedules = schedules;
         this.devices = devices;
+        this.homeDays = homeDays;
         this.holidays = holidays;
         this.leave = leave;
         this.clock = clock;
@@ -65,9 +68,11 @@ public class AttendanceService {
                 .stream()
                 .map(punch -> {
                     OffsetDateTime local = punch.getPunchedAt().atZoneSameInstant(zone).toOffsetDateTime();
-                    return new DayCalculator.DayPunch(local, deviceNames.get(punch.getDeviceId()), punch.isManual(), punch.isVoided());
+                    return new DayCalculator.DayPunch(local, placeOf(punch, deviceNames), punch.isManual(), punch.isVoided(), punch.getWorkMode());
                 })
                 .collect(Collectors.groupingBy(punch -> punch.at().toLocalDate()));
+        Map<LocalDate, String> homeStatus = homeDays.findByEmployeeIdAndWorkDateBetween(employee.getId(), from, to).stream()
+                .collect(Collectors.toMap(HomeDay::getWorkDate, HomeDay::getStatus));
         Set<LocalDate> holidayDates = holidays.datesBetween(from, to);
         Set<LocalDate> leaveDays = leave.approvedFullDays(employee.getId(), from, to);
         List<WorkSchedule> versions = schedules.findAll(Sort.by(Sort.Direction.DESC, "effectiveFrom"));
@@ -76,8 +81,16 @@ public class AttendanceService {
 
         return from.datesUntil(to.plusDays(1))
                 .map(day -> DayCalculator.work(employee.getId(), day, today, punchesByDay.getOrDefault(day, List.of()), rules.get(day),
-                        offDay(day, holidayDates, leaveDays)))
+                        offDay(day, holidayDates, leaveDays), homeStatus.get(day)))
                 .toList();
+    }
+
+    // Where a punch was made, as the log shows it: the office or "Home" for a portal punch, the device's name for an old one.
+    private static String placeOf(Punch punch, Map<String, String> deviceNames) {
+        if (punch.getWorkMode() == null) {
+            return deviceNames.get(punch.getDeviceId());
+        }
+        return PunchClock.HOME.equals(punch.getWorkMode()) ? "Home" : punch.getOffice();
     }
 
     // The version in force on a day: the newest one that started on or before it.

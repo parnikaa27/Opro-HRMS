@@ -38,11 +38,26 @@ describe('AttendancePage', () => {
 
   const render = async () => {
     const fixture = TestBed.createComponent(AttendancePage);
-    await respond(http, { '/api/attendance?month=2026-11': NOVEMBER, '/api/attendance/corrections': [], '/api/devices': [] });
+    await respond(http, { '/api/attendance?month=2026-11': NOVEMBER, '/api/attendance/corrections': [] });
     return fixture;
   };
 
   const metric = (root: HTMLElement, key: string) => text(root.querySelector(`[data-testid=metric-${key}]`) as HTMLElement);
+
+  it('punches from the log while today is on screen, and shows the new punch', async () => {
+    const fixture = TestBed.createComponent(AttendancePage);
+    const today = day('2026-11-12', { status: 'not-in-yet', punches: [] });
+    await respond(http, { '/api/attendance?month=2026-11': [...NOVEMBER, today], '/api/attendance/corrections': [] });
+    const root = fixture.nativeElement as HTMLElement;
+
+    click(root, 'punch-button');
+    click(root, 'punch-home');
+    await settle();
+    http.expectOne('/api/attendance/punch').flush({ ...today, workMode: 'home' });
+    await settle();
+
+    expect(http.match('/api/attendance?month=2026-11')).toHaveLength(1);
+  });
 
   it('sums up the month so far and lists working days, newest first', async () => {
     const root = (await render()).nativeElement as HTMLElement;

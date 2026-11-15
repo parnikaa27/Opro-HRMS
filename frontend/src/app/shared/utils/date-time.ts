@@ -9,7 +9,7 @@ const MONTH_LENGTH = 7;
 const DATE_LENGTH = 10;
 const TWO_DIGITS = 2;
 
-// Times come from the device in Maldives time. Date only strings ("2026-11-12") are read as UTC so they never shift a day.
+// Punch times are in Maldives time. Date only strings ("2026-11-12") are read as UTC so they never shift a day.
 const dayFormat = new Intl.DateTimeFormat('en-CA', { timeZone: MALDIVES_TIME_ZONE });
 const clockFormat = new Intl.DateTimeFormat('en-US', { timeZone: MALDIVES_TIME_ZONE, hour: '2-digit', minute: '2-digit', hour12: true });
 const weekdayFormat = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long' });

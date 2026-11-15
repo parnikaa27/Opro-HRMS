@@ -11,12 +11,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import mv.opro.hrms.attendance.AttendanceDay;
 import mv.opro.hrms.attendance.AttendanceService;
 import mv.opro.hrms.attendance.CorrectionRequest;
 import mv.opro.hrms.attendance.CorrectionResponse;
 import mv.opro.hrms.attendance.Corrections;
+import mv.opro.hrms.attendance.HomeDay;
+import mv.opro.hrms.attendance.HomeDayResponse;
+import mv.opro.hrms.attendance.HomeDays;
 import mv.opro.hrms.common.ApiException;
 import mv.opro.hrms.employee.Employee;
 import mv.opro.hrms.employee.EmployeeResponse;
@@ -54,10 +58,11 @@ class TeamController {
     private final AttendanceService attendance;
     private final LeaveService leave;
     private final Corrections corrections;
+    private final HomeDays homeDays;
     private final Photos photos;
 
     TeamController(TeamAccess access, CurrentUser currentUser, People people, VisaRepository visas, AttendanceService attendance, LeaveService leave,
-            Corrections corrections, Photos photos) {
+            Corrections corrections, HomeDays homeDays, Photos photos) {
         this.access = access;
         this.currentUser = currentUser;
         this.people = people;
@@ -65,6 +70,7 @@ class TeamController {
         this.attendance = attendance;
         this.leave = leave;
         this.corrections = corrections;
+        this.homeDays = homeDays;
         this.photos = photos;
     }
 
@@ -117,6 +123,21 @@ class TeamController {
         Map<String, String> names = namesOf(access.reportsOf(me));
         CorrectionRequest decided = corrections.decide(me, id, names.keySet(), new Corrections.Decision(body.decision(), body.note()));
         return CorrectionResponse.of(decided, names.get(decided.getEmployeeId()));
+    }
+
+    @GetMapping("/api/team/home-days")
+    List<HomeDayResponse> homeDays(@RequestParam(required = false) String status) {
+        Map<String, String> names = namesOf(access.reportsOf(currentUser.get()));
+        return homeDays.of(names.keySet(), status).stream().map(day -> HomeDayResponse.of(day, names)).toList();
+    }
+
+    @PostMapping("/api/team/home-days/{id}/decision")
+    HomeDayResponse decideHomeDay(@PathVariable String id, @Valid @RequestBody DecisionBody body) {
+        Employee me = currentUser.get();
+        Map<String, String> names = namesOf(access.reportsOf(me));
+        HomeDay decided = homeDays.decide(me, id, Set.copyOf(names.keySet()), new Corrections.Decision(body.decision(), body.note()));
+        names.put(me.getId(), me.getFullName());
+        return HomeDayResponse.of(decided, names);
     }
 
     private EmployeeResponse profile(Employee employee) {

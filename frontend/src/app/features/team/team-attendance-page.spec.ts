@@ -31,7 +31,7 @@ describe('TeamAttendancePage', () => {
 
   const render = async () => {
     const fixture = TestBed.createComponent(TeamAttendancePage);
-    await respond(http, { '/api/team/attendance?month=2026-11': NOVEMBER, '/api/devices': [] });
+    await respond(http, { '/api/team/attendance?month=2026-11': NOVEMBER });
     return fixture.nativeElement as HTMLElement;
   };
 

@@ -5,6 +5,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 // One day as the portal shows it. Field names match the frontend's AttendanceDay.
+// workMode is office or home for days punched from the portal; homeStatus is the manager's decision on a home day.
 public record AttendanceDay(
         String employeeId,
         String employeeName,
@@ -17,12 +18,14 @@ public record AttendanceDay(
         long overtimeMinutes,
         OffsetDateTime expectedOut,
         Long scheduledMinutes,
-        boolean isCorrected) {
+        boolean isCorrected,
+        String workMode,
+        String homeStatus) {
 
     public record PunchView(OffsetDateTime at, String direction, String device) {}
 
     public AttendanceDay named(String name) {
         return new AttendanceDay(employeeId, name, date, status, punches, firstIn, lastOut, workedMinutes, overtimeMinutes, expectedOut,
-                scheduledMinutes, isCorrected);
+                scheduledMinutes, isCorrected, workMode, homeStatus);
     }
 }

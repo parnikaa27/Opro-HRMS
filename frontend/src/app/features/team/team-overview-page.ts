@@ -9,7 +9,7 @@ import { Dialog } from '../../shared/ui/dialog';
 import { Icon } from '../../shared/ui/icon';
 import { StatusPill } from '../../shared/ui/status-pill';
 import { WelcomeBanner } from '../../shared/ui/welcome-banner';
-import { ATTENDANCE_STATUS } from '../../shared/utils/attendance-status';
+import { statusToday } from '../../shared/utils/attendance-status';
 import { downloadCsv } from '../../shared/utils/csv';
 import { addDays, addMonths, datesBetween, formatBannerDate, formatClock, formatShortDate, maldivesHour, maldivesToday, monthOf, weekdayOf } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
@@ -258,7 +258,7 @@ export class TeamOverviewPage {
 
   protected readonly visaAlerts = computed(() => visaAlertsFor(this.members(), this.today));
 
-  protected readonly info = (member: TeamMember) => ATTENDANCE_STATUS[statusOf(member)];
+  protected readonly info = (member: TeamMember) => statusToday(member.today);
   protected readonly timeNote = ({ today }: TeamMember) => {
     if (today?.status === 'on-leave') {
       return 'All day';

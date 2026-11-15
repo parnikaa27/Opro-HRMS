@@ -59,7 +59,8 @@ public class Notification {
         HOLIDAY("holiday"),
         ANNOUNCEMENT("announcement"),
         RECORD("record"),
-        SCHEDULE("schedule");
+        SCHEDULE("schedule"),
+        HOME("home");
 
         private final String value;
 

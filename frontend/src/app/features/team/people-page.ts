@@ -4,7 +4,7 @@ import { Avatar } from '../../shared/ui/avatar';
 import { Icon } from '../../shared/ui/icon';
 import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { StatusPill } from '../../shared/ui/status-pill';
-import { ATTENDANCE_STATUS } from '../../shared/utils/attendance-status';
+import { statusToday } from '../../shared/utils/attendance-status';
 import { formatCompactDate, maldivesToday } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { HrApi } from '../hr/hr-api';
@@ -79,5 +79,5 @@ export class PeoplePage {
   });
 
   protected readonly statusOf = (person: TeamMember) =>
-    person.lastDay && person.lastDay < this.today ? { label: `Left ${formatCompactDate(person.lastDay)}`, tone: 'neutral' as const } : ATTENDANCE_STATUS[person.today?.status ?? 'not-in-yet'];
+    person.lastDay && person.lastDay < this.today ? { label: `Left ${formatCompactDate(person.lastDay)}`, tone: 'neutral' as const } : statusToday(person.today);
 }

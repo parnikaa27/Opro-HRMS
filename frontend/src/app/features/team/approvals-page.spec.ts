@@ -1,6 +1,6 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { CorrectionRequest } from '../../models/attendance';
+import { CorrectionRequest, HomeDay } from '../../models/attendance';
 import { LeaveRequest } from '../../models/leave';
 import { click, fail, fill, NOW, respond, setupHttp, settle, text, texts } from '../../../testing/fixtures';
 import { ApprovalsPage } from './approvals-page';
@@ -19,6 +19,7 @@ const LEAVE = [
   leave({ id: 'LR-4', employeeId: 'G', employeeName: 'Grace Mendoza', status: 'rejected', decidedOn: '2026-11-07', decisionNote: 'Audit week' }),
 ];
 const FIXES = [fix({ id: 'AC-1', employeeName: 'Rahim Uddin' }), fix({ id: 'AC-2', status: 'approved' })];
+const HOME_DAYS: HomeDay[] = [{ id: 'HW-1', employeeId: 'K', employeeName: 'Kasun Perera', date: '2026-11-12', status: 'pending' }];
 
 describe('ApprovalsPage', () => {
   let http: HttpTestingController;
@@ -34,9 +35,14 @@ describe('ApprovalsPage', () => {
     vi.restoreAllMocks();
   });
 
-  const render = async (leaveRequests: LeaveRequest[] = LEAVE, fixes: CorrectionRequest[] = FIXES) => {
+  const render = async (leaveRequests: LeaveRequest[] = LEAVE, fixes: CorrectionRequest[] = FIXES, homeDays: HomeDay[] = HOME_DAYS) => {
     const fixture = TestBed.createComponent(ApprovalsPage);
-    await respond(http, { '/api/team/leave-requests': leaveRequests, '/api/team/corrections': fixes, '/api/leave/types': [{ code: 'annual', name: 'Annual leave', allowsHalfDay: true }] });
+    await respond(http, {
+      '/api/team/leave-requests': leaveRequests,
+      '/api/team/corrections': fixes,
+      '/api/team/home-days?status=pending': homeDays,
+      '/api/leave/types': [{ code: 'annual', name: 'Annual leave', allowsHalfDay: true }],
+    });
     return fixture.nativeElement as HTMLElement;
   };
 
@@ -46,7 +52,7 @@ describe('ApprovalsPage', () => {
   it('shows waiting leave oldest first with counts on the tabs and overlap warnings', async () => {
     const root = await render();
 
-    expect([...root.querySelectorAll('[role=tab]')].map((tab) => text(tab))).toEqual(['Pending 2', 'Approved', 'Declined', 'Punch fixes 1']);
+    expect([...root.querySelectorAll('[role=tab]')].map((tab) => text(tab))).toEqual(['Pending 2', 'Approved', 'Declined', 'Punch fixes 1', 'Home working 1']);
     expect(texts(root, 'leave-row').map((item) => item.split(' Decline')[0])).toEqual([
       'PN Priya Nair Annual leave · Submitted yesterday Also off then: Mariyam Nisha (pending), Ahmed Zahir DATES 20 Dec to 24 December 2026 DURATION 3 days REASON Trip',
       'MN Mariyam Nisha Annual leave · Submitted today Also off then: Priya Nair (pending) DATES 22 December 2026 DURATION 1 day REASON Trip',
@@ -125,11 +131,41 @@ describe('ApprovalsPage', () => {
   });
 
   it('says when each tab is empty', async () => {
-    const root = await render([], []);
+    const root = await render([], [], []);
 
     expect(text(root)).toContain('Nothing waiting for you.');
     click(root, 'tab-fixes');
     expect(text(root)).toContain('No punch fixes waiting for you.');
+    click(root, 'tab-home');
+    expect(text(root)).toContain('Nobody is waiting for a home working decision.');
+  });
+
+  it('approves a day worked from home in one click', async () => {
+    const root = await render();
+    click(root, 'tab-home');
+    expect(texts(root, 'pending-home-day')[0]).toContain('Kasun Perera Worked from home DATE Thu 12 Nov IF DECLINED The day counts as absent');
+
+    click(root, 'approve');
+    const request = http.expectOne('/api/team/home-days/HW-1/decision');
+    expect(request.request.body).toEqual({ decision: 'approved' });
+    request.flush({});
+    await settle();
+    expect(http.match('/api/team/home-days?status=pending')).toHaveLength(1);
+  });
+
+  it('asks why before declining a day worked from home', async () => {
+    const root = await render();
+    click(root, 'tab-home');
+
+    click(root, 'reject');
+    expect((root.querySelector('[data-testid=decision-note]') as HTMLTextAreaElement).placeholder).toBe('We had the site visit today, so I needed you in the office.');
+    fill(root, 'decision-note', 'Site visit today');
+    click(root, 'confirm-reject');
+
+    const request = http.expectOne('/api/team/home-days/HW-1/decision');
+    expect(request.request.body).toEqual({ decision: 'rejected', note: 'Site visit today' });
+    request.flush({});
+    await settle();
   });
 
   it('tells a manager a certificate is attached, but only HR gets to open it', async () => {

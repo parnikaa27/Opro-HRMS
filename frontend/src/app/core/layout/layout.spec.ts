@@ -54,9 +54,10 @@ describe('app shell', () => {
     const page = await render('/team/approvals', {
       '/api/team/leave-requests?status=pending': [{ id: 'LR-1' }, { id: 'LR-2' }],
       '/api/team/corrections?status=pending': [{ id: 'AC-1' }],
+      '/api/team/home-days?status=pending': [{ id: 'HW-1' }],
     });
 
-    expect(navLabels(page)).toEqual(['Overview', 'People', 'Attendance', 'Leave 3', 'Calendar']);
+    expect(navLabels(page)).toEqual(['Overview', 'People', 'Attendance', 'Leave 4', 'Calendar']);
     expect(page.querySelector('[data-testid=view-team]')?.getAttribute('aria-pressed')).toBe('true');
     expect(text(page.querySelector('.profile-button small') as HTMLElement)).toBe('Operations Manager');
   });

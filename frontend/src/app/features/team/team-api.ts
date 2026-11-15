@@ -1,7 +1,7 @@
 import { HttpClient, httpResource, HttpResourceRequest } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { AttendanceDay, CorrectionRequest } from '../../models/attendance';
+import { AttendanceDay, CorrectionRequest, HomeDay } from '../../models/attendance';
 import { Employee } from '../../models/employee';
 import { LeaveBalance, LeaveRequest } from '../../models/leave';
 
@@ -47,9 +47,12 @@ export class TeamApi {
     httpResource<LeaveRequest[]>(listRequest('leave-requests', options), { defaultValue: [] });
   corrections = (options: ListOptions = {}) =>
     httpResource<CorrectionRequest[]>(listRequest('corrections', options), { defaultValue: [] });
+  homeDays = (options: ListOptions = {}) => httpResource<HomeDay[]>(listRequest('home-days', options), { defaultValue: [] });
 
   decideLeave = (id: string, decision: Decision, scope: RequestScope = 'team') =>
     firstValueFrom(this.http.post<LeaveRequest>(`/api/${scope}/leave-requests/${encodeURIComponent(id)}/decision`, decision));
   decideCorrection = (id: string, decision: Decision, scope: RequestScope = 'team') =>
     firstValueFrom(this.http.post<CorrectionRequest>(`/api/${scope}/corrections/${encodeURIComponent(id)}/decision`, decision));
+  decideHomeDay = (id: string, decision: Decision, scope: RequestScope = 'team') =>
+    firstValueFrom(this.http.post<HomeDay>(`/api/${scope}/home-days/${encodeURIComponent(id)}/decision`, decision));
 }

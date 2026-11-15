@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { Session } from '../../core/session';
 import { Dialog } from '../../shared/ui/dialog';
 import { Icon } from '../../shared/ui/icon';
 import { ListSkeleton } from '../../shared/ui/list-skeleton';
@@ -14,23 +13,26 @@ import { summarise } from './attendance-summary';
 import { AttendanceTable } from './attendance-table';
 import { CorrectionForm } from './correction-form';
 import { CorrectionList } from './correction-list';
-import { DeviceNote } from './device-note';
+import { PunchButton } from './punch-button';
 import { SummaryRow } from './summary-row';
 
 @Component({
   selector: 'app-attendance-page',
-  imports: [AttendanceTable, CorrectionForm, CorrectionList, DeviceNote, Dialog, Icon, ListSkeleton, MonthPicker, SuccessState, SummaryRow],
+  imports: [AttendanceTable, CorrectionForm, CorrectionList, Dialog, Icon, ListSkeleton, MonthPicker, PunchButton, SuccessState, SummaryRow],
   template: `
     <div class="page-view">
       <div class="page-title">
         <div>
-          <span class="eyebrow">BIOMETRIC RECORDS</span>
+          <span class="eyebrow">ATTENDANCE RECORDS</span>
           <h1>My attendance</h1>
           <p>Review your punches, work hours and monthly attendance record.</p>
         </div>
         <div class="title-actions">
           <button type="button" class="secondary-button" (click)="isFixing.set(true)" data-testid="open-fix">Fix a punch</button>
           <button type="button" class="download-button" (click)="exportReport()" data-testid="export-report"><app-icon name="download" [size]="17" /> Export report</button>
+          @if (todayRecord(); as day) {
+            <app-punch-button [day]="day" (punched)="todayPunched()" />
+          }
         </div>
       </div>
 
@@ -59,8 +61,6 @@ import { SummaryRow } from './summary-row';
       } @else {
         <app-correction-list [corrections]="correctionList()" />
       }
-
-      <app-device-note [location]="session.user()?.workLocation ?? ''" />
     </div>
 
     <app-dialog heading="Fix a punch" [(isOpen)]="isFixing">
@@ -74,7 +74,6 @@ import { SummaryRow } from './summary-row';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AttendancePage {
-  protected readonly session = inject(Session);
   private readonly api = inject(AttendanceApi);
 
   protected readonly today = maldivesToday();
@@ -87,6 +86,8 @@ export class AttendancePage {
   protected readonly correctionList = computed(() => valueOr(this.corrections, []));
 
   private readonly days = computed(() => valueOr(this.attendance, []).filter(({ date }) => date <= this.today));
+  // Punching lives with this month's log, so it only shows while today is on screen.
+  protected readonly todayRecord = computed(() => this.days().find(({ date }) => date === this.today));
   protected readonly summary = computed(() => summarise(this.days()));
   protected readonly rows = computed(() =>
     this.days()
@@ -97,6 +98,10 @@ export class AttendancePage {
 
   protected readonly isFixing = signal(false);
   protected readonly wasRaised = signal(false);
+
+  protected todayPunched() {
+    this.attendance.reload();
+  }
 
   protected onRaised() {
     this.wasRaised.set(true);

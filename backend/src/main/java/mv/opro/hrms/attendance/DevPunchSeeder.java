@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.IntStream;
+import mv.opro.hrms.common.Ids;
 import mv.opro.hrms.common.WorkWeek;
 import mv.opro.hrms.employee.Employee;
 import mv.opro.hrms.employee.People;
@@ -21,9 +22,9 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-// Development only. No biometric device is connected yet, so this fills the last few weeks with believable punches,
+// Development only. Fills the last few weeks with believable portal punches, mostly from the office and some from home,
 // the same way the mock does, and tops them up each time Spring starts. The same person and date always give the
-// same punches. Real devices replace this entirely.
+// same punches.
 @Profile("dev")
 @ConditionalOnProperty(name = "opro.dev.generate-punches", havingValue = "true")
 @Component
@@ -35,20 +36,24 @@ class DevPunchSeeder implements ApplicationRunner {
     private static final double LATE = 0.2;
     private static final double HALF_DAY = 0.24;
     private static final double LUNCH = 0.5;
+    private static final double FROM_HOME = 0.08;
+    private static final int MAX_DISTANCE_METRES = 180;
     private static final int MINUTES_PER_HOUR = 60;
 
     private final PunchRepository punches;
-    private final DeviceRepository devices;
+    private final HomeDayRepository homeDays;
+    private final PunchSettings settings;
     private final WorkScheduleRepository schedules;
     private final People people;
     private final Holidays holidays;
     private final LeaveCalendar leave;
     private final Clock clock;
 
-    DevPunchSeeder(PunchRepository punches, DeviceRepository devices, WorkScheduleRepository schedules, People people, Holidays holidays,
-            LeaveCalendar leave, Clock clock) {
+    DevPunchSeeder(PunchRepository punches, HomeDayRepository homeDays, PunchSettings settings, WorkScheduleRepository schedules, People people,
+            Holidays holidays, LeaveCalendar leave, Clock clock) {
         this.punches = punches;
-        this.devices = devices;
+        this.homeDays = homeDays;
+        this.settings = settings;
         this.schedules = schedules;
         this.people = people;
         this.holidays = holidays;
@@ -68,17 +73,35 @@ class DevPunchSeeder implements ApplicationRunner {
 
         for (Employee employee : people.active()) {
             Set<LocalDate> leaveDays = leave.approvedFullDays(employee.getId(), first, today);
-            String device = employee.getWorkLocation().equals("Hulhumalé site") ? "OPR-HMH-01" : "OPR-MLE-01";
+            String office = settings.offices().stream().map(PunchSettings.Office::name).filter(employee.getWorkLocation()::equals).findFirst()
+                    .orElse(settings.offices().getFirst().name());
             first.datesUntil(today.plusDays(1))
                     .filter(day -> !day.isBefore(employee.getJoinedOn()))
                     .filter(day -> !WorkWeek.isWeekend(day) && !holidayDates.contains(day) && !leaveDays.contains(day))
                     .filter(day -> !punches.existsByEmployeeIdAndPunchedAtGreaterThanEqualAndPunchedAtLessThan(employee.getId(),
                             day.atStartOfDay(zone).toOffsetDateTime(), day.plusDays(1).atStartOfDay(zone).toOffsetDateTime()))
-                    .forEach(day -> punchesFor(employee.getId(), day, rules, day.equals(today) ? now.toLocalTime() : LocalTime.MAX).stream()
-                            .map(minute -> Punch.fromDevice(employee.getId(), day.atStartOfDay(zone).plusMinutes(minute).toOffsetDateTime(), device))
-                            .forEach(punches::save));
+                    .forEach(day -> seedDay(employee, day, office, rules, day.equals(today) ? now.toLocalTime() : LocalTime.MAX));
         }
-        devices.findAll().forEach(each -> each.markSynced(now.minusMinutes(3)));
+    }
+
+    private void seedDay(Employee employee, LocalDate day, String office, WorkSchedule rules, LocalTime until) {
+        ZoneId zone = clock.getZone();
+        String seed = employee.getId() + day;
+        List<Integer> minutes = punchesFor(employee.getId(), day, rules, until);
+        boolean isHome = !minutes.isEmpty() && seeded(seed + "home") < FROM_HOME;
+        minutes.stream()
+                .map(minute -> day.atStartOfDay(zone).plusMinutes(minute).toOffsetDateTime())
+                .map(at -> isHome ? Punch.fromApp(employee.getId(), at, PunchClock.HOME, null, null)
+                        : Punch.fromApp(employee.getId(), at, PunchClock.OFFICE, office, between(seed + at, 5, MAX_DISTANCE_METRES)))
+                .forEach(punches::save);
+        if (isHome) {
+            HomeDay homeDay = new HomeDay(Ids.next("HW"), employee.getId(), day);
+            // Earlier days were approved by their manager. Today's still waits.
+            if (until == LocalTime.MAX) {
+                homeDay.decide("approved", employee.getManagerId(), day, null);
+            }
+            homeDays.save(homeDay);
+        }
     }
 
     private static List<Integer> punchesFor(String employeeId, LocalDate day, WorkSchedule rules, LocalTime until) {

@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.IntStream;
 
 // Works out one day from its punches. Pure, so every rule can be tested without a database.
@@ -20,12 +21,14 @@ final class DayCalculator {
         }
     }
 
-    // A punch as stored: its time in Maldives time, the device it came from, and whether it was changed by hand.
-    record DayPunch(OffsetDateTime at, String device, boolean manual, boolean voided) {}
+    // A punch as stored: its time in Maldives time, where it came from, whether it was changed by hand,
+    // and office or home for a punch from the portal.
+    record DayPunch(OffsetDateTime at, String device, boolean manual, boolean voided, String mode) {}
 
     private DayCalculator() {}
 
-    static AttendanceDay work(String employeeId, LocalDate date, LocalDate today, List<DayPunch> punches, Rules rules, OffDay offDay) {
+    // homeStatus is the manager's decision on a day worked from home, or null.
+    static AttendanceDay work(String employeeId, LocalDate date, LocalDate today, List<DayPunch> punches, Rules rules, OffDay offDay, String homeStatus) {
         boolean isCorrected = punches.stream().anyMatch(punch -> punch.manual() || punch.voided());
         // Breaks mean many punches a day. Voided ones are ignored, the rest pair up in order: in, out, in, out.
         List<DayPunch> live = punches.stream().filter(punch -> !punch.voided()).sorted((first, second) -> first.at().compareTo(second.at())).toList();
@@ -34,7 +37,13 @@ final class DayCalculator {
                 .toList();
 
         if (live.isEmpty()) {
-            return new AttendanceDay(employeeId, null, date, emptyStatus(date, today, offDay), views, null, null, 0, 0, null, null, isCorrected);
+            return new AttendanceDay(employeeId, null, date, emptyStatus(date, today, offDay), views, null, null, 0, 0, null, null, isCorrected, null, null);
+        }
+        String workMode = live.stream().map(DayPunch::mode).filter(Objects::nonNull).findFirst().orElse(null);
+        String home = "home".equals(workMode) ? homeStatus : null;
+        // A declined home day counts as absent, whatever was punched.
+        if ("rejected".equals(home)) {
+            return new AttendanceDay(employeeId, null, date, "absent", views, null, null, 0, 0, null, null, isCorrected, workMode, home);
         }
 
         boolean isComplete = live.size() % 2 == 0;
@@ -54,7 +63,7 @@ final class DayCalculator {
             status = isLate ? "late" : "present";
         }
         return new AttendanceDay(employeeId, null, date, status, views, firstIn, lastOut, worked, overtime,
-                firstIn.plusMinutes(rules.shiftMinutes()), rules.shiftMinutes(), isCorrected);
+                firstIn.plusMinutes(rules.shiftMinutes()), rules.shiftMinutes(), isCorrected, workMode, home);
     }
 
     private static String emptyStatus(LocalDate date, LocalDate today, OffDay offDay) {

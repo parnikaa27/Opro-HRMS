@@ -19,11 +19,11 @@ class DayCalculatorTest {
     private static final Rules RULES = new Rules(LocalTime.of(9, 0), LocalTime.of(17, 0), 15, 240);
 
     private static DayPunch at(String time) {
-        return new DayPunch(OffsetDateTime.of(DAY, LocalTime.parse(time), ZoneOffset.ofHours(5)), "Front desk", false, false);
+        return new DayPunch(OffsetDateTime.of(DAY, LocalTime.parse(time), ZoneOffset.ofHours(5)), "Front desk", false, false, null);
     }
 
     private static AttendanceDay work(List<DayPunch> punches) {
-        return DayCalculator.work("OPR-0018", DAY, TODAY, punches, RULES, OffDay.NONE);
+        return DayCalculator.work("OPR-0018", DAY, TODAY, punches, RULES, OffDay.NONE, null);
     }
 
     @Test
@@ -61,24 +61,24 @@ class DayCalculatorTest {
 
     @Test
     void stillInTheOfficeTodayIsPresentOrLate() {
-        DayPunch morning = new DayPunch(OffsetDateTime.of(TODAY, LocalTime.of(9, 40), ZoneOffset.ofHours(5)), "Front desk", false, false);
+        DayPunch morning = new DayPunch(OffsetDateTime.of(TODAY, LocalTime.of(9, 40), ZoneOffset.ofHours(5)), "Front desk", false, false, null);
 
-        assertThat(DayCalculator.work("OPR-0018", TODAY, TODAY, List.of(morning), RULES, OffDay.NONE).status()).isEqualTo("late");
+        assertThat(DayCalculator.work("OPR-0018", TODAY, TODAY, List.of(morning), RULES, OffDay.NONE, null).status()).isEqualTo("late");
     }
 
     @Test
     void daysWithoutPunchesSayWhy() {
-        assertThat(DayCalculator.work("E", DAY, TODAY, List.of(), RULES, OffDay.WEEKEND).status()).isEqualTo("weekend");
-        assertThat(DayCalculator.work("E", DAY, TODAY, List.of(), RULES, OffDay.HOLIDAY).status()).isEqualTo("holiday");
-        assertThat(DayCalculator.work("E", DAY, TODAY, List.of(), RULES, OffDay.ON_LEAVE).status()).isEqualTo("on-leave");
-        assertThat(DayCalculator.work("E", DAY, TODAY, List.of(), RULES, OffDay.NONE).status()).isEqualTo("absent");
-        assertThat(DayCalculator.work("E", TODAY, TODAY, List.of(), RULES, OffDay.NONE).status()).isEqualTo("not-in-yet");
+        assertThat(DayCalculator.work("E", DAY, TODAY, List.of(), RULES, OffDay.WEEKEND, null).status()).isEqualTo("weekend");
+        assertThat(DayCalculator.work("E", DAY, TODAY, List.of(), RULES, OffDay.HOLIDAY, null).status()).isEqualTo("holiday");
+        assertThat(DayCalculator.work("E", DAY, TODAY, List.of(), RULES, OffDay.ON_LEAVE, null).status()).isEqualTo("on-leave");
+        assertThat(DayCalculator.work("E", DAY, TODAY, List.of(), RULES, OffDay.NONE, null).status()).isEqualTo("absent");
+        assertThat(DayCalculator.work("E", TODAY, TODAY, List.of(), RULES, OffDay.NONE, null).status()).isEqualTo("not-in-yet");
     }
 
     @Test
     void voidedPunchesAreIgnoredAndTheDayIsMarkedCorrected() {
-        DayPunch wrong = new DayPunch(at("13:00").at(), "Front desk", false, true);
-        DayPunch added = new DayPunch(at("17:10").at(), null, true, false);
+        DayPunch wrong = new DayPunch(at("13:00").at(), "Front desk", false, true, null);
+        DayPunch added = new DayPunch(at("17:10").at(), null, true, false, null);
 
         AttendanceDay day = work(List.of(at("08:58"), wrong, added));
 
@@ -89,6 +89,41 @@ class DayCalculatorTest {
 
     @Test
     void punchesOnAWeekendStillCount() {
-        assertThat(DayCalculator.work("E", DAY, TODAY, List.of(at("10:00"), at("15:00")), RULES, OffDay.WEEKEND).status()).isEqualTo("late");
+        assertThat(DayCalculator.work("E", DAY, TODAY, List.of(at("10:00"), at("15:00")), RULES, OffDay.WEEKEND, null).status()).isEqualTo("late");
+    }
+
+    private static DayPunch fromHome(String time) {
+        return new DayPunch(OffsetDateTime.of(DAY, LocalTime.parse(time), ZoneOffset.ofHours(5)), "Home", false, false, "home");
+    }
+
+    @Test
+    void aHomeDayCountsWhileItWaitsForTheManager() {
+        AttendanceDay day = DayCalculator.work("E", DAY, TODAY, List.of(fromHome("08:58"), fromHome("17:05")), RULES, OffDay.NONE, "pending");
+
+        assertThat(day.status()).isEqualTo("present");
+        assertThat(day.workedMinutes()).isEqualTo(487);
+        assertThat(day.workMode()).isEqualTo("home");
+        assertThat(day.homeStatus()).isEqualTo("pending");
+    }
+
+    @Test
+    void aDeclinedHomeDayIsAnAbsenceButKeepsItsPunches() {
+        AttendanceDay day = DayCalculator.work("E", DAY, TODAY, List.of(fromHome("08:58"), fromHome("17:05")), RULES, OffDay.NONE, "rejected");
+
+        assertThat(day.status()).isEqualTo("absent");
+        assertThat(day.workedMinutes()).isZero();
+        assertThat(day.punches()).hasSize(2);
+        assertThat(day.homeStatus()).isEqualTo("rejected");
+    }
+
+    @Test
+    void anOfficeDayIgnoresAnyHomeDecision() {
+        DayPunch office = new DayPunch(OffsetDateTime.of(DAY, LocalTime.of(8, 58), ZoneOffset.ofHours(5)), "Malé office", false, false, "office");
+
+        AttendanceDay day = DayCalculator.work("E", DAY, TODAY, List.of(office, at("17:00")), RULES, OffDay.NONE, "rejected");
+
+        assertThat(day.status()).isEqualTo("present");
+        assertThat(day.workMode()).isEqualTo("office");
+        assertThat(day.homeStatus()).isNull();
     }
 }

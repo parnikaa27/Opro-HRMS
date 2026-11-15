@@ -10,6 +10,7 @@ export interface AttendanceRow {
   hours: string;
   status: { label: string; tone: Tone };
   isEdited: boolean;
+  homeNote?: string;
 }
 
 @Component({
@@ -44,6 +45,9 @@ export interface AttendanceRow {
                 <app-status-pill [tone]="row.status.tone">{{ row.status.label }}</app-status-pill>
                 @if (row.isEdited) {
                   <span class="edited-note" data-testid="corrected">Corrected</span>
+                }
+                @if (row.homeNote) {
+                  <span class="edited-note" data-testid="home-day">{{ row.homeNote }}</span>
                 }
               </td>
               @if (isEditable()) {
