@@ -37,7 +37,7 @@ describe('TeamMemberPage', () => {
     });
     const root = fixture.nativeElement as HTMLElement;
 
-    expect(text(root.querySelector('h1') as HTMLElement)).toBe('Kasun Perera');
+    expect(text(root.querySelector('h1') as HTMLElement)).toBe('Arjun Reddy');
     expect(texts(root, 'leave-balance')).toEqual(['12 annual days Annual leave 12 of 30 days available']);
     expect(texts(root, 'attendance-row')).toEqual(['Tuesday 10 Nov, Tue — — — Absent']);
     expect(text(root.querySelector('[data-testid=visa-card]') as HTMLElement)).toContain('Missing');

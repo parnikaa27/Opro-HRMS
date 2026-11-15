@@ -2,7 +2,7 @@
 // Same employee and date always give the same result.
 
 const DAYS_OF_HISTORY = 62;
-const WEEKEND = new Set([5, 6]); // Friday, Saturday
+const WEEKEND = new Set([5]); // Friday, the only day off
 
 // FNV-1a plus a murmur style finaliser, so seeds that differ only in the last characters still spread evenly.
 const mix = (hash, shift, multiplier) => Math.imul(hash ^ (hash >>> shift), multiplier);
@@ -21,7 +21,9 @@ export const toTime = (minutes) => `${pad(Math.floor(minutes / 60))}:${pad(minut
 // The schedule version in force on a date: the latest one that started on or before it.
 export const rulesOn = (schedules, date) =>
   [...schedules].sort((first, second) => second.effectiveFrom.localeCompare(first.effectiveFrom)).find(({ effectiveFrom }) => effectiveFrom <= date);
-const toIso = (date, minutes) => `${date}T${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}:00+05:00`;
+// Minutes past midnight in Maldives time, rolling into the next day: an evening punch in ends its shift after midnight.
+const toIso = (date, minutes) =>
+  `${new Date(Date.parse(`${date}T00:00:00Z`) + minutes * 60_000).toISOString().slice(0, 16)}:00+05:00`;
 
 const addDays = (date, offset) => {
   const day = new Date(`${date}T00:00:00Z`);

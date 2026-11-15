@@ -60,7 +60,8 @@ public class Notification {
         ANNOUNCEMENT("announcement"),
         RECORD("record"),
         SCHEDULE("schedule"),
-        HOME("home");
+        HOME("home"),
+        FLIGHT("flight");
 
         private final String value;
 

@@ -5,7 +5,7 @@ import { PeoplePage } from './people-page';
 
 const MEMBERS = [
   { ...employee({ id: 'B', fullName: 'Priya Nair', designation: 'Procurement Officer' }), today: { status: 'late' } },
-  { ...employee({ id: 'A', fullName: 'Ahmed Zahir', designation: 'Customer Service Lead' }) },
+  { ...employee({ id: 'A', fullName: 'Karan Mehta', designation: 'Customer Service Lead' }) },
 ];
 
 describe('PeoplePage', () => {
@@ -20,8 +20,8 @@ describe('PeoplePage', () => {
     await respond(http, { '/api/team': MEMBERS });
     const root = fixture.nativeElement as HTMLElement;
 
-    expect(texts(root, 'person-card').map((card) => card.split(' kasun')[0])).toEqual([
-      'AZ Not in yet Ahmed Zahir Customer Service Lead',
+    expect(texts(root, 'person-card').map((card) => card.split(' arjun')[0])).toEqual([
+      'KM Not in yet Karan Mehta Customer Service Lead',
       'PN Late Priya Nair Procurement Officer',
     ]);
     expect(root.querySelector('[data-testid=person-card] a')?.getAttribute('href')).toBe('/team/A');
@@ -52,9 +52,9 @@ describe('PeoplePage', () => {
     const root = fixture.nativeElement as HTMLElement;
 
     click(root, 'show-former');
-    await respond(http, { '/api/hr/employees?include=former': [...MEMBERS, employee({ id: 'G', fullName: 'Grace Mendoza', lastDay: '2026-11-01' })] });
+    await respond(http, { '/api/hr/employees?include=former': [...MEMBERS, employee({ id: 'G', fullName: 'Kavya Menon', lastDay: '2026-11-01' })] });
 
-    expect(texts(root, 'person-card').find((card) => card.includes('Grace'))).toContain('Left 01 Nov 2026');
+    expect(texts(root, 'person-card').find((card) => card.includes('Kavya'))).toContain('Left 01 Nov 2026');
   });
 
   it('has an empty state and an error state', async () => {

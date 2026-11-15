@@ -73,10 +73,10 @@ describe('LeaveForm', () => {
 
   it('refuses a range with no working days in it', async () => {
     fill(root, 'leave-from', '2026-12-04');
-    fill(root, 'leave-to', '2026-12-05');
+    fill(root, 'leave-to', '2026-12-04');
     await submitForm();
 
-    expect(errors()).toContain('Those dates are all weekends or holidays. Nothing to take.');
+    expect(errors()).toContain('Those dates are all Fridays or public holidays. Nothing to take.');
   });
 
   it('stops people asking for more than they have left', async () => {
@@ -169,11 +169,11 @@ describe('LeaveForm', () => {
     fill(root, 'leave-type', 'unpaid');
     fill(root, 'leave-from', '2026-12-06');
     fill(root, 'leave-to', '2026-12-17');
-    expect(text(root.querySelector('[data-testid=leave-preview]') as HTMLElement)).toBe('10 days requested Unpaid, so it doesn’t use a balance.');
+    expect(text(root.querySelector('[data-testid=leave-preview]') as HTMLElement)).toBe('11 days requested Unpaid, so it doesn’t use a balance.');
     fill(root, 'leave-reason', 'Family emergency');
     await submitForm();
 
-    expect(http.expectOne('/api/leave/requests').request.body.days).toBe(10);
+    expect(http.expectOne('/api/leave/requests').request.body.days).toBe(11);
   });
 
   it('says so when sending fails', async () => {

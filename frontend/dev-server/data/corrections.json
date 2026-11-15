@@ -1,4 +1,4 @@
 [
-  { "id": "AC-301", "employeeId": "OPR-0021", "date": "2026-11-10", "kind": "missed-out", "requestedTime": "17:20", "reason": "Device was offline when I left", "status": "pending", "raisedOn": "2026-11-11" },
-  { "id": "AC-298", "employeeId": "OPR-0018", "date": "2026-11-05", "kind": "missed-in", "requestedTime": "08:55", "reason": "Started at the Hulhumalé site, no device there", "status": "approved", "raisedOn": "2026-11-05", "decidedBy": "OPR-0004", "decidedOn": "2026-11-05" }
+  {"id": "AC-301", "employeeId": "OPR-0021", "date": "2026-11-10", "kind": "missed-out", "category": "forgot", "requestedTime": "17:20", "reason": "Device was offline when I left", "status": "pending", "raisedOn": "2026-11-11"},
+  {"id": "AC-298", "employeeId": "OPR-0018", "date": "2026-11-05", "kind": "missed-in", "category": "forgot", "requestedTime": "08:55", "reason": "Started at the Hulhumalé site, no device there", "status": "approved", "raisedOn": "2026-11-05", "decidedBy": "OPR-0004", "decidedOn": "2026-11-05"}
 ]

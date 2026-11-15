@@ -1,7 +1,6 @@
 package mv.opro.hrms.attendance;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -24,8 +23,9 @@ class CorrectionController {
     record RaiseCorrection(
             @NotNull LocalDate date,
             @NotNull @Pattern(regexp = "missed-in|missed-out") String kind,
+            @NotNull @Pattern(regexp = "resort|forgot|late|other") String category,
             @NotNull LocalTime requestedTime,
-            @NotBlank @Size(max = MAX_REASON) String reason) {}
+            @Size(max = MAX_REASON) String reason) {}
 
     private final Corrections corrections;
     private final CurrentUser currentUser;
@@ -44,6 +44,6 @@ class CorrectionController {
     @PostMapping("/api/attendance/corrections")
     CorrectionResponse raise(@Valid @RequestBody RaiseCorrection body) {
         Employee me = currentUser.get();
-        return CorrectionResponse.of(corrections.raise(me, body.date(), body.kind(), body.requestedTime(), body.reason()), me.getFullName());
+        return CorrectionResponse.of(corrections.raise(me, body.date(), body.kind(), body.category(), body.requestedTime(), body.reason()), me.getFullName());
     }
 }

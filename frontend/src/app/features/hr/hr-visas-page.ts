@@ -37,7 +37,7 @@ const NO_RECORD = Number.MIN_SAFE_INTEGER;
       } @else {
         <section class="card full-table">
           <div class="table-wrap">
-            <table>
+            <table class="stacks">
               <thead>
                 <tr><th scope="col">PERSON</th><th scope="col">VISA</th><th scope="col">VISA EXPIRES</th><th scope="col">PASSPORT EXPIRES</th><th scope="col"><span class="sr-only">Actions</span></th></tr>
               </thead>
@@ -46,11 +46,11 @@ const NO_RECORD = Number.MIN_SAFE_INTEGER;
                   <tr data-testid="visa-row">
                     <td><a class="person-cell" [routerLink]="['/hr/people', person.id]"><app-avatar [name]="person.fullName" /><span><strong>{{ person.fullName }}</strong></span></a></td>
                     @if (person.visa; as visa) {
-                      <td>{{ visa.visaNumber }}</td>
-                      <td>{{ formatCompactDate(visa.visaExpiry) }} <app-status-pill [tone]="pill(visa.visaExpiry).tone">{{ pill(visa.visaExpiry).label }}</app-status-pill></td>
-                      <td>{{ formatCompactDate(visa.passportExpiry) }} <app-status-pill [tone]="pill(visa.passportExpiry).tone">{{ pill(visa.passportExpiry).label }}</app-status-pill></td>
+                      <td data-label="VISA">{{ visa.visaNumber }}</td>
+                      <td data-label="VISA EXPIRES">{{ formatCompactDate(visa.visaExpiry) }} <app-status-pill [tone]="pill(visa.visaExpiry).tone">{{ pill(visa.visaExpiry).label }}</app-status-pill></td>
+                      <td data-label="PASSPORT EXPIRES">{{ formatCompactDate(visa.passportExpiry) }} <app-status-pill [tone]="pill(visa.passportExpiry).tone">{{ pill(visa.passportExpiry).label }}</app-status-pill></td>
                     } @else {
-                      <td colspan="3"><app-status-pill tone="danger">No record</app-status-pill></td>
+                      <td colspan="3" data-label="VISA"><app-status-pill tone="danger">No record</app-status-pill></td>
                     }
                     <td><button type="button" class="text-link" (click)="editing.set(person)" data-testid="edit-visa">{{ person.visa ? 'Update' : 'Add' }}</button></td>
                   </tr>

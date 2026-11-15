@@ -41,8 +41,9 @@ HRMS/
           calendar/        Company calendar: holidays, events, and team leave for managers
           holidays/        API for holidays and company events
           profile/         Two sided printable ID card, visa and work permit status, change request to HR
+          flights/         Flight allowance: the profile card, claim form, and the summary HR's pages share, with a USD, MVR or INR switch
           team/            Manager pages: overview, people directory, leave requests with tabs, team attendance table, one person's page. People and leave requests also serve HR
-          hr/              HR pages: overview, one person (record leave, adjust balance, visa, punch fixes, photo, leaving), add and edit a person, holiday calendar, visas, inbox, announcements, policies with the work schedule
+          hr/              HR pages: overview, one person (record leave, adjust balance, visa, punch fixes, photo, leaving), add and edit a person, holiday calendar, visas, inbox, announcements, policies with the work schedule. Also leave days per person, flight allowances and claims, exchange rates
             forms/         The HR dialogs' forms
       testing/             Test helpers, fixtures and setup.ts (a dialog shim, since jsdom has none). Never shipped
     public/                Static files served as is (favicon, robots.txt)
@@ -50,7 +51,7 @@ HRMS/
     dev-server/            Mock API that stands in for Spring
       server.mjs           Routes, sessions, XSRF check. Node built ins only
       attendance.mjs       Generates the last 62 days of punches relative to today, and works a day out again after an HR punch fix, using the schedule in force
-      data/                JSON fixtures: employees, visas, leave, holidays, events, corrections, announcements, notifications, change requests, balance adjustments, work schedules, punch edits. Uploaded photos and certificates stay in memory until restart
+      data/                JSON fixtures: employees, visas, leave, flight allowances and claims, exchange rates, holidays, events, corrections, announcements, notifications, change requests, balance adjustments, work schedules, punch edits. Uploaded photos and certificates stay in memory until restart
     proxy.conf.mjs         Sends /api to the mock or to Spring
     scripts/
       build-dark-theme.mjs Writes src/styles/dark.css from portal.css and styles.css (see theme:dark)
@@ -63,9 +64,10 @@ HRMS/
     src/main/java/mv/opro/hrms/
       employee/            Employees and visas, and roles worked out from reporting lines
       holiday/             The holiday calendar, used by attendance and leave, and CalendarEditor for HR's changes
-      attendance/          Punches, PunchClock (punching from the office or home), home days, days worked out by DayCalculator, punch fix requests, the dev punch seeder, and HR's PunchEditor and ScheduleEditor
-      leave/               Leave types, balances, applying, cancelling and deciding, the working day count, HR's balance adjustments
-      notification/        The notifications panel, and the service every feature uses to tell people things
+      attendance/          Punches, PunchClock (punching from the office or home), home days, days worked out by DayCalculator, punch fix requests, the dev punch seeder, and HR's PunchEditor and ScheduleEditor, compensatory off claims (CompOffs)
+      leave/               Leave types HR manages, balances with carry forward, years that open by themselves, applying, cancelling and deciding, the working day count, HR's balance adjustments and per person days
+      flight/              Flight allowances in USD, claims with receipts, and HR's exchange rates
+      notification/        The notifications panel, and the service every feature uses to tell people things, and VisaReminders
       team/                The manager's view: TeamAccess limits everything to their own active direct reports
       files/               Stored files (in PostgreSQL for now), upload checks, and serving them safely
       document/            Someone's own employment documents and their downloads
@@ -161,7 +163,7 @@ Needs Docker Desktop running: each run starts its own PostgreSQL and throws it a
 | `npm run test:unit` / `test:unit:watch` | Vitest |
 | `npm run test:coverage` | Vitest with coverage. Fails under 80% |
 | `npm run test:e2e` | Playwright. Starts its own fresh mock on 4310 and app on 4210, so it never clashes with your dev servers or their state |
-| `npm run test:e2e:spring` | The same journeys against Spring on 8090, on a throwaway PostgreSQL, with the app on 4220. Needs Docker Desktop. The first run takes a minute or two to compile |
+| `npm run test:e2e:spring` | The same journeys against Spring on 8090, on a throwaway PostgreSQL, with the app on 4220. Needs Docker Desktop. The first run takes a minute or two to compile. It runs 3 Chrome workers so Spring and Chrome don't starve each other |
 | `npm run check` | Dark theme freshness, lint, types, coverage and e2e in one go |
 
 ## CI
@@ -170,19 +172,23 @@ Needs Docker Desktop running: each run starts its own PostgreSQL and throws it a
 
 ## Punching in and out
 
-Punching lives on the overview's today card and on the attendance page. "At the office" asks the browser for its location, and Spring refuses it more than 300 m from a work location. The pins in `backend/src/main/resources/application.yml` are placeholders. The mock only checks a location was sent. To try an office punch in a browser that has no real location, Chrome DevTools has a Sensors panel that sets one.
+Punching lives on the overview's today card and on the attendance page. "At the office" and "At a resort" ask the browser for its location, and Spring refuses it more than 300 m from a work location or 5 km from a resort. The pins in `backend/src/main/resources/application.yml` are placeholders. The mock only checks a location was sent. To try an office punch in a browser that has no real location, Chrome DevTools has a Sensors panel that sets one.
 
 ## Test users
 
+Everyone has an Indian name. Sneha and Karan are Maldivian nationals, so they see no visa section; everyone else is Indian, with a visa.
+
 | Employee | Role | Good for testing |
 |---|---|---|
-| Aishath Shifa (OPR-0002) | HR | HR view: everyone, holidays, visas, inbox, announcements, leave policy |
-| Ibrahim Rasheed (OPR-0004) | Manager | Team view, approvals, visa alerts for the team |
-| Hassan Waheed (OPR-0001) | Manager | Approving Ibrahim's leave |
-| Kasun Perera (OPR-0018) | Employee | Visa expiring soon |
-| Rahim Uddin (OPR-0021) | Employee | Visa already expired, pending correction |
-| Grace Mendoza (OPR-0027) | Employee | Passport expiring soon, rejected leave |
-| Mariyam Nisha (OPR-0011) | Employee | Maldivian, no visa section |
+| Ananya Iyer (OPR-0002) | HR | HR view: everyone, holidays, visas, inbox, announcements, leave policy |
+| Vikram Singh (OPR-0004) | Manager | Team view, approvals, visa alerts for the team |
+| Rajesh Sharma (OPR-0001) | Manager | Approving Vikram's leave |
+| Arjun Reddy (OPR-0018) | Employee | Visa expiring soon, a $1,200 flight allowance with one flight approved |
+| Rohit Verma (OPR-0021) | Employee | Visa already expired, pending correction |
+| Kavya Menon (OPR-0027) | Employee | Passport expiring soon, rejected leave |
+| Sneha Kulkarni (OPR-0011) | Employee | Maldivian, no visa section, no flight allowance |
+| Karan Mehta (OPR-0023) | Employee | Maldivian, no visa section |
+| Priya Nair (OPR-0015) | Employee | A flight claim waiting in HR's inbox |
 
 ## Environment variables
 

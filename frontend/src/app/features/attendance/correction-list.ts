@@ -10,6 +10,8 @@ const STATUS: Record<CorrectionRequest['status'], { label: string; tone: Tone }>
   rejected: { label: 'Declined', tone: 'danger' },
 };
 
+import { fixCategoryLabel } from './fix-categories';
+
 @Component({
   selector: 'app-correction-list',
   imports: [Icon, StatusPill],
@@ -26,7 +28,7 @@ const STATUS: Record<CorrectionRequest['status'], { label: string; tone: Tone }>
           <div class="leave-type-icon"><app-icon name="fingerprint" [size]="18" /></div>
           <div>
             <strong>Punch {{ item.kind === 'missed-in' ? 'in' : 'out' }} at {{ item.requestedTime }}</strong>
-            <span>{{ formatShortDate(item.date) }} · {{ item.reason }}@if (item.decisionNote) { · “{{ item.decisionNote }}”}</span>
+            <span>{{ formatShortDate(item.date) }} · {{ categoryLabel(item.category) }}@if (item.reason) { · {{ item.reason }}}@if (item.decisionNote) { · “{{ item.decisionNote }}”}</span>
           </div>
           <span></span>
           <app-status-pill [tone]="status[item.status].tone">{{ status[item.status].label }}</app-status-pill>
@@ -44,4 +46,5 @@ export class CorrectionList {
   protected readonly sorted = computed(() => [...this.corrections()].sort((first, second) => second.date.localeCompare(first.date)));
   protected readonly status = STATUS;
   protected readonly formatShortDate = formatShortDate;
+  protected readonly categoryLabel = fixCategoryLabel;
 }

@@ -9,12 +9,16 @@ import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import mv.opro.hrms.common.ApiException;
 import mv.opro.hrms.common.Ids;
+import mv.opro.hrms.common.WorkWeek;
+import mv.opro.hrms.common.Wording;
 import mv.opro.hrms.employee.Employee;
 import mv.opro.hrms.employee.EmployeeRepository;
 import mv.opro.hrms.employee.People;
+import mv.opro.hrms.holiday.Holidays;
 import mv.opro.hrms.notification.Notification;
 import mv.opro.hrms.notification.Notifications;
 import org.springframework.http.HttpStatus;
@@ -28,25 +32,31 @@ public class PunchClock {
 
     static final String OFFICE = "office";
     static final String HOME = "home";
+    static final String RESORT = "resort";
     private static final Duration TOO_SOON = Duration.ofMinutes(1);
     private static final double EARTH_RADIUS_METRES = 6_371_000;
     private static final int METRES_IN_A_KM = 1000;
+    private static final Map<String, String> STARTED = Map.of(OFFICE, "at the office", HOME, "working from home", RESORT, "at a resort");
 
     // What the browser reported. Accuracy is its own estimate, in metres.
     public record Location(double latitude, double longitude, double accuracy) {}
 
     private final PunchRepository punches;
     private final HomeDayRepository homeDays;
+    private final CompOffClaimRepository compOffs;
+    private final Holidays holidays;
     private final EmployeeRepository employees;
     private final People people;
     private final Notifications notifications;
     private final PunchSettings settings;
     private final Clock clock;
 
-    PunchClock(PunchRepository punches, HomeDayRepository homeDays, EmployeeRepository employees, People people, Notifications notifications,
-            PunchSettings settings, Clock clock) {
+    PunchClock(PunchRepository punches, HomeDayRepository homeDays, CompOffClaimRepository compOffs, Holidays holidays, EmployeeRepository employees,
+            People people, Notifications notifications, PunchSettings settings, Clock clock) {
         this.punches = punches;
         this.homeDays = homeDays;
+        this.compOffs = compOffs;
+        this.holidays = holidays;
         this.employees = employees;
         this.people = people;
         this.notifications = notifications;
@@ -71,8 +81,7 @@ public class PunchClock {
         // A day is worked one way. The first punch from the portal decides which.
         String dayMode = live.stream().map(Punch::getWorkMode).filter(Objects::nonNull).findFirst().orElse(mode);
         if (!dayMode.equals(mode)) {
-            throw new ApiException(HttpStatus.CONFLICT, "You started today " + (HOME.equals(dayMode) ? "working from home" : "at the office")
-                    + ". Punch " + direction + " the same way.");
+            throw new ApiException(HttpStatus.CONFLICT, "You started today " + STARTED.get(dayMode) + ". Punch " + direction + " the same way.");
         }
         if (!live.isEmpty() && Duration.between(live.getLast().getPunchedAt(), now).compareTo(TOO_SOON) < 0) {
             throw new ApiException(HttpStatus.CONFLICT, "You punched a moment ago. Give it a minute before punching again.");
@@ -81,29 +90,46 @@ public class PunchClock {
         if (HOME.equals(mode)) {
             punches.save(Punch.fromApp(employee.getId(), now, HOME, null, null));
             startHomeDay(employee, today);
+        } else {
+            Nearest nearest = nearest(RESORT.equals(mode) ? settings.resorts() : settings.offices(), location, mode, direction);
+            punches.save(Punch.fromApp(employee.getId(), now, mode, nearest.office().name(), (int) Math.round(nearest.metres())));
+        }
+        claimCompOff(employee, today);
+    }
+
+    // Working a Friday or a public holiday asks the manager for compensatory off, once for the day.
+    private void claimCompOff(Employee employee, LocalDate today) {
+        boolean isDayOff = WorkWeek.isWeekend(today) || holidays.datesBetween(today, today).contains(today);
+        if (!isDayOff || compOffs.existsByEmployeeIdAndWorkDate(employee.getId(), today)) {
             return;
         }
-        Nearest nearest = nearestOffice(location, direction);
-        punches.save(Punch.fromApp(employee.getId(), now, OFFICE, nearest.office().name(), (int) Math.round(nearest.metres())));
+        compOffs.save(new CompOffClaim(Ids.next("CO"), employee.getId(), today));
+        String managerId = employee.getManagerId();
+        if (managerId != null && people.findActive(managerId).isPresent()) {
+            notifications.tell(managerId, Notification.Kind.APPROVAL, employee.getFullName() + " is working on " + Wording.date(today)
+                    + ", a day off. Give them compensatory off from Leave requests.");
+        }
     }
 
     private record Nearest(PunchSettings.Office office, double metres) {}
 
-    private Nearest nearestOffice(Location location, String direction) {
+    // The closest place of the kind they chose, if they're inside its radius: 300 m for an office, 5 km for a resort.
+    private Nearest nearest(List<PunchSettings.Office> places, Location location, String mode, String direction) {
+        String where = RESORT.equals(mode) ? "the resort" : "the office";
         if (location == null) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Allow location so we can see you're at the office.");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Allow location so we can see you're at " + where + ".");
         }
         if (location.accuracy() > settings.maxAccuracyMetres()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Your location is only accurate to about " + distance(location.accuracy())
-                    + ", so we can't tell you're at the office. Turn on precise location and try again.");
+                    + ", so we can't tell you're at " + where + ". Turn on precise location and try again.");
         }
-        Nearest nearest = settings.offices().stream()
-                .map(office -> new Nearest(office, metresBetween(location, office)))
+        Nearest nearest = places.stream()
+                .map(place -> new Nearest(place, metresBetween(location, place)))
                 .min(Comparator.comparingDouble(Nearest::metres))
-                .orElseThrow(() -> new IllegalStateException("No offices configured under opro.punch.offices"));
+                .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "No " + mode + " locations are set up yet. Ask HR."));
         if (nearest.metres() > nearest.office().radiusMetres()) {
             throw new ApiException(HttpStatus.CONFLICT, "You're " + distance(nearest.metres()) + " from " + nearest.office().name() + ". Punch " + direction
-                    + " from the office, or choose working from home.");
+                    + " at " + where + ", or choose another option.");
         }
         return nearest;
     }

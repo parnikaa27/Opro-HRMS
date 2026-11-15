@@ -31,7 +31,7 @@ describe('HrEmployeePage', () => {
     fixture.componentRef.setInput('employeeId', 'OPR-0018');
     await respond(http, { '/api/hr/employees': [employee()], '/api/hr/employees/OPR-0018': employee() });
 
-    expect(text(fixture.nativeElement.querySelector('h1'))).toBe('Edit Kasun’s details');
+    expect(text(fixture.nativeElement.querySelector('h1'))).toBe('Edit Arjun’s details');
     fixture.debugElement.query(By.directive(EmployeeForm)).componentInstance.cancelled.emit();
     await settle();
     expect(navigate).toHaveBeenCalledWith(['/hr/people', 'OPR-0018']);

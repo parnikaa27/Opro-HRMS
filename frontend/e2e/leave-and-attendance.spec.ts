@@ -1,13 +1,12 @@
 import { expect, Page, test } from '@playwright/test';
 
 const FRIDAY = 5;
-const SATURDAY = 6;
 const DAYS_AHEAD = 14;
 
 // A working day two weeks out, so the journey never depends on today's date.
 const futureWorkday = () => {
   const day = new Date(Date.now() + DAYS_AHEAD * 86_400_000);
-  const shift = day.getUTCDay() === FRIDAY ? 2 : day.getUTCDay() === SATURDAY ? 1 : 0;
+  const shift = day.getUTCDay() === FRIDAY ? 1 : 0;
   return new Date(day.getTime() + shift * 86_400_000).toISOString().slice(0, 10);
 };
 

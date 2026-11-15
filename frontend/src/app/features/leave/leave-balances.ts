@@ -10,6 +10,7 @@ const HINTS: Readonly<Record<string, string>> = {
   family: 'Caring for a sick family member',
   maternity: 'Before and after your baby arrives',
   paternity: 'When your child is born',
+  'comp-off': 'For Fridays and holidays you worked',
 };
 
 // The first two balances get rings like the design's annual and sick cards. The rest use its "special leave" card.
@@ -24,7 +25,7 @@ const HINTS: Readonly<Record<string, string>> = {
             <app-circle-progress [percent]="share(balance)" [label]="'' + available(balance)" [sub]="ringLabel(balance)" [colour]="index === 0 ? 'aqua' : 'amber'" />
             <div>
               <h3>{{ nameOf(balance.type) }}</h3>
-              <span>{{ available(balance) }} of {{ plural(balance.entitled, 'day') }} available</span>
+              <span>{{ available(balance) }} of {{ plural(balance.entitled, 'day') }} available{{ balance.carriedOver ? ', ' + balance.carriedOver + ' carried over' : '' }}</span>
               <div class="progress-track" [class.amber]="index === 1"><i [style.width.%]="share(balance)"></i></div>
             </div>
           } @else {

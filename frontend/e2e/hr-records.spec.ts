@@ -48,19 +48,19 @@ test('HR adds a person, gives them a photo, and marks them as leaving', async ({
   await page.goto('/hr/people');
   await page.getByTestId('add-person').click();
 
-  await page.getByTestId('employee-name').fill('Fathimath Nazra');
+  await page.getByTestId('employee-name').fill('Divya Pillai');
   await page.getByTestId('employee-designation').fill('Accounts Officer');
   await page.getByTestId('employee-department').fill('Finance');
   await page.getByTestId('employee-manager').selectOption('OPR-0001');
-  await page.getByTestId('employee-email').fill('fathimath.nazra@opro.mv');
+  await page.getByTestId('employee-email').fill('divya.pillai@opro.mv');
   await page.getByTestId('employee-joined').fill('2026-01-04');
   await page.getByTestId('employee-phone').fill('+960 777 1030');
   await page.getByTestId('employee-nationality').fill('Maldivian');
-  await page.getByTestId('employee-contact-name').fill('Ali Nazir');
+  await page.getByTestId('employee-contact-name').fill('Mohan Pillai');
   await page.getByTestId('employee-contact-relation').fill('Father');
   await page.getByTestId('employee-contact-phone').fill('+960 777 2030');
   await page.getByTestId('employee-submit').click();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Fathimath Nazra');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Divya Pillai');
 
   await page.getByTestId('person-menu').click();
   await page.getByTestId('change-photo').click();
@@ -77,7 +77,7 @@ test('HR adds a person, gives them a photo, and marks them as leaving', async ({
   await expect(page.getByTestId('leaving-note')).toContainText('Left on 1 February 2026');
 
   await page.goto('/login');
-  await expect(page.getByText('Fathimath Nazra')).toHaveCount(0);
+  await expect(page.getByText('Divya Pillai')).toHaveCount(0);
 });
 
 test('a sick note goes up with the request, and only HR can open it', async ({ page }) => {
@@ -99,14 +99,14 @@ test('a sick note goes up with the request, and only HR can open it', async ({ p
   await page.getByTestId('sidebar-sign-out').click();
   await signInAs(page, 'OPR-0004');
   await page.goto('/team/approvals');
-  const asManager = page.getByTestId('leave-row').filter({ hasText: 'Ahmed Zahir' }).filter({ hasText: 'Sick leave' });
+  const asManager = page.getByTestId('leave-row').filter({ hasText: 'Karan Mehta' }).filter({ hasText: 'Sick leave' });
   await expect(asManager.getByTestId('certificate')).toHaveText('Medical certificate attached');
   await expect(asManager.getByTestId('certificate').getByRole('link')).toHaveCount(0);
 
   await page.getByTestId('sidebar-sign-out').click();
   await signInAs(page, 'OPR-0002');
   await page.goto('/hr/leave');
-  const asHr = page.getByTestId('leave-row').filter({ hasText: 'Ahmed Zahir' }).filter({ hasText: 'Sick leave' });
+  const asHr = page.getByTestId('leave-row').filter({ hasText: 'Karan Mehta' }).filter({ hasText: 'Sick leave' });
   const href = await asHr.getByTestId('certificate').getByRole('link', { name: 'View' }).getAttribute('href');
   const file = await page.request.get(href ?? '');
   expect(file.headers()['content-type']).toBe('application/pdf');

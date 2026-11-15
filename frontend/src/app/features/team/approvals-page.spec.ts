@@ -1,6 +1,6 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { CorrectionRequest, HomeDay } from '../../models/attendance';
+import { CompOffClaim, CorrectionRequest, HomeDay } from '../../models/attendance';
 import { LeaveRequest } from '../../models/leave';
 import { click, fail, fill, NOW, respond, setupHttp, settle, text, texts } from '../../../testing/fixtures';
 import { ApprovalsPage } from './approvals-page';
@@ -9,17 +9,18 @@ const leave = (overrides: Partial<LeaveRequest>): LeaveRequest => ({
   id: 'LR', employeeId: 'E', employeeName: 'Person', type: 'annual', from: '2026-12-20', to: '2026-12-24', days: 3, reason: 'Trip', status: 'pending', appliedOn: '2026-11-10', ...overrides,
 });
 const fix = (overrides: Partial<CorrectionRequest>): CorrectionRequest => ({
-  id: 'AC', employeeId: 'E', employeeName: 'Person', date: '2026-11-10', kind: 'missed-out', requestedTime: '17:20', reason: 'Device offline', status: 'pending', raisedOn: '2026-11-11', ...overrides,
+  id: 'AC', employeeId: 'E', employeeName: 'Person', date: '2026-11-10', kind: 'missed-out', category: 'forgot', requestedTime: '17:20', reason: 'Device offline', status: 'pending', raisedOn: '2026-11-11', ...overrides,
 });
 
 const LEAVE = [
   leave({ id: 'LR-2', employeeId: 'P', employeeName: 'Priya Nair', appliedOn: '2026-11-11' }),
-  leave({ id: 'LR-1', employeeId: 'M', employeeName: 'Mariyam Nisha', from: '2026-12-22', to: '2026-12-22', days: 1, appliedOn: '2026-11-12' }),
-  leave({ id: 'LR-3', employeeId: 'A', employeeName: 'Ahmed Zahir', status: 'approved', from: '2026-12-23', to: '2026-12-23', days: 1, decidedOn: '2026-11-05', appliedOn: '2026-11-01' }),
-  leave({ id: 'LR-4', employeeId: 'G', employeeName: 'Grace Mendoza', status: 'rejected', decidedOn: '2026-11-07', decisionNote: 'Audit week' }),
+  leave({ id: 'LR-1', employeeId: 'M', employeeName: 'Sneha Kulkarni', from: '2026-12-22', to: '2026-12-22', days: 1, appliedOn: '2026-11-12' }),
+  leave({ id: 'LR-3', employeeId: 'A', employeeName: 'Karan Mehta', status: 'approved', from: '2026-12-23', to: '2026-12-23', days: 1, decidedOn: '2026-11-05', appliedOn: '2026-11-01' }),
+  leave({ id: 'LR-4', employeeId: 'G', employeeName: 'Kavya Menon', status: 'rejected', decidedOn: '2026-11-07', decisionNote: 'Audit week' }),
 ];
-const FIXES = [fix({ id: 'AC-1', employeeName: 'Rahim Uddin' }), fix({ id: 'AC-2', status: 'approved' })];
-const HOME_DAYS: HomeDay[] = [{ id: 'HW-1', employeeId: 'K', employeeName: 'Kasun Perera', date: '2026-11-12', status: 'pending' }];
+const FIXES = [fix({ id: 'AC-1', employeeName: 'Rohit Verma' }), fix({ id: 'AC-2', status: 'approved' })];
+const HOME_DAYS: HomeDay[] = [{ id: 'HW-1', employeeId: 'K', employeeName: 'Arjun Reddy', date: '2026-11-12', status: 'pending' }];
+const COMP_OFFS: CompOffClaim[] = [{ id: 'CO-1', employeeId: 'R', employeeName: 'Rohit Verma', date: '2026-11-06', status: 'pending', days: 0.5, workedMinutes: 130 }];
 
 describe('ApprovalsPage', () => {
   let http: HttpTestingController;
@@ -35,12 +36,13 @@ describe('ApprovalsPage', () => {
     vi.restoreAllMocks();
   });
 
-  const render = async (leaveRequests: LeaveRequest[] = LEAVE, fixes: CorrectionRequest[] = FIXES, homeDays: HomeDay[] = HOME_DAYS) => {
+  const render = async (leaveRequests: LeaveRequest[] = LEAVE, fixes: CorrectionRequest[] = FIXES, homeDays: HomeDay[] = HOME_DAYS, compOffs: CompOffClaim[] = COMP_OFFS) => {
     const fixture = TestBed.createComponent(ApprovalsPage);
     await respond(http, {
       '/api/team/leave-requests': leaveRequests,
       '/api/team/corrections': fixes,
       '/api/team/home-days?status=pending': homeDays,
+      '/api/team/comp-offs?status=pending': compOffs,
       '/api/leave/types': [{ code: 'annual', name: 'Annual leave', allowsHalfDay: true }],
     });
     return fixture.nativeElement as HTMLElement;
@@ -52,10 +54,10 @@ describe('ApprovalsPage', () => {
   it('shows waiting leave oldest first with counts on the tabs and overlap warnings', async () => {
     const root = await render();
 
-    expect([...root.querySelectorAll('[role=tab]')].map((tab) => text(tab))).toEqual(['Pending 2', 'Approved', 'Declined', 'Punch fixes 1', 'Home working 1']);
+    expect([...root.querySelectorAll('[role=tab]')].map((tab) => text(tab))).toEqual(['Pending 2', 'Approved', 'Declined', 'Punch fixes 1', 'Home working 1', 'Comp off 1']);
     expect(texts(root, 'leave-row').map((item) => item.split(' Decline')[0])).toEqual([
-      'PN Priya Nair Annual leave · Submitted yesterday Also off then: Mariyam Nisha (pending), Ahmed Zahir DATES 20 Dec to 24 December 2026 DURATION 3 days REASON Trip',
-      'MN Mariyam Nisha Annual leave · Submitted today Also off then: Priya Nair (pending) DATES 22 December 2026 DURATION 1 day REASON Trip',
+      'PN Priya Nair Annual leave · Submitted yesterday Also off then: Sneha Kulkarni (pending), Karan Mehta DATES 20 Dec to 24 December 2026 DURATION 3 days REASON Trip',
+      'SK Sneha Kulkarni Annual leave · Submitted today Also off then: Priya Nair (pending) DATES 22 December 2026 DURATION 1 day REASON Trip',
     ]);
   });
 
@@ -63,7 +65,7 @@ describe('ApprovalsPage', () => {
     const root = await render();
 
     click(root, 'tab-approved');
-    expect(texts(root, 'leave-row')).toEqual(['AZ Ahmed Zahir Annual leave · Submitted 11 days ago DATES 23 December 2026 DURATION 1 day REASON Trip Approved']);
+    expect(texts(root, 'leave-row')).toEqual(['KM Karan Mehta Annual leave · Submitted 11 days ago DATES 23 December 2026 DURATION 1 day REASON Trip Approved']);
     click(root, 'tab-rejected');
     expect(texts(root, 'leave-row')[0]).toContain('YOUR NOTE Audit week Declined');
   });
@@ -71,7 +73,7 @@ describe('ApprovalsPage', () => {
   it('approves in one click and reloads', async () => {
     const root = await render();
 
-    click(row(root, 'Mariyam Nisha'), 'approve');
+    click(row(root, 'Sneha Kulkarni'), 'approve');
     const request = http.expectOne('/api/team/leave-requests/LR-1/decision');
     expect(request.request.body).toEqual({ decision: 'approved' });
     request.flush({});
@@ -83,10 +85,10 @@ describe('ApprovalsPage', () => {
   it('asks for a reason before declining a punch fix', async () => {
     const root = await render();
     click(root, 'tab-fixes');
-    expect(texts(root, 'pending-fix')[0]).toContain('Rahim Uddin Missed punch out · Submitted yesterday DATE Tue 10 Nov TIME 17:20 REASON Device offline');
+    expect(texts(root, 'pending-fix')[0]).toContain('Rohit Verma Forgot to punch · punch out · Submitted yesterday DATE Tue 10 Nov TIME 17:20 REASON Device offline');
 
     click(root, 'reject');
-    expect(text(root.querySelector('dialog') as HTMLElement)).toContain('Decline Rahim’s request?');
+    expect(text(root.querySelector('dialog') as HTMLElement)).toContain('Decline Rohit’s request?');
     click(root, 'confirm-reject');
     expect(text(root.querySelector('.field-error') as HTMLElement)).toBe('Give a short reason so they know what to do next.');
 
@@ -140,10 +142,27 @@ describe('ApprovalsPage', () => {
     expect(text(root)).toContain('Nobody is waiting for a home working decision.');
   });
 
+  it('gives compensatory off for a day off worked, or declines it with a reason', async () => {
+    const root = await render();
+    click(root, 'tab-comp-off');
+    expect(texts(root, 'pending-comp-off')[0]).toContain('Rohit Verma Worked on a day off DATE Fri 6 Nov WORKED 2h 10m EARNS Half a day');
+
+    click(root, 'approve');
+    const approval = http.expectOne('/api/team/comp-offs/CO-1/decision');
+    expect(approval.request.body).toEqual({ decision: 'approved' });
+    approval.flush({});
+    await settle();
+
+    click(root, 'reject');
+    fill(root, 'decision-note', 'Nobody asked you to come in');
+    click(root, 'confirm-reject');
+    expect(http.expectOne('/api/team/comp-offs/CO-1/decision').request.body).toEqual({ decision: 'rejected', note: 'Nobody asked you to come in' });
+  });
+
   it('approves a day worked from home in one click', async () => {
     const root = await render();
     click(root, 'tab-home');
-    expect(texts(root, 'pending-home-day')[0]).toContain('Kasun Perera Worked from home DATE Thu 12 Nov IF DECLINED The day counts as absent');
+    expect(texts(root, 'pending-home-day')[0]).toContain('Arjun Reddy Worked from home DATE Thu 12 Nov IF DECLINED The day counts as absent');
 
     click(root, 'approve');
     const request = http.expectOne('/api/team/home-days/HW-1/decision');

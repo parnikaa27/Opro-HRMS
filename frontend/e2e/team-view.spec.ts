@@ -13,11 +13,11 @@ test('a manager sees the team overview and opens one person', async ({ page }) =
   await signInAsManager(page);
 
   await expect(page.getByTestId('stat-members')).toHaveText('6');
-  await expect(page.getByTestId('visa-alert').filter({ hasText: 'Rahim Uddin' }).first()).toBeVisible();
+  await expect(page.getByTestId('visa-alert').filter({ hasText: 'Rohit Verma' }).first()).toBeVisible();
 
   await page.getByTestId('nav-people').click();
-  await page.getByTestId('person-card').filter({ hasText: 'Kasun Perera' }).getByRole('link', { name: 'View profile' }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Kasun Perera');
+  await page.getByTestId('person-card').filter({ hasText: 'Arjun Reddy' }).getByRole('link', { name: 'View profile' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Arjun Reddy');
   await expect(page.getByTestId('visa-card')).toContainText('Expires soon');
 });
 
@@ -25,8 +25,8 @@ test('a manager approves one request and declines another with a reason', async 
   await signInAsManager(page);
   await page.getByTestId('nav-leave').click();
 
-  await leaveRow(page, 'Mariyam Nisha').getByTestId('approve').click();
-  await expect(leaveRow(page, 'Mariyam Nisha')).toHaveCount(0);
+  await leaveRow(page, 'Sneha Kulkarni').getByTestId('approve').click();
+  await expect(leaveRow(page, 'Sneha Kulkarni')).toHaveCount(0);
 
   await leaveRow(page, 'Priya Nair').getByTestId('reject').click();
   await page.getByTestId('confirm-reject').click();
@@ -37,7 +37,7 @@ test('a manager approves one request and declines another with a reason', async 
   await page.getByTestId('tab-rejected').click();
   await expect(leaveRow(page, 'Priya Nair')).toContainText('Year end close needs you until the 24th');
   await page.getByTestId('tab-approved').click();
-  await expect(leaveRow(page, 'Mariyam Nisha').first()).toContainText('Approved');
+  await expect(leaveRow(page, 'Sneha Kulkarni').first()).toContainText('Approved');
 });
 
 test('team attendance and the calendar show the whole team', async ({ page }) => {
@@ -49,7 +49,7 @@ test('team attendance and the calendar show the whole team', async ({ page }) =>
   await page.getByTestId('nav-calendar').click();
   await expect(page.getByRole('heading', { name: 'Holidays & events' })).toBeVisible();
   await page.getByTestId('previous-month').click();
-  await expect(page.getByTestId('calendar-day').filter({ hasText: 'Ahmed Zahir' }).first()).toBeVisible();
+  await expect(page.getByTestId('calendar-day').filter({ hasText: 'Karan Mehta' }).first()).toBeVisible();
 });
 
 test('a manager cannot open someone outside their team', async ({ page }) => {
@@ -65,7 +65,7 @@ test('a manager finds someone on the People page and from the top search', async
 
   await page.getByTestId('nav-people').click();
   await expect(page.getByTestId('person-card')).toHaveCount(6);
-  await page.getByTestId('people-search').fill('grace');
+  await page.getByTestId('people-search').fill('kavya');
   await expect(page.getByTestId('person-card')).toHaveCount(1);
 
   await page.getByTestId('search-input').fill('priya');

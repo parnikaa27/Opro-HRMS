@@ -1,35 +1,35 @@
 [
   {
     "id": "OPR-0001",
-    "fullName": "Hassan Waheed",
+    "fullName": "Rajesh Sharma",
     "designation": "Director of Operations",
     "department": "Operations",
-    "email": "hassan.waheed@opro.mv",
+    "email": "rajesh.sharma@opro.mv",
     "phone": "+960 777 1001",
     "joinedOn": "2015-03-01",
     "bloodGroup": "O+",
-    "nationality": "Maldivian",
+    "nationality": "Indian",
     "workLocation": "Malé office",
     "employmentType": "Full-time",
     "roles": [
       "EMPLOYEE"
     ],
     "emergencyContact": {
-      "name": "Aminath Hassan",
+      "name": "Meera Sharma",
       "relation": "Spouse",
       "phone": "+960 777 2001"
     }
   },
   {
     "id": "OPR-0002",
-    "fullName": "Aishath Shifa",
+    "fullName": "Ananya Iyer",
     "designation": "HR Manager",
     "department": "People & Culture",
-    "email": "aishath.shifa@opro.mv",
+    "email": "ananya.iyer@opro.mv",
     "phone": "+960 777 1002",
     "joinedOn": "2016-01-10",
     "bloodGroup": "A+",
-    "nationality": "Maldivian",
+    "nationality": "Indian",
     "workLocation": "Malé office",
     "employmentType": "Full-time",
     "managerId": "OPR-0001",
@@ -38,21 +38,21 @@
       "HR"
     ],
     "emergencyContact": {
-      "name": "Hussain Shifa",
+      "name": "Arvind Iyer",
       "relation": "Husband",
       "phone": "+960 777 2002"
     }
   },
   {
     "id": "OPR-0004",
-    "fullName": "Ibrahim Rasheed",
+    "fullName": "Vikram Singh",
     "designation": "Operations Manager",
     "department": "Operations",
-    "email": "ibrahim.rasheed@opro.mv",
+    "email": "vikram.singh@opro.mv",
     "phone": "+960 777 1004",
     "joinedOn": "2018-07-15",
     "bloodGroup": "B+",
-    "nationality": "Maldivian",
+    "nationality": "Indian",
     "workLocation": "Malé office",
     "employmentType": "Full-time",
     "managerId": "OPR-0001",
@@ -60,17 +60,17 @@
       "EMPLOYEE"
     ],
     "emergencyContact": {
-      "name": "Fathimath Rasheed",
+      "name": "Pooja Singh",
       "relation": "Sister",
       "phone": "+960 777 2004"
     }
   },
   {
     "id": "OPR-0011",
-    "fullName": "Mariyam Nisha",
+    "fullName": "Sneha Kulkarni",
     "designation": "Operations Executive",
     "department": "Operations",
-    "email": "mariyam.nisha@opro.mv",
+    "email": "sneha.kulkarni@opro.mv",
     "phone": "+960 777 1011",
     "joinedOn": "2021-02-01",
     "bloodGroup": "A+",
@@ -82,7 +82,7 @@
       "EMPLOYEE"
     ],
     "emergencyContact": {
-      "name": "Ali Shareef",
+      "name": "Amit Kulkarni",
       "relation": "Father",
       "phone": "+960 777 2011"
     }
@@ -111,14 +111,14 @@
   },
   {
     "id": "OPR-0018",
-    "fullName": "Kasun Perera",
+    "fullName": "Arjun Reddy",
     "designation": "Site Engineer",
     "department": "Operations",
-    "email": "kasun.perera@opro.mv",
+    "email": "arjun.reddy@opro.mv",
     "phone": "+960 777 1018",
     "joinedOn": "2023-12-20",
     "bloodGroup": "O-",
-    "nationality": "Sri Lankan",
+    "nationality": "Indian",
     "workLocation": "Hulhumalé site",
     "employmentType": "Contract",
     "managerId": "OPR-0004",
@@ -126,21 +126,21 @@
       "EMPLOYEE"
     ],
     "emergencyContact": {
-      "name": "Dilani Perera",
+      "name": "Lakshmi Reddy",
       "relation": "Spouse",
-      "phone": "+94 77 120 1018"
+      "phone": "+91 98450 21018"
     }
   },
   {
     "id": "OPR-0021",
-    "fullName": "Rahim Uddin",
+    "fullName": "Rohit Verma",
     "designation": "Logistics Coordinator",
     "department": "Operations",
-    "email": "rahim.uddin@opro.mv",
+    "email": "rohit.verma@opro.mv",
     "phone": "+960 777 1021",
     "joinedOn": "2020-11-02",
     "bloodGroup": "B-",
-    "nationality": "Bangladeshi",
+    "nationality": "Indian",
     "workLocation": "Malé office",
     "employmentType": "Full-time",
     "managerId": "OPR-0004",
@@ -148,17 +148,17 @@
       "EMPLOYEE"
     ],
     "emergencyContact": {
-      "name": "Nasima Begum",
+      "name": "Sunita Verma",
       "relation": "Mother",
-      "phone": "+880 1711 021021"
+      "phone": "+91 98450 21021"
     }
   },
   {
     "id": "OPR-0023",
-    "fullName": "Ahmed Zahir",
+    "fullName": "Karan Mehta",
     "designation": "Customer Service Lead",
     "department": "Operations",
-    "email": "ahmed.zahir@opro.mv",
+    "email": "karan.mehta@opro.mv",
     "phone": "+960 777 1023",
     "joinedOn": "2019-05-05",
     "bloodGroup": "A-",
@@ -170,21 +170,21 @@
       "EMPLOYEE"
     ],
     "emergencyContact": {
-      "name": "Shiuna Zahir",
+      "name": "Neha Mehta",
       "relation": "Spouse",
       "phone": "+960 777 2023"
     }
   },
   {
     "id": "OPR-0027",
-    "fullName": "Grace Mendoza",
+    "fullName": "Kavya Menon",
     "designation": "Operations Analyst",
     "department": "Operations",
-    "email": "grace.mendoza@opro.mv",
+    "email": "kavya.menon@opro.mv",
     "phone": "+960 777 1027",
     "joinedOn": "2024-03-30",
     "bloodGroup": "O+",
-    "nationality": "Filipino",
+    "nationality": "Indian",
     "workLocation": "Malé office",
     "employmentType": "Full-time",
     "managerId": "OPR-0004",
@@ -192,9 +192,9 @@
       "EMPLOYEE"
     ],
     "emergencyContact": {
-      "name": "Ramon Mendoza",
+      "name": "Suresh Menon",
       "relation": "Father",
-      "phone": "+63 917 102 7027"
+      "phone": "+91 98450 21027"
     }
   }
 ]

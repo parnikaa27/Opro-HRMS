@@ -46,7 +46,7 @@ describe('app shell', () => {
     expect(page.querySelector('.role-switch')).toBeNull();
     expect(text(page.querySelector('footer') as HTMLElement)).toContain('Opro Pvt Ltd · Malé, Republic of Maldives');
     expect(text(page.querySelector('.location-card') as HTMLElement)).toBe('Current office Hulhumalé, Maldives');
-    expect(text(page.querySelector('.profile-button') as HTMLElement)).toBe('KP Kasun Perera Employee · OPR-0018');
+    expect(text(page.querySelector('.profile-button') as HTMLElement)).toBe('AR Arjun Reddy Employee · OPR-0018');
   });
 
   it('gives managers the team nav with a count of what is waiting', async () => {
@@ -55,22 +55,24 @@ describe('app shell', () => {
       '/api/team/leave-requests?status=pending': [{ id: 'LR-1' }, { id: 'LR-2' }],
       '/api/team/corrections?status=pending': [{ id: 'AC-1' }],
       '/api/team/home-days?status=pending': [{ id: 'HW-1' }],
+      '/api/team/comp-offs?status=pending': [{ id: 'CO-1' }],
     });
 
-    expect(navLabels(page)).toEqual(['Overview', 'People', 'Attendance', 'Leave 4', 'Calendar']);
+    expect(navLabels(page)).toEqual(['Overview', 'People', 'Attendance', 'Leave 5', 'Calendar']);
     expect(page.querySelector('[data-testid=view-team]')?.getAttribute('aria-pressed')).toBe('true');
     expect(text(page.querySelector('.profile-button small') as HTMLElement)).toBe('Operations Manager');
   });
 
   it('gives HR the company nav with waiting leave and open inbox counts', async () => {
-    session.user.set(employee({ fullName: 'Aishath Shifa', designation: 'HR Manager', roles: ['EMPLOYEE', 'HR'] }));
+    session.user.set(employee({ fullName: 'Ananya Iyer', designation: 'HR Manager', roles: ['EMPLOYEE', 'HR'] }));
     const page = await render('/hr', {
       '/api/hr/leave-requests?status=pending': [{ id: 'LR-1' }],
       '/api/hr/corrections?status=pending': [{ id: 'AC-1' }],
       '/api/hr/change-requests': [{ id: 'CR-1', status: 'open' }, { id: 'CR-2', status: 'done' }],
+      '/api/hr/flight-claims?status=pending': [{ id: 'FC-1' }],
     });
 
-    expect(navLabels(page)).toEqual(['Overview', 'People', 'Leave 2', 'Calendar', 'Visas', 'Inbox 1', 'Announcements', 'Policies']);
+    expect(navLabels(page)).toEqual(['Overview', 'People', 'Leave 2', 'Calendar', 'Visas', 'Inbox 2', 'Announcements', 'Policies']);
     expect([...page.querySelectorAll('.role-switch button')].map((button) => text(button))).toEqual(['Employee', 'HR']);
     expect(page.querySelector('[data-testid=view-hr]')?.getAttribute('aria-pressed')).toBe('true');
   });
@@ -184,11 +186,11 @@ describe('app shell', () => {
     const page = await render('/team');
     const input = page.querySelector('[data-testid=search-input]') as HTMLInputElement;
 
-    input.value = 'rahim';
+    input.value = 'rohit';
     input.dispatchEvent(new Event('input'));
     TestBed.tick();
-    await respond(http, { '/api/team': [{ ...employee({ id: 'OPR-0021', fullName: 'Rahim Uddin' }) }] });
-    expect(texts(page, 'search-results')).toEqual(['Rahim Uddin Person']);
+    await respond(http, { '/api/team': [{ ...employee({ id: 'OPR-0021', fullName: 'Rohit Verma' }) }] });
+    expect(texts(page, 'search-results')).toEqual(['Rohit Verma Person']);
 
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     await settle();

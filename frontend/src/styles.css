@@ -388,10 +388,11 @@ dialog.modal {
   }
 }
 
-/* The punch fixes card under the attendance log, a section the design doesn't have. */
+/* The punch fixes card under the attendance log, and the exchange rates under the schedule: sections the design doesn't have. */
 .full-table + app-correction-list > .request-history,
 .attendance-off + app-correction-list > .request-history,
-.full-table + app-work-schedule-card > .request-history {
+.full-table + app-work-schedule-card > .request-history,
+app-work-schedule-card + app-exchange-rates-card > .card {
   margin-top: 19px;
 }
 
@@ -422,20 +423,38 @@ dialog.modal {
   }
 }
 
-/* Inbox rows have one detail cell instead of three. On phones it drops under the name. */
+/* Inbox rows have one detail cell instead of three. */
 .large-request.inbox-request {
   grid-template-columns: 42px 1fr 1.6fr auto;
 
   > div:nth-of-type(2) {
     display: block;
   }
+}
 
-  @media (max-width: 620px) {
+/* The design hides a request's details on phones, but nobody should approve leave, a punch fix or a flight claim without
+   seeing the dates and amounts. They drop under the name instead, one per line, with the buttons staying on the right. */
+@media (max-width: 620px) {
+  .all-requests .large-request {
     grid-template-columns: 39px 1fr auto;
+    row-gap: 6px;
 
-    > div:nth-of-type(2) {
+    > div:first-of-type {
+      grid-row: 1;
+      grid-column: 2;
+    }
+
+    > div.request-actions,
+    > app-status-pill {
+      grid-row: 1;
+      grid-column: 3;
+    }
+
+    > div:not(:first-of-type, .request-actions) {
+      display: flex;
       grid-column: 2 / -1;
-      grid-row: 2;
+      gap: 6px;
+      align-items: baseline;
     }
   }
 }
@@ -485,7 +504,8 @@ dialog.modal {
   }
 }
 
-/* Adding or editing a person is too long for a modal, so it sits on a page with the modal's field styles. */
+/* Adding or editing a person is too long for a modal, so it sits on a page with the modal's field styles.
+   Small forms inside a card (exchange rates, a flight allowance) borrow the same fields. */
 .employee-form {
   display: grid;
   gap: 14px;
@@ -499,7 +519,17 @@ dialog.modal {
       margin-top: 0;
     }
   }
+}
 
+.inline-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+:is(.employee-form, .inline-form) {
   label {
     display: grid;
     gap: 6px;
@@ -750,5 +780,156 @@ dialog.modal {
 
   app-icon {
     color: var(--aqua-dark);
+  }
+}
+
+/* Flight allowance, which the design doesn't have. The currency switch borrows the header's view switch. */
+.currency-switch {
+  display: inline-flex;
+  margin-block-end: 14px;
+  padding: 3px;
+  border-radius: 8px;
+  background: #f0f4f4;
+
+  button {
+    padding: 6px 11px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #7a8c94;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  button[aria-pressed='true'] {
+    background: white;
+    color: var(--navy);
+    box-shadow: 0 1px 5px rgba(27, 52, 63, 0.12);
+  }
+}
+
+.flight-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+  margin: 0 0 14px;
+
+  div {
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+
+  dt {
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  dd {
+    margin: 2px 0 0;
+    color: var(--ink);
+    font: 800 16px "Manrope Variable";
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Edit and Remove side by side on the policy table. */
+td.row-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* The inbox's flight claims under its detail changes keep the design's 19px gap between cards. */
+app-flight-claims-inbox > .card {
+  margin-top: 19px;
+}
+
+/* A short note under a table, inside the same card. */
+.table-note {
+  padding: 12px 20px 18px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* On phones a table turns into a stack of rows: the row's name across the top, then each value under its column's name,
+   so nothing sits off screen. Column headings stay in the page for screen readers. */
+@media (max-width: 620px) {
+  .table-wrap table.stacks {
+    min-width: 0;
+
+    thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+
+    tr {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 14px;
+      padding: 14px 18px;
+      border-top: 1px solid var(--line);
+    }
+
+    td {
+      display: block;
+      padding: 0;
+      border: 0;
+    }
+
+    td:first-child {
+      grid-column: 1 / -1;
+    }
+
+    td.row-actions {
+      display: flex;
+    }
+
+    td[data-label]::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: 2px;
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+    }
+  }
+}
+
+/* Up to six request tabs don't fit a phone. They stay on one line and the strip scrolls sideways. */
+@media (max-width: 620px) {
+  .request-tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+
+    button {
+      flex: none;
+      white-space: nowrap;
+    }
+  }
+}
+
+/* Below about 1100px, three balance cards in a row are too narrow for their rings. Two fit; phones already stack them. */
+@media (min-width: 621px) and (max-width: 1100px) {
+  .leave-balance-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* With the sidebar still showing, the design's side column (staff card, visa, flights) needs 290px it doesn't get below
+   about 1100px. It moves under the main column, two cards across, the way the design lays it out below 860px. */
+@media (min-width: 861px) and (max-width: 1100px) {
+  .employee-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .side-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
   }
 }

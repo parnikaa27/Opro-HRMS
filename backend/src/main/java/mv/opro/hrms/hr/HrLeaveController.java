@@ -3,6 +3,8 @@ package mv.opro.hrms.hr;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -15,6 +17,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import mv.opro.hrms.attendance.CompOffResponse;
+import mv.opro.hrms.attendance.CompOffs;
 import mv.opro.hrms.attendance.CorrectionRequest;
 import mv.opro.hrms.attendance.CorrectionResponse;
 import mv.opro.hrms.attendance.Corrections;
@@ -30,10 +34,12 @@ import mv.opro.hrms.leave.LeaveRequest;
 import mv.opro.hrms.leave.LeaveRequestResponse;
 import mv.opro.hrms.leave.LeaveService;
 import mv.opro.hrms.leave.LeaveType;
+import mv.opro.hrms.leave.LeaveTypeResponse;
 import mv.opro.hrms.session.CurrentUser;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -49,6 +55,7 @@ class HrLeaveController {
 
     private static final int MAX_NOTE = 300;
     private static final String MAX_DAYS = "365";
+    private static final int MAX_DAYS_WHOLE = 365;
 
     record RecordLeave(
             @NotBlank String employeeId,
@@ -66,11 +73,25 @@ class HrLeaveController {
             @NotNull @DecimalMin("-" + MAX_DAYS) @DecimalMax(MAX_DAYS) BigDecimal days,
             @NotBlank @Size(max = MAX_NOTE) String reason) {}
 
-    record PolicyBody(@NotBlank @Size(max = 60) String name, @NotNull Boolean allowsHalfDay,
-            @DecimalMin("0") @DecimalMax(MAX_DAYS) BigDecimal defaultEntitlement) {}
+    record PolicyBody(
+            @NotBlank @Size(max = 60) String name,
+            @NotNull Boolean allowsHalfDay,
+            @NotNull Boolean isUnlimited,
+            @DecimalMin("0") @DecimalMax(MAX_DAYS) BigDecimal defaultEntitlement,
+            @Min(1) @Max(MAX_DAYS_WHOLE) Integer documentRequiredAfterDays,
+            @NotNull Boolean isForEveryone,
+            @NotNull Boolean carriesForward,
+            @DecimalMin("0") @DecimalMax(MAX_DAYS) BigDecimal carryForwardCap) {
 
-    record LeaveTypeResponse(String code, String name, boolean allowsHalfDay, boolean isUnlimited, BigDecimal defaultEntitlement,
-            Integer documentRequiredAfterDays) {}
+        LeaveType.Rules rules() {
+            return new LeaveType.Rules(name, allowsHalfDay, isUnlimited, defaultEntitlement, documentRequiredAfterDays, isForEveryone, carriesForward,
+                    carryForwardCap);
+        }
+    }
+
+    record SetDaysBody(@NotNull @DecimalMin("0") @DecimalMax(MAX_DAYS) BigDecimal days, @NotBlank @Size(max = MAX_NOTE) String reason) {}
+
+    record ReasonBody(@NotBlank @Size(max = MAX_NOTE) String reason) {}
 
     private final HrAccess hr;
     private final CurrentUser currentUser;
@@ -78,15 +99,18 @@ class HrLeaveController {
     private final LeaveService leave;
     private final Corrections corrections;
     private final HomeDays homeDays;
+    private final CompOffs compOffs;
     private final Files files;
 
-    HrLeaveController(HrAccess hr, CurrentUser currentUser, People people, LeaveService leave, Corrections corrections, HomeDays homeDays, Files files) {
+    HrLeaveController(HrAccess hr, CurrentUser currentUser, People people, LeaveService leave, Corrections corrections, HomeDays homeDays, CompOffs compOffs,
+            Files files) {
         this.hr = hr;
         this.currentUser = currentUser;
         this.people = people;
         this.leave = leave;
         this.corrections = corrections;
         this.homeDays = homeDays;
+        this.compOffs = compOffs;
         this.files = files;
     }
 
@@ -151,6 +175,24 @@ class HrLeaveController {
         return HomeDayResponse.of(decided, people.namesOf(Set.of(decided.getEmployeeId(), me.getId())));
     }
 
+    @GetMapping("/api/hr/comp-offs")
+    List<CompOffResponse> compOffs(@RequestParam(required = false) String status) {
+        hr.require(currentUser.get());
+        List<CompOffs.Claim> claims = compOffs.all(status);
+        Map<String, String> names = people.namesOf(claims.stream()
+                .flatMap(claim -> Stream.of(claim.claim().getEmployeeId(), claim.claim().getDecidedBy()))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet()));
+        return claims.stream().map(claim -> CompOffResponse.of(claim, names)).toList();
+    }
+
+    @PostMapping("/api/hr/comp-offs/{id}/decision")
+    CompOffResponse decideCompOff(@PathVariable String id, @Valid @RequestBody DecisionBody body) {
+        Employee me = hr.require(currentUser.get());
+        CompOffs.Claim decided = compOffs.decide(me, id, everyoneBut(me), new Corrections.Decision(body.decision(), body.note()));
+        return CompOffResponse.of(decided, people.namesOf(Set.of(decided.claim().getEmployeeId(), me.getId())));
+    }
+
     @PostMapping("/api/hr/balance-adjustments")
     HrPeopleController.AdjustmentResponse adjust(@Valid @RequestBody AdjustBody body) {
         Employee me = hr.require(currentUser.get());
@@ -163,12 +205,41 @@ class HrLeaveController {
                 me.getFullName(), change.getMadeOn());
     }
 
+    @PostMapping("/api/hr/leave-types")
+    LeaveTypeResponse addType(@Valid @RequestBody PolicyBody body) {
+        hr.require(currentUser.get());
+        return LeaveTypeResponse.of(leave.addType(body.rules()));
+    }
+
     @PutMapping("/api/hr/leave-types/{code}")
     LeaveTypeResponse policy(@PathVariable String code, @Valid @RequestBody PolicyBody body) {
         hr.require(currentUser.get());
-        LeaveType type = leave.updateType(code, body.name(), body.allowsHalfDay(), body.defaultEntitlement());
-        return new LeaveTypeResponse(type.getCode(), type.getName(), type.allowsHalfDay(), type.isUnlimited(), type.getDefaultEntitlement(),
-                type.getDocumentRequiredAfterDays());
+        return LeaveTypeResponse.of(leave.updateType(code, body.rules()));
+    }
+
+    // Deleted if nobody ever used it, otherwise retired.
+    @DeleteMapping("/api/hr/leave-types/{code}")
+    ResponseEntity<Void> removeType(@PathVariable String code) {
+        hr.require(currentUser.get());
+        leave.removeType(code);
+        return ResponseEntity.noContent().build();
+    }
+
+    // One person's days of a type this year. Also how a type is given to just one person.
+    @PutMapping("/api/hr/employees/{id}/leave/{code}")
+    ResponseEntity<Void> setDays(@PathVariable String id, @PathVariable String code, @Valid @RequestBody SetDaysBody body) {
+        Employee me = hr.require(currentUser.get());
+        someoneElse(me, id);
+        leave.setDays(me, id, code, body.days(), body.reason());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/api/hr/employees/{id}/leave/{code}/remove")
+    ResponseEntity<Void> removeFromPerson(@PathVariable String id, @PathVariable String code, @Valid @RequestBody ReasonBody body) {
+        Employee me = hr.require(currentUser.get());
+        someoneElse(me, id);
+        leave.removeFrom(id, code, body.reason());
+        return ResponseEntity.noContent().build();
     }
 
     // Health data. HR opens it in a new tab; it's never cached.

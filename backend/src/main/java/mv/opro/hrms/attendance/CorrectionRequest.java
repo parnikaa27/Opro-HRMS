@@ -5,7 +5,7 @@ import jakarta.persistence.Id;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
-// Someone asking for a missed punch to be added. Approving it is the manager's step, later.
+// Someone asking for a punch to be fixed: one they missed, or a late punch in to move earlier. Their manager decides.
 @Entity
 public class CorrectionRequest {
 
@@ -15,6 +15,7 @@ public class CorrectionRequest {
     private String employeeId;
     private LocalDate punchDate;
     private String kind;
+    private String category;
     private LocalTime requestedTime;
     private String reason;
     private String status;
@@ -25,12 +26,14 @@ public class CorrectionRequest {
 
     protected CorrectionRequest() {}
 
-    static CorrectionRequest raise(String id, String employeeId, LocalDate punchDate, String kind, LocalTime requestedTime, String reason, LocalDate today) {
+    static CorrectionRequest raise(String id, String employeeId, LocalDate punchDate, String kind, String category, LocalTime requestedTime, String reason,
+            LocalDate today) {
         CorrectionRequest request = new CorrectionRequest();
         request.id = id;
         request.employeeId = employeeId;
         request.punchDate = punchDate;
         request.kind = kind;
+        request.category = category;
         request.requestedTime = requestedTime;
         request.reason = reason;
         request.status = "pending";
@@ -59,6 +62,15 @@ public class CorrectionRequest {
 
     public LocalDate getPunchDate() {
         return punchDate;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    // A late punch replaces their punch in rather than adding one.
+    boolean isLatePunch() {
+        return "late".equals(category);
     }
 
     public String getKind() {

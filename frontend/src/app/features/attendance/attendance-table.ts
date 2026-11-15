@@ -18,7 +18,7 @@ export interface AttendanceRow {
   imports: [StatusPill],
   template: `
     <div class="table-wrap">
-      <table>
+      <table class="stacks">
         <thead>
           <tr>
             <th scope="col">DAY</th>
@@ -38,10 +38,10 @@ export interface AttendanceRow {
                 <strong>{{ row.day }}</strong>
                 <span>{{ row.dateLabel }}</span>
               </td>
-              <td>{{ row.punchIn }}</td>
-              <td>{{ row.punchOut }}</td>
-              <td><b>{{ row.hours }}</b></td>
-              <td>
+              <td data-label="PUNCH IN">{{ row.punchIn }}</td>
+              <td data-label="PUNCH OUT">{{ row.punchOut }}</td>
+              <td data-label="WORK HOURS"><b>{{ row.hours }}</b></td>
+              <td data-label="STATUS">
                 <app-status-pill [tone]="row.status.tone">{{ row.status.label }}</app-status-pill>
                 @if (row.isEdited) {
                   <span class="edited-note" data-testid="corrected">Corrected</span>

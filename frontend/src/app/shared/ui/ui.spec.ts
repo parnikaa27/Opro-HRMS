@@ -12,7 +12,7 @@ import { WelcomeBanner } from './welcome-banner';
 @Component({
   imports: [Avatar, CircleProgress, Icon, ListSkeleton, Logo, StatusPill, WelcomeBanner],
   template: `
-    <app-avatar name="Mariyam  Nisha Ali" />
+    <app-avatar name="Sneha  Kulkarni Ali" />
     <app-avatar name="Big Face" [isLarge]="true" data-testid="large-avatar" />
     <app-avatar name="Has Photo" photoUrl="/api/employees/E/photo?v=1" data-testid="photo-avatar" />
     <app-status-pill tone="late">Late</app-status-pill>
@@ -25,7 +25,7 @@ import { WelcomeBanner } from './welcome-banner';
     <app-logo data-testid="logo" />
     <app-logo [isCompact]="true" data-testid="compact-logo" />
     <app-circle-progress [percent]="150" label="9h" sub="of 8 hours" colour="amber" />
-    <app-welcome-banner dateLabel="THURSDAY, 12 NOVEMBER" heading="Good morning, Kasun." line="Here’s your day." />
+    <app-welcome-banner dateLabel="THURSDAY, 12 NOVEMBER" heading="Good morning, Arjun." line="Here’s your day." />
     <app-list-skeleton [count]="2" />
   `,
 })
@@ -41,7 +41,7 @@ describe('shared UI', () => {
   it('shows initials in a stable colour, large when asked', async () => {
     const element = await render();
 
-    expect(text(element.querySelector('app-avatar') as HTMLElement)).toBe('MN');
+    expect(text(element.querySelector('app-avatar') as HTMLElement)).toBe('SK');
     expect(element.querySelector('app-avatar')?.classList).toContain('avatar');
     expect(element.querySelector('[data-testid=large-avatar]')?.classList).toContain('large');
     expect(element.querySelector('[data-testid=photo-avatar] img')?.getAttribute('src')).toBe('/api/employees/E/photo?v=1');
@@ -84,7 +84,7 @@ describe('shared UI', () => {
   it('renders the welcome banner and a loading skeleton', async () => {
     const element = await render();
 
-    expect(text(element.querySelector('.welcome') as HTMLElement)).toBe('THURSDAY, 12 NOVEMBER Good morning, Kasun. Here’s your day.');
+    expect(text(element.querySelector('.welcome') as HTMLElement)).toBe('THURSDAY, 12 NOVEMBER Good morning, Arjun. Here’s your day.');
     expect(element.querySelectorAll('[data-testid=list-loading] li')).toHaveLength(2);
   });
 });

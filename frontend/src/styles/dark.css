@@ -627,19 +627,19 @@
 :root[data-theme='dark'] .punch-log li {
   background: #1e2a32;
 }
-:root[data-theme='dark'] .employee-form label {
+:root[data-theme='dark'] :is(.employee-form, .inline-form) label {
   color: #b0c2c9;
 }
-:root[data-theme='dark'] .employee-form input,
-:root[data-theme='dark'] .employee-form select {
+:root[data-theme='dark'] :is(.employee-form, .inline-form) input,
+:root[data-theme='dark'] :is(.employee-form, .inline-form) select {
   border: 1px solid #253139;
 }
-:root[data-theme='dark'] .employee-form input,
-:root[data-theme='dark'] .employee-form select {
+:root[data-theme='dark'] :is(.employee-form, .inline-form) input,
+:root[data-theme='dark'] :is(.employee-form, .inline-form) select {
   background: #19242c;
 }
-:root[data-theme='dark'] .employee-form input:focus,
-:root[data-theme='dark'] .employee-form select:focus {
+:root[data-theme='dark'] :is(.employee-form, .inline-form) input:focus,
+:root[data-theme='dark'] :is(.employee-form, .inline-form) select:focus {
   box-shadow: 0 0 0 3px #273734;
 }
 :root[data-theme='dark'] .leaving-note {
@@ -668,6 +668,18 @@
 }
 :root[data-theme='dark'] .home-note app-icon {
   color: #5ac6ba;
+}
+:root[data-theme='dark'] .currency-switch {
+  background: #212c35;
+}
+:root[data-theme='dark'] .currency-switch button {
+  color: #98a9b1;
+}
+:root[data-theme='dark'] .currency-switch button[aria-pressed='true'] {
+  background: #19242c;
+}
+:root[data-theme='dark'] .currency-switch button[aria-pressed='true'] {
+  color: #deedf8;
 }
 @media (max-width: 860px) {
 :root[data-theme='dark'] .mobile-menu {
@@ -1303,19 +1315,19 @@
 :root:not([data-theme='light']) .punch-log li {
   background: #1e2a32;
 }
-:root:not([data-theme='light']) .employee-form label {
+:root:not([data-theme='light']) :is(.employee-form, .inline-form) label {
   color: #b0c2c9;
 }
-:root:not([data-theme='light']) .employee-form input,
-:root:not([data-theme='light']) .employee-form select {
+:root:not([data-theme='light']) :is(.employee-form, .inline-form) input,
+:root:not([data-theme='light']) :is(.employee-form, .inline-form) select {
   border: 1px solid #253139;
 }
-:root:not([data-theme='light']) .employee-form input,
-:root:not([data-theme='light']) .employee-form select {
+:root:not([data-theme='light']) :is(.employee-form, .inline-form) input,
+:root:not([data-theme='light']) :is(.employee-form, .inline-form) select {
   background: #19242c;
 }
-:root:not([data-theme='light']) .employee-form input:focus,
-:root:not([data-theme='light']) .employee-form select:focus {
+:root:not([data-theme='light']) :is(.employee-form, .inline-form) input:focus,
+:root:not([data-theme='light']) :is(.employee-form, .inline-form) select:focus {
   box-shadow: 0 0 0 3px #273734;
 }
 :root:not([data-theme='light']) .leaving-note {
@@ -1344,6 +1356,18 @@
 }
 :root:not([data-theme='light']) .home-note app-icon {
   color: #5ac6ba;
+}
+:root:not([data-theme='light']) .currency-switch {
+  background: #212c35;
+}
+:root:not([data-theme='light']) .currency-switch button {
+  color: #98a9b1;
+}
+:root:not([data-theme='light']) .currency-switch button[aria-pressed='true'] {
+  background: #19242c;
+}
+:root:not([data-theme='light']) .currency-switch button[aria-pressed='true'] {
+  color: #deedf8;
 }
 @media (max-width: 860px) {
 :root:not([data-theme='light']) .mobile-menu {

@@ -24,12 +24,12 @@ class LeaveApiTests {
     @Autowired
     JdbcTemplate jdbc;
 
-    ApiClient kasun;
+    ApiClient arjun;
 
     @BeforeEach
     void signIn() throws Exception {
-        kasun = new ApiClient(port);
-        kasun.signIn("OPR-0018");
+        arjun = new ApiClient(port);
+        arjun.signIn("OPR-0018");
     }
 
     // Seeded requests have short ids (LR-1031). Ones made by these tests are random and longer.
@@ -42,7 +42,7 @@ class LeaveApiTests {
     }
 
     private HttpResponse<String> apply(String type, String from, String to, String extra) throws Exception {
-        return kasun.post("/api/leave/requests",
+        return arjun.post("/api/leave/requests",
                 "{\"type\":\"" + type + "\",\"from\":\"" + from + "\",\"to\":\"" + to + "\",\"reason\":\"Family trip\"" + extra + "}");
     }
 
@@ -52,16 +52,16 @@ class LeaveApiTests {
 
     @Test
     void typesComeInThePolicysOrderAndUnpaidHasNoCap() throws Exception {
-        String types = kasun.get("/api/leave/types").body();
+        String types = arjun.get("/api/leave/types").body();
 
-        assertThat(JsonPath.<List<String>>read(types, "$[*].code")).containsExactly("annual", "sick", "family", "maternity", "paternity", "unpaid");
+        assertThat(JsonPath.<List<String>>read(types, "$[*].code")).containsExactly("annual", "sick", "family", "maternity", "paternity", "unpaid", "comp-off");
         assertThat(JsonPath.<List<Boolean>>read(types, "$[?(@.code == 'unpaid')].isUnlimited")).containsExactly(true);
         assertThat(JsonPath.<List<Integer>>read(types, "$[?(@.code == 'sick')].documentRequiredAfterDays")).containsExactly(2);
     }
 
     @Test
     void balancesAddLeaveFromBeforeTheSystemToApprovedRequests() throws Exception {
-        String balances = kasun.get("/api/leave/balances").body();
+        String balances = arjun.get("/api/leave/balances").body();
 
         assertThat(JsonPath.<List<String>>read(balances, "$[*].type")).containsExactly("annual", "sick", "family", "paternity");
         assertThat(balance(balances, "annual", "taken")).isEqualTo("18.0");
@@ -71,13 +71,14 @@ class LeaveApiTests {
 
     @Test
     void theServerCountsTheDaysWhateverTheClientSays() throws Exception {
+        // Sunday 6 to Saturday 12 December: six working days, with Friday 11 off.
         HttpResponse<String> response = apply("annual", "2026-12-06", "2026-12-12", ",\"days\":1");
 
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(JsonPath.<Number>read(response.body(), "$.days").doubleValue()).isEqualTo(5.0);
+        assertThat(JsonPath.<Number>read(response.body(), "$.days").doubleValue()).isEqualTo(6.0);
         assertThat(JsonPath.<String>read(response.body(), "$.status")).isEqualTo("pending");
-        assertThat(JsonPath.<String>read(response.body(), "$.employeeName")).isEqualTo("Kasun Perera");
-        assertThat(balance(kasun.get("/api/leave/balances").body(), "annual", "pending")).isEqualTo("5.0");
+        assertThat(JsonPath.<String>read(response.body(), "$.employeeName")).isEqualTo("Arjun Reddy");
+        assertThat(balance(arjun.get("/api/leave/balances").body(), "annual", "pending")).isEqualTo("6.0");
     }
 
     @Test
@@ -92,8 +93,8 @@ class LeaveApiTests {
     @Test
     void impossibleDatesAreRefusedWithAReason() throws Exception {
         assertThat(apply("annual", "2026-12-10", "2026-12-08", "").body()).isEqualTo("{\"message\":\"The last day can't be before the first.\"}");
-        assertThat(apply("annual", "2026-12-04", "2026-12-05", "").body())
-                .isEqualTo("{\"message\":\"Those dates are all weekends or holidays. Nothing to take.\"}");
+        assertThat(apply("annual", "2026-12-04", "2026-12-04", "").body())
+                .isEqualTo("{\"message\":\"Those dates are all Fridays or public holidays. Nothing to take.\"}");
         assertThat(apply("annual", "2026-12-30", "2027-01-03", "").body())
                 .isEqualTo("{\"message\":\"Leave can't run past New Year. Split it into two requests, one for each year.\"}");
     }
@@ -147,18 +148,18 @@ class LeaveApiTests {
     void pendingLeaveCanBeCancelledButStartedOrOtherPeoplesCant() throws Exception {
         String id = JsonPath.read(apply("annual", "2026-12-06", "2026-12-06", "").body(), "$.id");
 
-        assertThat(JsonPath.<String>read(kasun.post("/api/leave/requests/" + id + "/cancel", "{}").body(), "$.status")).isEqualTo("cancelled");
-        assertThat(kasun.post("/api/leave/requests/LR-1031/cancel", "{}").statusCode()).isEqualTo(409);
-        assertThat(kasun.post("/api/leave/requests/LR-1042/cancel", "{}").statusCode()).isEqualTo(404);
+        assertThat(JsonPath.<String>read(arjun.post("/api/leave/requests/" + id + "/cancel", "{}").body(), "$.status")).isEqualTo("cancelled");
+        assertThat(arjun.post("/api/leave/requests/LR-1031/cancel", "{}").statusCode()).isEqualTo(409);
+        assertThat(arjun.post("/api/leave/requests/LR-1042/cancel", "{}").statusCode()).isEqualTo(404);
     }
 
     @Test
     void ownRequestsComeNewestFirst() throws Exception {
         apply("annual", "2026-12-06", "2026-12-06", "");
 
-        String requests = kasun.get("/api/leave/requests").body();
+        String requests = arjun.get("/api/leave/requests").body();
 
         assertThat(JsonPath.<List<String>>read(requests, "$[*].from")).containsExactly("2026-12-06", "2026-11-04");
-        assertThat(JsonPath.<List<String>>read(requests, "$[?(@.id == 'LR-1031')].decidedByName")).containsExactly("Ibrahim Rasheed");
+        assertThat(JsonPath.<List<String>>read(requests, "$[?(@.id == 'LR-1031')].decidedByName")).containsExactly("Vikram Singh");
     }
 }

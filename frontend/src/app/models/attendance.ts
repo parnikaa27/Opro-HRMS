@@ -36,7 +36,24 @@ export interface AttendanceDay {
   homeStatus?: HomeDay['status'];
 }
 
-export type WorkMode = 'office' | 'home';
+export type WorkMode = 'office' | 'resort' | 'home';
+
+// Why someone asks for a punch fix. A late punch moves their punch in; the rest add the punch they missed.
+export type FixCategory = 'resort' | 'forgot' | 'late' | 'other';
+
+// A Friday or public holiday worked. days is what it earns, decided or what approving would give.
+export interface CompOffClaim {
+  id: string;
+  employeeId: string;
+  employeeName?: string;
+  date: string;
+  status: 'pending' | 'approved' | 'rejected';
+  days: number;
+  workedMinutes: number;
+  decidedByName?: string;
+  decidedOn?: string;
+  decisionNote?: string;
+}
 
 export interface HomeDay {
   id: string;
@@ -83,8 +100,10 @@ export interface CorrectionRequest {
   employeeName?: string;
   date: string;
   kind: 'missed-in' | 'missed-out';
+  category: FixCategory;
   requestedTime: string;
-  reason: string;
+  // Only required for a late punch and for anything else.
+  reason?: string;
   status: 'pending' | 'approved' | 'rejected';
   raisedOn: string;
   decidedBy?: string;

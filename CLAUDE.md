@@ -10,7 +10,7 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 | `frontend/` | Angular 22, Tailwind CSS v4, Vitest, Playwright | Employee, manager and HR views built. Employee and manager pages match the Figma design; HR pages reuse its classes |
 | `design/figma-make/` | `App.tsx` and `index.css` copied from the Figma Make file "Opro HRMS Portal" | The visual source of truth |
 | `frontend/dev-server/` | Plain Node mock API serving JSON fixtures | In progress |
-| `backend/` | Java 25, Spring Boot 4.1, PostgreSQL 18, Flyway, Maven | Every endpoint is live: session, profile with photo, holidays and events, attendance, leave with medical certificates, documents, announcements, change requests, notifications, the team view, the HR view, punching from the office or home, and daily visa reminders. The mock stays for frontend work, and the e2e tests run against both |
+| `backend/` | Java 25, Spring Boot 4.1, PostgreSQL 18, Flyway, Maven | Every endpoint is live: session, profile with photo, holidays and events, attendance, leave with medical certificates, documents, announcements, change requests, notifications, the team view, the HR view, punching from the office or home, daily visa reminders, leave types HR manages with carry forward, compensatory off and flight allowances. The mock stays for frontend work, and the e2e tests run against both |
 
 ---
 
@@ -68,8 +68,8 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 | `/attendance` | My attendance: four summary cards, the attendance log for a chosen month, CSV export, punch fix requests and their status, and the punch button while today is on screen |
 | `/leave` | Leave and time off: balance rings, other leave types, request history with cancel (pending, or approved and not started), and the Request leave modal with a working day preview and a success screen |
 | `/calendar` | Company calendar: month grid with public holidays and company events, upcoming holidays, the holiday policy. Islamic holidays are marked **tentative** until confirmed after moon sighting. `/holidays` redirects here |
-| `/profile` | Virtual ID card (printable), personal and job details, emergency contact, visa and work permit details, request a change to personal details |
-| Notifications | Header panel, not a page: leave, punch fix and home working decisions, visa reminders, announcements, every change HR makes to your record (punches, leave recorded for you, balance adjustments, visa, details, photo, a detail change request) and changes to working hours. Each says what changed and why, in plain words. Marking someone as leaving sends nothing: HR tells people in person |
+| `/profile` | Virtual ID card (printable), personal and job details, emergency contact, visa and work permit details, request a change to personal details, and the flight allowance (used, waiting and left in USD, MVR or INR) with flight claims |
+| Notifications | Header panel, not a page: leave, punch fix, home working, compensatory off and flight claim decisions, visa reminders, announcements, every change HR makes to your record (punches, leave recorded for you, balance adjustments, visa, details, photo, a detail change request) and changes to working hours. Each says what changed and why, in plain words. Marking someone as leaving sends nothing: HR tells people in person |
 | Search | Top bar, ⌘K or Ctrl K. Finds pages, and people for managers |
 
 **Team view (managers only)**
@@ -78,7 +78,7 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 |---|---|
 | `/team` | Manager overview: welcome banner, team members, pending requests, average attendance and out of office cards, waiting leave with one click approve, team today, a month attendance chart with CSV export, visa alerts |
 | `/team/people` | Card directory of direct reports with today's status and search |
-| `/team/approvals` | Leave requests in tabs (Pending, Approved, Declined, Punch fixes, Home working). Approve in one click. Declining opens a modal that needs a reason, so the employee can plan around it. Waiting leave shows who else is off on those dates |
+| `/team/approvals` | Leave requests in tabs (Pending, Approved, Declined, Punch fixes, Home working, Comp off). Approve in one click. Declining opens a modal that needs a reason, so the employee can plan around it. Waiting leave shows who else is off on those dates |
 | `/team/attendance` | Team summary cards and a table with one row per report (days present, late, missed, hours, today), month picker, CSV export |
 | `/team/calendar` | The company calendar plus who on the team is away (approved filled, pending dashed) |
 | `/team/:employeeId` | One report's leave balances, this month's attendance log, leave requests, staff card and visa. Read only |
@@ -92,20 +92,20 @@ Sidebar: Overview, People, Leave (count waiting), Calendar, Visas, Inbox (count 
 | `/hr` | Welcome banner, people, waiting decisions, visas to act on and inbox counts, oldest waiting leave, visa alerts, tentative holidays in the next 60 days |
 | `/hr/people` | The People page for everyone at Opro, with Add person and a toggle to include people who have left |
 | `/hr/people/new`, `/hr/people/:employeeId/edit` | Add a person, or edit their details and manager. A page, not a modal, because the form is long |
-| `/hr/people/:employeeId` | One person's balances, this month's log with Fix punches on every row, requests, balance change log, staff card and visa. Record leave, adjust a balance, update visa. A More menu holds edit details, change photo and mark as leaving |
+| `/hr/people/:employeeId` | One person's balances, this month's log with Fix punches on every row, requests, balance change log, staff card and visa. Record leave, set their days of a type or give or take away a type (Leave days), adjust a balance, update visa, set their flight allowance. A More menu holds edit details, change photo and mark as leaving |
 | `/hr/leave` | The leave requests page for every request in the company, so HR can step in when a manager is away |
 | `/hr/calendar` | Holidays and events per year: add, edit, delete, confirm a tentative date, add the civil holidays to an empty year |
 | `/hr/visas` | Every expatriate, people with no record first, then soonest visa or passport expiry |
-| `/hr/inbox` | Profile change requests in tabs (Open, Done, Declined). Declining needs a reason |
+| `/hr/inbox` | Profile change requests in tabs (Open, Done, Declined), and flight claims waiting with their receipts. Declining needs a reason |
 | `/hr/announcements` | Post, edit and take down notes from HR. A new one notifies everyone |
-| `/hr/policy` | Policies: leave types with yearly days and half day rule (a new entitlement applies from the next leave year), and the work schedule as dated versions |
+| `/hr/policy` | Policies: add, edit and remove leave types (yearly days, half days, given to everyone or people HR picks, lapse or carry forward up to a cap; a new entitlement applies from the next leave year), the work schedule as dated versions, and the exchange rates for flight allowances |
 
 ### Attendance rules (placeholders, confirm with HR)
 
 | Rule | Value |
 |---|---|
 | Time zone | Maldives Time, UTC+5 (`Indian/Maldives`), single zone |
-| Work week | Sunday to Thursday. Friday and Saturday off |
+| Work week | Saturday to Thursday. Friday is the only day off |
 | Shift | 09:00 to 17:00. HR changes it from Policies |
 | Late | First punch after 09:15 (15 minute grace, set by HR) |
 | Half day | Less than 4 hours worked (set by HR) |
@@ -115,6 +115,7 @@ Sidebar: Overview, People, Leave (count waiting), Calendar, Visas, Inbox (count 
 
 - **Shift rules are dated versions.** HR sets shift start and end, grace, half day threshold and Ramadan hours from a date after today. Days already worked keep the version they were worked under. A version that hasn't started can be cancelled. Ramadan hours apply from the first day of Ramadan to the day before Eid al Fitr in the holiday calendar (backend). The work week is not editable.
 - The backend sends `expectedOut` and `scheduledMinutes` with each day, from the version in force. The frontend shows them and never works out a shift itself.
+- **Punch fix requests** have a type: **Working from resort**, **Forgot to punch**, **Late punch** or **Other**. A reason is required for Late punch and Other only. Approving one adds the punch they missed; approving a **late punch** voids their late punch in (logged, never deleted) and puts in the time they arrived, so lateness and hours are worked out again. A late punch can't move the punch in later.
 - **Punch fixes by HR:** add a missing punch or void a wrong one, one change at a time, always with a reason. Punches are never overwritten, every change is logged with who, when and why, and the backend works the day out again. An approved punch fix request goes through the same path, logged as approved by whoever decided it. Corrected days show "Corrected" to everyone who sees them.
 - Raw punches are never edited. A wrong one is voided and a missing one is added with source `manual`. Each day is worked out per request from the punches, the schedule version in force, holidays, approved full day leave and the weekend (`DayCalculator`).
 - Ramadan hours are stored on the schedule but not applied yet. HR now confirms the first day of Ramadan and Eid al Fitr in the calendar, so the next step is applying those dates when a day is worked out.
@@ -123,9 +124,10 @@ Sidebar: Overview, People, Leave (count waiting), Calendar, Visas, Inbox (count 
 
 ### Punching (replaces the fingerprint devices)
 
-- Staff punch in and out from the portal (`POST /api/attendance/punch`). Punching in asks once: **at the office** or **from home**. The first punch sets the day's mode, and every later punch that day must match it.
+- Staff punch in and out from the portal (`POST /api/attendance/punch`). Punching in asks once: **at the office**, **at a resort** or **from home**. The first punch sets the day's mode, and every later punch that day must match it.
 - **At the office:** the browser sends its location and accuracy. The server works out the distance to the nearest work location and refuses anything further than its radius (**300 m**), or a location less precise than **150 m**. Only the office name and the distance are stored, never coordinates.
-- **Work location pins are placeholders** in `backend/src/main/resources/application.yml` (`opro.punch.offices`: Malé office and Hulhumalé site) until Parnika confirms them.
+- **At a resort:** the same check against client resort pins, with a **5 km** radius. It counts like the office, with no approval.
+- **Work location and resort pins are placeholders** in `backend/src/main/resources/application.yml` (`opro.punch.offices`: Malé office and Hulhumalé site; `opro.punch.resorts`: one "Client resort") until Parnika confirms them.
 - **From home:** no location. The first home punch of a day creates a home day for the manager, who approves or declines it on the Home working tab. HR can decide too, but never for themselves. Declining needs a reason and turns the day into an absence (punches kept, 0 hours).
 - A double tap within a minute is refused. A person's punches are locked while one saves.
 - Old fingerprint device punches stay in history with the device's name. The device status screens and `/api/devices` are gone.
@@ -141,8 +143,13 @@ Sidebar: Overview, People, Leave (count waiting), Calendar, Visas, Inbox (count 
 | Maternity | 60 |
 | Paternity | 3 |
 | Unpaid | No limit |
+| Compensatory off | Earned, see below |
 
-- Leave year follows the calendar year. Carry forward: none until HR confirms.
+- Leave year follows the calendar year, which is also the Maldives financial year.
+- **Leave types are HR's.** HR adds, edits and removes them in Policies. A type is given to **everyone** each year, or to **people HR picks** (maternity, paternity, marriage). Removing a type nobody used deletes it; a used one is **retired**: nobody can book it, history keeps its name. No types exist outside the dev seed until HR adds them, except compensatory off.
+- **Carry forward** is set per type: unused days **lapse**, or **carry forward up to a cap** HR sets. What carries is worked out from last year every time, never stored, so a late change to last year still counts. Placeholder: every type lapses until HR confirms.
+- **A year opens by itself.** Whenever someone's balances are read, any type for everyone they don't hold yet that year is opened from the policy's default. A new type for everyone reaches everyone straight away.
+- **One person's leave:** HR sets how many days of a type someone gets this year (fewer for a late joiner, a type only they get), or takes a type away. Every change needs a reason, is logged and notifies them. A type with a waiting request can't be taken away. HR never changes their own.
 - Half days allowed (first half or second half).
 - Weekends and public holidays inside a leave range do not count.
 - The apply form only offers types the person has a balance for, plus types the policy marks `isUnlimited`. A missing balance never means "no cap".
@@ -152,8 +159,21 @@ Sidebar: Overview, People, Leave (count waiting), Calendar, Visas, Inbox (count 
 - Statuses: `pending`, `approved`, `rejected`, `cancelled`.
 - The backend owns day counts and balances. The frontend may preview a count but the server's number wins: Spring ignores any `days` the client sends.
 - Balances are never stored as totals. Taken is leave used before Opro HRMS (`taken_before`) plus approved requests in the year; pending is pending requests. Applying locks the person's record, so two requests sent at once can't spend the same days.
-- A request stays inside one leave year. Leave across New Year is two requests. Booking into next year opens that year's balance from the policy's default, for types the person holds now.
+- A request stays inside one leave year. Leave across New Year is two requests. Booking into next year opens that year's balance from the policy's default, plus anything carried forward, for types the person holds now.
 - Overlapping pending or approved requests are refused. Cancelling works for pending requests, and approved ones that haven't started.
+
+### Compensatory off
+
+- Punching on a Friday or a public holiday asks the manager for compensatory off (Comp off tab). Approved, it earns **1 day**, or **half a day** when the day was shorter than the half day threshold, worked out from the punches when they decide. It can't be approved while they're still punched in. Declining needs a reason.
+- It goes into that year's **Compensatory off** balance, logged with who approved it, and **lapses at the end of the leave year**. HR can decide too, never for themselves.
+
+### Flight allowance
+
+- HR sets each person's **yearly allowance in USD** from their page. It can't go below what's already claimed that year.
+- Employees **claim a flight** from their profile: route, date, amount in USD, MVR or INR, and a receipt (PDF, JPG or PNG up to 5 MB, only they and HR can open it). A claim counts against the year of the flight, is converted to USD at **HR's rate on the day**, and can't go past what's left once waiting claims count. Waiting claims can be cancelled.
+- HR approves or declines in the Inbox. Declining needs a reason. Approving checks the allowance again. HR never decides or sets their own.
+- **Exchange rates** (MVR and INR per USD) are set by HR in Policies. The starting rates are placeholders. No outside rates service is used.
+- The profile shows allowance, used, waiting and left in USD, MVR or INR, remembered per browser.
 
 ### Visa and work permit
 
@@ -178,7 +198,7 @@ Logo, "People first, always.", "© year Opro Pvt Ltd · Malé, Republic of Maldi
 - HR is a role on an employee record. HR staff get a third view switch option, "HR", and see the whole company.
 - **Holiday calendar:** add, edit and delete holidays per year. Mark an Islamic date confirmed after moon sighting, which notifies everyone. An empty year can start from the fixed civil holidays (New Year, Independence Day, Victory Day, Republic Day).
 - **Company events** on the calendar ("Office social", "Team review"), managed by HR.
-- **Leave policy:** leave types and yearly entitlements.
+- **Leave policy:** leave types, yearly entitlements, who gets them and carry forward. See Leave rules.
 - **Work schedule** and **punch fixes**, see Attendance rules.
 - **People:** add someone (ID, roles and full annual, sick and family balances come from the server), edit details and manager (never themselves or anyone below them), and mark someone as leaving. Nobody is ever deleted: after their last day they can't sign in and drop out of live lists, their records stay, and leave booked after that day is cancelled. Someone with active reports can't leave until those reports have a new manager.
 - **Photos:** HR uploads them from the person's page. The browser crops to 4:5 and re-encodes a small JPEG, which also strips location data. They show on the ID card, the staff card and avatars.
@@ -188,7 +208,7 @@ Logo, "People first, always.", "© year Opro Pvt Ltd · Malé, Republic of Maldi
 - **Profile change requests:** an inbox for the requests employees send from their profile.
 - **Announcements:** post and edit the notes from HR.
 - HR never acts on their own record: their own leave, balance and punch fixes go through their manager like anyone else's. The server refuses it.
-- Out of scope for now: granting the HR role from the portal (set on the record by the backend team), changing the work week.
+- Out of scope for now: granting the HR role from the portal (set on the record by the backend team). The work week is fixed in code (`WorkWeek`, `WEEKEND_DAYS`): Saturday to Thursday.
 
 ### Exports
 
@@ -197,7 +217,7 @@ Logo, "People first, always.", "© year Opro Pvt Ltd · Malé, Republic of Maldi
 ### Non functional
 
 - English only, but use CSS logical properties (`margin-inline-start`, not `margin-left`) so Dhivehi (right to left) can be added later without a rewrite.
-- Fully responsive. Phones are a first class target, many staff will check punches and leave on mobile.
+- Fully responsive. Phones are a first class target, many staff will check punches and leave on mobile. Checked at 375, 768, 900, 1024 and 1280 px with nothing wider than the screen. On phones, tables turn into stacked rows (each value under its column's name, `class="stacks"` and `data-label` on each cell), request rows show their dates, amounts and reasons under the name instead of hiding them, and request tabs scroll on one line. Between 861 and 1100 px the side column sits under the main one.
 - Light and dark. The Figma design has no dark version, so dark is generated from the light stylesheets by `scripts/build-dark-theme.mjs` into `src/styles/dark.css`: light surfaces become navy tinted dark ones, text turns light, coloured text is lifted until it reads, and the parts that are dark on purpose (sidebar, staff card, welcome banner, primary buttons) stay as they are. The script reports any text under 4.5:1 against the dark card. Never edit `dark.css` by hand: change the script or the light styles and run `npm run theme:dark`. `npm run check` fails if it is stale.
 - The portal follows the device setting. Light, Dark or Auto in the name menu overrides it, remembered per browser. Printing is always light.
 - If a dark design arrives from the designer, it replaces the generated values.
@@ -317,9 +337,9 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 | POST | `/api/session/logout` | Clears session |
 | GET | `/api/me` | Logged in employee profile, roles and visa (absent for nationals) |
 | GET | `/api/attendance?month=YYYY-MM` | Own daily records. Each punch carries where it was made in `device` (an office, "Home", or an old device's name). Days punched from the portal carry `workMode`, and home days `homeStatus` |
-| POST | `/api/attendance/punch` | Punch now: `mode` (`office` or `home`), plus `latitude`, `longitude` and `accuracy` for the office. Returns today |
-| GET / POST | `/api/attendance/corrections` | Own correction requests / raise one |
-| GET | `/api/leave/types` | Leave types from the policy. `isUnlimited` marks types with no balance, like unpaid |
+| POST | `/api/attendance/punch` | Punch now: `mode` (`office`, `resort` or `home`), plus `latitude`, `longitude` and `accuracy` for an office or resort. Returns today |
+| GET / POST | `/api/attendance/corrections` | Own correction requests / raise one (`date`, `kind`, `category`: resort, forgot, late or other, `requestedTime`, `reason` for late and other) |
+| GET | `/api/leave/types` | Leave types from the policy, retired ones included with `retiredOn`. `isUnlimited` marks types with no balance, like unpaid. Balances carry `carriedOver` |
 | GET | `/api/leave/balances` | Own balances |
 | GET / POST | `/api/leave/requests` | Own requests / apply |
 | POST | `/api/leave/requests/:id/cancel` | Cancel own request |
@@ -339,6 +359,7 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 | GET | `/api/team/corrections?status=` | Reports' correction requests |
 | POST | `/api/team/corrections/:id/decision` | Approve or reject. Approving adds the punch to the record, the same way an HR punch fix does |
 | GET | `/api/team/home-days?status=` | Reports' days worked from home |
+| GET / POST | `/api/team/comp-offs?status=`, `/api/team/comp-offs/:id/decision` | Reports' days off worked, with `workedMinutes` and the `days` they earn / decide one |
 | POST | `/api/team/home-days/:id/decision` | Approve or reject. Rejecting needs a `note` and makes the day an absence |
 | GET | `/api/hr/employees` | Everyone, with today's attendance and visa. HR only, like every `/api/hr` route |
 | GET | `/api/hr/employees/:id` | One person's profile, visa, leave balances and balance adjustments |
@@ -350,7 +371,18 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 | POST | `/api/hr/corrections/:id/decision` | Approve or reject |
 | GET / POST | `/api/hr/home-days?status=`, `/api/hr/home-days/:id/decision` | Every day worked from home / decide one, never your own |
 | POST | `/api/hr/balance-adjustments` | Add or remove days with a reason (`employeeId`, `type`, `days`, `reason`) |
-| PUT | `/api/hr/leave-types/:code` | Change a leave type's name, `defaultEntitlement` or `allowsHalfDay` |
+| POST / PUT / DELETE | `/api/hr/leave-types`, `/api/hr/leave-types/:code` | Add a type / change its rules (`name`, `allowsHalfDay`, `isUnlimited`, `defaultEntitlement`, `isForEveryone`, `carriesForward`, `carryForwardCap`) / remove it (deleted if unused, otherwise retired) |
+| PUT | `/api/hr/employees/:id/leave/:code` | Set one person's days of a type this year (`days`, `reason`). Also gives a type to just them |
+| POST | `/api/hr/employees/:id/leave/:code/remove` | Take a type away from one person (`reason`) |
+| GET / POST | `/api/hr/comp-offs?status=`, `/api/hr/comp-offs/:id/decision` | Every day off worked / decide one, never your own |
+| GET | `/api/flights` | Own flight allowance this year, used, waiting, HR's rates and every claim |
+| POST | `/api/flights/claims` | Claim a flight (`flightDate`, `route`, `amount`, `currency`) |
+| PUT / GET | `/api/flights/claims/:id/receipt` | Attach (raw body, 5 MB max) or open the receipt on an own claim |
+| POST | `/api/flights/claims/:id/cancel` | Cancel an own claim still waiting |
+| GET / POST | `/api/hr/flight-claims?status=`, `/api/hr/flight-claims/:id/decision` | Every flight claim / decide one, never your own |
+| GET | `/api/hr/flight-claims/:id/receipt` | Open any receipt |
+| GET / PUT | `/api/hr/employees/:id/flights`, `/api/hr/employees/:id/flight-allowance` | One person's flight year / set their allowance (`year`, `amountUsd`) |
+| PUT | `/api/hr/exchange-rates` | MVR and INR per USD (`mvr`, `inr`) |
 | POST / PUT / DELETE | `/api/hr/holidays`, `/api/hr/holidays/:id` | Manage holidays. Confirming a tentative one notifies everyone |
 | POST | `/api/hr/holidays/start-year` | Add the fixed civil holidays to a year (`year`) |
 | POST / PUT / DELETE | `/api/hr/events`, `/api/hr/events/:id` | Manage company events |

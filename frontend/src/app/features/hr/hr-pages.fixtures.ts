@@ -17,7 +17,7 @@ const today = (status: AttendanceStatus) => ({ employeeId: '', date: '2026-11-12
 
 export const PEOPLE: HrEmployee[] = [
   { ...employee({ visa: visa({ visaExpiry: '2026-12-20' }) }), today: today('present') },
-  { ...employee({ id: 'OPR-0021', fullName: 'Rahim Uddin', nationality: 'Bangladeshi', visa: visa({ visaExpiry: '2026-11-02' }) }), today: today('absent') },
+  { ...employee({ id: 'OPR-0021', fullName: 'Rohit Verma', nationality: 'Indian', visa: visa({ visaExpiry: '2026-11-02' }) }), today: today('absent') },
   { ...employee({ id: 'OPR-0015', fullName: 'Priya Nair', nationality: 'Indian' }), today: today('late') },
-  { ...employee({ id: 'OPR-0001', fullName: 'Hassan Waheed', nationality: 'Maldivian' }), today: today('on-leave') },
+  { ...employee({ id: 'OPR-0001', fullName: 'Rajesh Sharma', nationality: 'Maldivian' }), today: today('on-leave') },
 ];

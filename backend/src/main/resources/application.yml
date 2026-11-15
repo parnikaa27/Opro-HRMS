@@ -37,5 +37,11 @@ opro:
         latitude: 4.2117
         longitude: 73.5405
         radius-metres: 300
-    # A phone that can't place itself closer than this can't show it's at the office.
+    # Client resorts staff work from. Placeholder pin until Parnika confirms the real ones. "At a resort" has to be within 5 km.
+    resorts:
+      - name: Client resort
+        latitude: 4.2900
+        longitude: 73.5500
+        radius-metres: 5000
+    # A phone that can't place itself closer than this can't show where it is.
     max-accuracy-metres: 150

@@ -31,7 +31,7 @@ describe('DashboardPage', () => {
   it('greets by first name with the date and a line that fits the day', async () => {
     const root = await render([day(TODAY, 'late', [punch(TODAY, '09:30', 'in')])]);
 
-    expect(text(root.querySelector('[data-testid=greeting]') as HTMLElement)).toBe('Good morning, Kasun.');
+    expect(text(root.querySelector('[data-testid=greeting]') as HTMLElement)).toBe('Good morning, Arjun.');
     expect(text(root.querySelector('.welcome p') as HTMLElement)).toBe('THURSDAY, 12 NOVEMBER');
     expect(text(root.querySelector('[data-testid=welcome-line]') as HTMLElement)).toBe('You came in a little late today. Here’s everything you need for the day.');
   });

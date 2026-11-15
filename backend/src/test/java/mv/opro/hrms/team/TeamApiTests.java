@@ -14,7 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-// Ibrahim (OPR-0004) manages six people. Hassan (OPR-0001) manages Ibrahim and Aishath.
+// Vikram (OPR-0004) manages six people. Rajesh (OPR-0001) manages Vikram and Ananya.
 @ApiTest
 class TeamApiTests {
 
@@ -26,12 +26,12 @@ class TeamApiTests {
     @Autowired
     JdbcTemplate jdbc;
 
-    ApiClient ibrahim;
+    ApiClient vikram;
 
     @BeforeEach
     void signIn() throws Exception {
-        ibrahim = new ApiClient(port);
-        ibrahim.signIn("OPR-0004");
+        vikram = new ApiClient(port);
+        vikram.signIn("OPR-0004");
     }
 
     @AfterEach
@@ -58,10 +58,10 @@ class TeamApiTests {
     void aManagerSeesTheirReportsWithTodayAndTheirPapers() throws Exception {
         jdbc.update("insert into punch (employee_id, punched_at, device_id, source) values ('OPR-0018', '2026-11-12T09:40:00+05:00', 'OPR-HMH-01', 'device')");
 
-        String team = ibrahim.get("/api/team").body();
+        String team = vikram.get("/api/team").body();
 
         assertThat(JsonPath.<List<String>>read(team, "$[*].fullName"))
-                .containsExactly("Ahmed Zahir", "Grace Mendoza", "Kasun Perera", "Mariyam Nisha", "Priya Nair", "Rahim Uddin");
+                .containsExactly("Arjun Reddy", "Karan Mehta", "Kavya Menon", "Priya Nair", "Rohit Verma", "Sneha Kulkarni");
         assertThat(JsonPath.<List<String>>read(team, "$[?(@.id == 'OPR-0018')].today.status")).containsExactly("late");
         assertThat(JsonPath.<List<String>>read(team, "$[?(@.id == 'OPR-0011')].today.status")).containsExactly("not-in-yet");
         assertThat(JsonPath.<List<String>>read(team, "$[?(@.id == 'OPR-0018')].visa.visaExpiry")).containsExactly("2026-12-20");
@@ -77,16 +77,16 @@ class TeamApiTests {
 
     @Test
     void oneReportsPageButNeverSomeoneElses() throws Exception {
-        String kasun = ibrahim.get("/api/team/OPR-0018").body();
+        String arjun = vikram.get("/api/team/OPR-0018").body();
 
-        assertThat(JsonPath.<String>read(kasun, "$.fullName")).isEqualTo("Kasun Perera");
-        assertThat(JsonPath.<List<String>>read(kasun, "$.leaveBalances[*].type")).containsExactly("annual", "sick", "family", "paternity");
-        assertThat(ibrahim.get("/api/team/OPR-0001").body()).isEqualTo("{\"message\":\"Not one of your reports\"}");
+        assertThat(JsonPath.<String>read(arjun, "$.fullName")).isEqualTo("Arjun Reddy");
+        assertThat(JsonPath.<List<String>>read(arjun, "$.leaveBalances[*].type")).containsExactly("annual", "sick", "family", "paternity");
+        assertThat(vikram.get("/api/team/OPR-0001").body()).isEqualTo("{\"message\":\"Not one of your reports\"}");
     }
 
     @Test
     void theTeamsMonthNamesEachPerson() throws Exception {
-        String month = ibrahim.get("/api/team/attendance?month=2026-11").body();
+        String month = vikram.get("/api/team/attendance?month=2026-11").body();
 
         assertThat(JsonPath.<List<String>>read(month, "$[*].employeeName")).hasSize(6 * 12).doesNotContainNull();
         assertThat(JsonPath.<List<String>>read(month, "$[?(@.employeeId == 'OPR-0004')]")).isEmpty();
@@ -94,30 +94,30 @@ class TeamApiTests {
 
     @Test
     void waitingLeaveIsTheReportsOnlyNotTheManagersOwn() throws Exception {
-        String waiting = ibrahim.get("/api/team/leave-requests?status=pending").body();
+        String waiting = vikram.get("/api/team/leave-requests?status=pending").body();
 
         assertThat(JsonPath.<List<String>>read(waiting, "$[*].id")).containsExactlyInAnyOrder("LR-1042", "LR-1043", "LR-1044");
-        assertThat(JsonPath.<List<String>>read(waiting, "$[?(@.id == 'LR-1042')].employeeName")).containsExactly("Mariyam Nisha");
+        assertThat(JsonPath.<List<String>>read(waiting, "$[?(@.id == 'LR-1042')].employeeName")).containsExactly("Sneha Kulkarni");
     }
 
     @Test
     void approvingTellsTheEmployeeAndCanOnlyHappenOnce() throws Exception {
-        String approved = ibrahim.post("/api/team/leave-requests/LR-1042/decision", "{\"decision\":\"approved\"}").body();
+        String approved = vikram.post("/api/team/leave-requests/LR-1042/decision", "{\"decision\":\"approved\"}").body();
 
         assertThat(JsonPath.<String>read(approved, "$.status")).isEqualTo("approved");
-        assertThat(JsonPath.<String>read(approved, "$.decidedByName")).isEqualTo("Ibrahim Rasheed");
+        assertThat(JsonPath.<String>read(approved, "$.decidedByName")).isEqualTo("Vikram Singh");
         assertThat(notificationsOf("OPR-0011")).first().isEqualTo("Your annual leave for Sunday 22 November to Tuesday 24 November was approved.");
-        HttpResponse<String> again = ibrahim.post("/api/team/leave-requests/LR-1042/decision", "{\"decision\":\"rejected\",\"note\":\"x\"}");
+        HttpResponse<String> again = vikram.post("/api/team/leave-requests/LR-1042/decision", "{\"decision\":\"rejected\",\"note\":\"x\"}");
         assertThat(again.statusCode()).isEqualTo(409);
     }
 
     @Test
     void decliningNeedsAReasonAndPassesItOn() throws Exception {
-        HttpResponse<String> bare = ibrahim.post("/api/team/leave-requests/LR-1043/decision", "{\"decision\":\"rejected\"}");
+        HttpResponse<String> bare = vikram.post("/api/team/leave-requests/LR-1043/decision", "{\"decision\":\"rejected\"}");
         assertThat(bare.statusCode()).isEqualTo(400);
         assertThat(bare.body()).isEqualTo("{\"message\":\"Give a short reason so they know what to do next.\"}");
 
-        String declined = ibrahim.post("/api/team/leave-requests/LR-1043/decision", "{\"decision\":\"rejected\",\"note\":\"Year end close needs you\"}").body();
+        String declined = vikram.post("/api/team/leave-requests/LR-1043/decision", "{\"decision\":\"rejected\",\"note\":\"Year end close needs you\"}").body();
 
         assertThat(JsonPath.<String>read(declined, "$.decisionNote")).isEqualTo("Year end close needs you");
         assertThat(notificationsOf("OPR-0015")).first()
@@ -126,13 +126,13 @@ class TeamApiTests {
 
     @Test
     void aManagerCantApproveTheirOwnLeaveOrAnotherTeams() throws Exception {
-        assertThat(ibrahim.post("/api/team/leave-requests/LR-1045/decision", "{\"decision\":\"approved\"}").statusCode()).isEqualTo(404);
+        assertThat(vikram.post("/api/team/leave-requests/LR-1045/decision", "{\"decision\":\"approved\"}").statusCode()).isEqualTo(404);
         assertThat(as("OPR-0001").post("/api/team/leave-requests/LR-1042/decision", "{\"decision\":\"approved\"}").statusCode()).isEqualTo(404);
     }
 
     @Test
     void anApprovedPunchFixLandsOnTheRecordAndTheEmployeeIsTold() throws Exception {
-        String approved = ibrahim.post("/api/team/corrections/AC-301/decision", "{\"decision\":\"approved\"}").body();
+        String approved = vikram.post("/api/team/corrections/AC-301/decision", "{\"decision\":\"approved\"}").body();
 
         assertThat(JsonPath.<String>read(approved, "$.status")).isEqualTo("approved");
         assertThat(jdbc.queryForObject("select correction_request_id from punch where employee_id = 'OPR-0021'", String.class)).isEqualTo("AC-301");
@@ -145,27 +145,27 @@ class TeamApiTests {
 
     @Test
     void theManagerHearsAboutNewLeaveAndPunchFixes() throws Exception {
-        ApiClient kasun = as("OPR-0018");
-        kasun.post("/api/leave/requests", "{\"type\":\"annual\",\"from\":\"2026-12-06\",\"to\":\"2026-12-10\",\"reason\":\"Trip home\"}");
-        kasun.post("/api/attendance/corrections", "{\"date\":\"2026-11-10\",\"kind\":\"missed-in\",\"requestedTime\":\"08:55\",\"reason\":\"No reader at the site\"}");
+        ApiClient arjun = as("OPR-0018");
+        arjun.post("/api/leave/requests", "{\"type\":\"annual\",\"from\":\"2026-12-06\",\"to\":\"2026-12-10\",\"reason\":\"Trip home\"}");
+        arjun.post("/api/attendance/corrections", "{\"date\":\"2026-11-10\",\"kind\":\"missed-in\",\"category\":\"forgot\",\"requestedTime\":\"08:55\"}");
 
         assertThat(notificationsOf("OPR-0004")).startsWith(
-                "Kasun Perera asked for a punch fix on 10 November",
-                "Kasun Perera asked for 5 days of annual leave from 6 December");
+                "Arjun Reddy asked for a punch fix (forgot to punch) on 10 November",
+                "Arjun Reddy asked for 5 days of annual leave from 6 December");
     }
 
     @Test
     void notificationsCanAllBeMarkedRead() throws Exception {
-        assertThat(JsonPath.<List<Boolean>>read(ibrahim.get("/api/notifications").body(), "$[*].isRead")).contains(false);
+        assertThat(JsonPath.<List<Boolean>>read(vikram.get("/api/notifications").body(), "$[*].isRead")).contains(false);
 
-        assertThat(ibrahim.post("/api/notifications/read", "{}").statusCode()).isEqualTo(204);
+        assertThat(vikram.post("/api/notifications/read", "{}").statusCode()).isEqualTo(204);
 
-        assertThat(JsonPath.<List<Boolean>>read(ibrahim.get("/api/notifications").body(), "$[*].isRead")).containsOnly(true);
+        assertThat(JsonPath.<List<Boolean>>read(vikram.get("/api/notifications").body(), "$[*].isRead")).containsOnly(true);
     }
 
     @Test
     void companyEventsComeByYear() throws Exception {
-        assertThat(JsonPath.<List<String>>read(ibrahim.get("/api/events?year=2026").body(), "$[*].name"))
+        assertThat(JsonPath.<List<String>>read(vikram.get("/api/events?year=2026").body(), "$[*].name"))
                 .containsExactly("Office social", "Team review", "Team review", "Office social", "Year end dinner");
     }
 }

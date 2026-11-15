@@ -17,11 +17,11 @@ describe('LatestRequestCard', () => {
 
   it('shows the most recently touched request with who decided it', async () => {
     const shown = await render([
-      request({ id: 'LR-1', decidedOn: '2026-09-29', decidedByName: 'Ibrahim Rasheed' }),
+      request({ id: 'LR-1', decidedOn: '2026-09-29', decidedByName: 'Vikram Singh' }),
       request({ id: 'LR-2', status: 'cancelled', appliedOn: '2026-11-01' }),
     ]);
 
-    expect(shown).toBe('LATEST REQUEST Leave approval Annual leave approved 6 Oct to 8 October 2026 · 3 days Approved by Ibrahim Rasheed Approved');
+    expect(shown).toBe('LATEST REQUEST Leave approval Annual leave approved 6 Oct to 8 October 2026 · 3 days Approved by Vikram Singh Approved');
   });
 
   it('words a declined request', async () => {

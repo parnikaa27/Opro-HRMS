@@ -72,7 +72,7 @@ class SessionTests {
 
         String me = client.get("/api/me").body();
 
-        assertThat(JsonPath.<String>read(me, "$.fullName")).isEqualTo("Kasun Perera");
+        assertThat(JsonPath.<String>read(me, "$.fullName")).isEqualTo("Arjun Reddy");
         assertThat(JsonPath.<List<String>>read(me, "$.roles")).containsExactly("EMPLOYEE");
         assertThat(JsonPath.<String>read(me, "$.visa.passportLast4")).isEqualTo("7730");
         assertThat(JsonPath.<String>read(me, "$.visa.visaExpiry")).isEqualTo("2026-12-20");

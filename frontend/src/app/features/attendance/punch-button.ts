@@ -16,7 +16,7 @@ const FAILED = "That punch didn't save. Try again in a moment.";
   template: `
     <button type="button" class="primary-button compact" [disabled]="busy() !== undefined" (click)="start()" data-testid="punch-button">
       <app-icon [name]="isIn() ? 'logout' : 'clock'" [size]="17" />
-      {{ busy() === 'office' ? 'Finding you…' : busy() ? 'Punching…' : isIn() ? 'Punch out' : 'Punch in' }}
+      {{ isLocating() ? 'Finding you…' : busy() ? 'Punching…' : isIn() ? 'Punch out' : 'Punch in' }}
     </button>
     @if (error() && !isChoosing()) {
       <p class="punch-error" role="alert" data-testid="punch-error">{{ error() }}</p>
@@ -30,6 +30,11 @@ const FAILED = "That punch didn't save. Try again in a moment.";
           <app-icon name="mapPin" [size]="22" />
           <strong>{{ busy() === 'office' ? 'Finding you…' : 'At the office' }}</strong>
           <span>Your location is checked once to confirm you're at an Opro office. It isn't stored.</span>
+        </button>
+        <button type="button" [disabled]="busy() !== undefined" (click)="punch('resort')" data-testid="punch-resort">
+          <app-icon name="palm" [size]="22" />
+          <strong>{{ busy() === 'resort' ? 'Finding you…' : 'At a resort' }}</strong>
+          <span>Your location is checked once to confirm you're at a client resort. It isn't stored.</span>
         </button>
         <button type="button" [disabled]="busy() !== undefined" (click)="punch('home')" data-testid="punch-home">
           <app-icon name="house" [size]="22" />
@@ -55,6 +60,8 @@ export class PunchButton {
   protected readonly busy = signal<WorkMode | undefined>(undefined);
   protected readonly error = signal<string | undefined>(undefined);
   protected readonly isIn = computed(() => this.day()?.punches.at(-1)?.direction === 'in');
+  // Office and resort punches need the phone's location. Home doesn't.
+  protected readonly isLocating = computed(() => this.busy() !== undefined && this.busy() !== 'home');
 
   protected start() {
     const mode = this.day()?.workMode;
@@ -70,7 +77,7 @@ export class PunchButton {
     this.busy.set(mode);
     this.error.set(undefined);
     try {
-      const location = mode === 'office' ? await currentLocation() : undefined;
+      const location = mode === 'home' ? undefined : await currentLocation();
       this.punched.emit(await this.api.punch(mode, location));
       this.isChoosing.set(false);
     } catch (error) {

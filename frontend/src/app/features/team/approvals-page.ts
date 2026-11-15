@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
-import { CorrectionRequest, HomeDay } from '../../models/attendance';
+import { CompOffClaim, CorrectionRequest, HomeDay } from '../../models/attendance';
 import { LeaveRequest } from '../../models/leave';
 import { Avatar } from '../../shared/ui/avatar';
 import { Dialog } from '../../shared/ui/dialog';
@@ -8,20 +8,22 @@ import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { StatusPill } from '../../shared/ui/status-pill';
 import { formatDayShort } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
+import { fixCategoryLabel } from '../attendance/fix-categories';
 import { LeaveApi } from '../leave/leave-api';
 import { describeDates, describeLength } from '../leave/leave-format';
+import { CompOffList } from './comp-off-list';
 import { DecisionState } from './decision-state';
 import { DeclineForm } from './decline-form';
 import { HomeDayList } from './home-day-list';
 import { submittedAgo } from './request-row';
 import { RequestScope, TeamApi } from './team-api';
 
-type Tab = 'pending' | 'approved' | 'rejected' | 'fixes' | 'home';
+type Tab = 'pending' | 'approved' | 'rejected' | 'fixes' | 'home' | 'comp-off';
 
 interface Declining {
   id: string;
   name: string;
-  kind: 'leave' | 'fix' | 'home';
+  kind: 'leave' | 'fix' | 'home' | 'comp-off';
 }
 
 const isOpen = ({ status }: LeaveRequest) => status === 'approved' || status === 'pending';
@@ -29,7 +31,7 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
 
 @Component({
   selector: 'app-approvals-page',
-  imports: [Avatar, DeclineForm, Dialog, HomeDayList, Icon, ListSkeleton, StatusPill],
+  imports: [Avatar, CompOffList, DeclineForm, Dialog, HomeDayList, Icon, ListSkeleton, StatusPill],
   template: `
     <div class="page-view">
       <div class="page-title">
@@ -52,10 +54,21 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
           }
         </div>
 
-        @if (leave.error() || fixes.error() || homeDays.error()) {
+        @if (leave.error() || fixes.error() || homeDays.error() || compOffs.error()) {
           <p class="attendance-off">Requests didn't load. Refresh the page to try again.</p>
         } @else if (leave.isLoading() && leaveList().length === 0) {
           <app-list-skeleton [count]="3" />
+        } @else if (tab() === 'comp-off') {
+          <app-comp-off-list
+            [claims]="pendingCompOffs()"
+            [busyId]="decisions.busyId()"
+            [failedId]="decisions.failedId()"
+            (approved)="approveCompOff($event)"
+            (declined)="declining.set({ id: $event.id, name: $event.employeeName ?? '', kind: 'comp-off' })"
+          />
+          @if (pendingCompOffs().length === 0) {
+            <p class="attendance-off">{{ emptyText['comp-off'] }}</p>
+          }
         } @else if (tab() === 'home') {
           <app-home-day-list
             [days]="pendingHomeDays()"
@@ -73,11 +86,11 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
               <app-avatar [name]="fix.employeeName ?? ''" />
               <div>
                 <strong>{{ fix.employeeName }}</strong>
-                <span>Missed punch {{ fix.kind === 'missed-in' ? 'in' : 'out' }} · {{ submittedAgo(fix.raisedOn) }}</span>
+                <span>{{ fixCategoryLabel(fix.category) }} · punch {{ fix.kind === 'missed-in' ? 'in' : 'out' }} · {{ submittedAgo(fix.raisedOn) }}</span>
               </div>
               <div><small>DATE</small><strong>{{ formatDayShort(fix.date) }}</strong></div>
               <div><small>TIME</small><strong>{{ fix.requestedTime }}</strong></div>
-              <div><small>REASON</small><strong>{{ fix.reason }}</strong></div>
+              <div><small>REASON</small><strong>{{ fix.reason ?? 'None given' }}</strong></div>
               <div class="request-actions labeled">
                 <button type="button" class="decline" [disabled]="decisions.busyId() === fix.id" (click)="declining.set({ id: fix.id, name: fix.employeeName ?? '', kind: 'fix' })" data-testid="reject"><app-icon name="x" [size]="16" /> Decline</button>
                 <button type="button" class="approve" [disabled]="decisions.busyId() === fix.id" (click)="approveFix(fix)" data-testid="approve"><app-icon name="check" [size]="16" /> Approve</button>
@@ -147,6 +160,7 @@ export class ApprovalsPage {
   protected readonly leave = this.api.leaveRequests({ scope: this.scope });
   protected readonly fixes = this.api.corrections({ scope: this.scope });
   protected readonly homeDays = this.api.homeDays({ status: 'pending', scope: this.scope });
+  protected readonly compOffs = this.api.compOffs({ status: 'pending', scope: this.scope });
   private readonly types = inject(LeaveApi).types();
   protected readonly decisions = new DecisionState();
 
@@ -160,6 +174,7 @@ export class ApprovalsPage {
       .sort((first, second) => first.raisedOn.localeCompare(second.raisedOn)),
   );
   protected readonly pendingHomeDays = computed(() => [...valueOr(this.homeDays, [])].sort((first, second) => first.date.localeCompare(second.date)));
+  protected readonly pendingCompOffs = computed(() => [...valueOr(this.compOffs, [])].sort((first, second) => first.date.localeCompare(second.date)));
   private readonly byStatus = (status: LeaveRequest['status']) => this.leaveList().filter((request) => request.status === status);
 
   protected readonly tabs = computed(() => [
@@ -168,11 +183,12 @@ export class ApprovalsPage {
     { value: 'rejected' as const, label: 'Declined', count: 0 },
     { value: 'fixes' as const, label: 'Punch fixes', count: this.pendingFixes().length },
     { value: 'home' as const, label: 'Home working', count: this.pendingHomeDays().length },
+    { value: 'comp-off' as const, label: 'Comp off', count: this.pendingCompOffs().length },
   ]);
 
   protected readonly shown = computed(() => {
     const tab = this.tab();
-    const list = tab === 'fixes' || tab === 'home' ? [] : this.byStatus(tab);
+    const list = tab === 'fixes' || tab === 'home' || tab === 'comp-off' ? [] : this.byStatus(tab);
     // Oldest waiting first; decided ones newest first.
     return tab === 'pending'
       ? list.sort((first, second) => first.appliedOn.localeCompare(second.appliedOn))
@@ -183,6 +199,7 @@ export class ApprovalsPage {
     pending: 'Nothing waiting for you. Enjoy the quiet.',
     fixes: 'No punch fixes waiting for you.',
     home: 'Nobody is waiting for a home working decision.',
+    'comp-off': 'Nobody worked a day off that needs compensatory off.',
     approved: 'No approved requests yet.',
     rejected: 'You haven’t declined anything.',
   };
@@ -192,6 +209,7 @@ export class ApprovalsPage {
     leave: 'Two others are off that week. Could you move it by a few days?',
     fix: 'The site log shows you left at 4, not 5. Could you check the time?',
     home: 'We had the site visit today, so I needed you in the office.',
+    'comp-off': 'You came in by choice that Friday, so there’s nothing to give back.',
   };
 
   protected readonly typeName = (code: string) => valueOr(this.types, []).find((type) => type.code === code)?.name ?? code;
@@ -204,6 +222,7 @@ export class ApprovalsPage {
   protected readonly describeDates = describeDates;
   protected readonly describeLength = describeLength;
   protected readonly formatDayShort = formatDayShort;
+  protected readonly fixCategoryLabel = fixCategoryLabel;
   protected readonly submittedAgo = submittedAgo;
 
   protected approveLeave({ id }: LeaveRequest) {
@@ -212,6 +231,10 @@ export class ApprovalsPage {
 
   protected approveFix({ id }: CorrectionRequest) {
     return this.decisions.run(id, () => this.api.decideCorrection(id, { decision: 'approved' }, this.scope()), () => this.fixes.reload());
+  }
+
+  protected approveCompOff({ id }: CompOffClaim) {
+    return this.decisions.run(id, () => this.api.decideCompOff(id, { decision: 'approved' }, this.scope()), () => this.compOffs.reload());
   }
 
   protected approveHomeDay({ id }: HomeDay) {
@@ -225,8 +248,9 @@ export class ApprovalsPage {
       leave: () => this.api.decideLeave(target.id, decision, this.scope()),
       fix: () => this.api.decideCorrection(target.id, decision, this.scope()),
       home: () => this.api.decideHomeDay(target.id, decision, this.scope()),
+      'comp-off': () => this.api.decideCompOff(target.id, decision, this.scope()),
     }[target.kind];
-    const list = { leave: this.leave, fix: this.fixes, home: this.homeDays }[target.kind];
+    const list = { leave: this.leave, fix: this.fixes, home: this.homeDays, 'comp-off': this.compOffs }[target.kind];
     return this.decisions.run(target.id, save, () => list.reload());
   }
 }

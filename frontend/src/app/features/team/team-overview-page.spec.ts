@@ -15,12 +15,12 @@ const record = (employeeId: string, date: string, status: AttendanceDay['status'
 const VISA = { workPermitNumber: 'W', visaNumber: 'V', passportLast4: '1', visaIssuedOn: '2024-11-03', visaExpiry: '2026-11-02', passportExpiry: '2026-12-01' };
 const MEMBERS = [
   { ...employee({ id: 'B', fullName: 'Priya Nair' }), today: today('late', '09:30') },
-  { ...employee({ id: 'A', fullName: 'Ahmed Zahir' }), today: today('present', '08:50') },
-  { ...employee({ id: 'C', fullName: 'Rahim Uddin', visa: VISA }), today: today('on-leave') },
+  { ...employee({ id: 'A', fullName: 'Karan Mehta' }), today: today('present', '08:50') },
+  { ...employee({ id: 'C', fullName: 'Rohit Verma', visa: VISA }), today: today('on-leave') },
 ];
 const PENDING = [
   { id: 'LR-2', employeeId: 'B', employeeName: 'Priya Nair', type: 'annual', from: '2026-12-20', to: '2026-12-24', days: 3, reason: 'Home', status: 'pending', appliedOn: '2026-11-11' },
-  { id: 'LR-1', employeeId: 'A', employeeName: 'Ahmed Zahir', type: 'annual', from: '2026-12-01', to: '2026-12-01', days: 1, reason: 'Wedding', status: 'pending', appliedOn: '2026-11-09' },
+  { id: 'LR-1', employeeId: 'A', employeeName: 'Karan Mehta', type: 'annual', from: '2026-12-01', to: '2026-12-01', days: 1, reason: 'Wedding', status: 'pending', appliedOn: '2026-11-09' },
 ];
 
 describe('TeamOverviewPage', () => {
@@ -56,7 +56,7 @@ describe('TeamOverviewPage', () => {
   it('greets the manager and sums up the team', async () => {
     const root = await render();
 
-    expect(text(root.querySelector('[data-testid=greeting]') as HTMLElement)).toBe('Good morning, Ibrahim.');
+    expect(text(root.querySelector('[data-testid=greeting]') as HTMLElement)).toBe('Good morning, Vikram.');
     expect(text(root.querySelector('[data-testid=welcome-line]') as HTMLElement)).toBe('Your team is looking good today. 2 of 3 people are checked in.');
     expect([stat(root, 'members'), stat(root, 'pending'), stat(root, 'attendance'), stat(root, 'away')]).toEqual(['3', '3', '100%', '1']);
     expect(text(root)).toContain('+50 pts on last month');
@@ -65,20 +65,20 @@ describe('TeamOverviewPage', () => {
   it('lists the oldest waiting leave, the team today, and visas that need action', async () => {
     const root = await render();
 
-    expect(texts(root, 'pending-leave').map((item) => item.split(' 1 December')[0].split(' 20 Dec')[0])).toEqual(['AZ Ahmed Zahir Annual leave · Wedding', 'PN Priya Nair Annual leave · Home']);
+    expect(texts(root, 'pending-leave').map((item) => item.split(' 1 December')[0].split(' 20 Dec')[0])).toEqual(['KM Karan Mehta Annual leave · Wedding', 'PN Priya Nair Annual leave · Home']);
     expect(texts(root, 'team-member')).toEqual([
-      'AZ Ahmed Zahir Site Engineer Present 08:50 AM',
+      'KM Karan Mehta Site Engineer Present 08:50 AM',
       'PN Priya Nair Site Engineer Late 09:30 AM',
-      'RU Rahim Uddin Site Engineer On leave All day',
+      'RV Rohit Verma Site Engineer On leave All day',
     ]);
-    expect(texts(root, 'visa-alert')).toEqual(['RU Rahim Uddin Visa expired 02 Nov 2026 Expired', 'RU Rahim Uddin Passport expires 01 Dec 2026 19 days']);
+    expect(texts(root, 'visa-alert')).toEqual(['RV Rohit Verma Visa expired 02 Nov 2026 Expired', 'RV Rohit Verma Passport expires 01 Dec 2026 19 days']);
   });
 
   it('charts every working day of the month, with future days faint', async () => {
     const root = await render();
     const bars = [...root.querySelectorAll<HTMLElement>('.chart-area i')];
 
-    expect(bars).toHaveLength(22);
+    expect(bars).toHaveLength(26);
     expect(bars.filter((bar) => bar.classList.contains('today'))).toHaveLength(1);
     expect(bars.filter((bar) => bar.classList.contains('future')).length).toBeGreaterThan(10);
     expect([...root.querySelectorAll('.chart-labels span')].map((label) => text(label))).toEqual(['1 Nov', '10 Nov', '19 Nov', '30 Nov']);

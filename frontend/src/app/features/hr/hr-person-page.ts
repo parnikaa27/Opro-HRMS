@@ -18,18 +18,21 @@ import { LeaveRequests } from '../leave/leave-requests';
 import { EmployeeCard } from '../profile/employee-card';
 import { TeamApi } from '../team/team-api';
 import { AdjustBalanceForm } from './forms/adjust-balance-form';
+import { LeaveDaysForm } from './forms/leave-days-form';
 import { RecordLeaveForm } from './forms/record-leave-form';
 import { LeavingForm } from './forms/leaving-form';
 import { PhotoForm } from './forms/photo-form';
 import { VisaForm } from './forms/visa-form';
 import { HrApi } from './hr-api';
+import { HrFlightCard } from './hr-flight-card';
 import { PersonMenu } from './person-menu';
 import { PunchEditor } from './punch-editor';
 
-type Action = 'adjust' | 'record' | 'visa' | 'leaving';
+type Action = 'adjust' | 'record' | 'visa' | 'leaving' | 'days';
 
 const SUCCESS: Record<Action, { heading: string; body: string }> = {
   adjust: { heading: 'Balance adjusted', body: 'The change and your reason are in their log below.' },
+  days: { heading: 'Leave days saved', body: 'They’ve been told, and the change is in their log below.' },
   record: { heading: 'Leave recorded', body: 'It’s saved as approved and shows on their calendar.' },
   visa: { heading: 'Papers updated', body: 'Expiry warnings now follow the new dates.' },
   leaving: { heading: 'Last day saved', body: 'They keep access until then. Any leave booked after that day is cancelled.' },
@@ -37,7 +40,7 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
 
 @Component({
   selector: 'app-hr-person-page',
-  imports: [AdjustBalanceForm, AttendanceTable, ConfirmButton, Dialog, EmployeeCard, Icon, LeaveBalances, LeaveRequests, LeavingForm, ListSkeleton, PersonMenu, PhotoForm, PunchEditor, RecordLeaveForm, RouterLink, SuccessState, VisaCard, VisaForm],
+  imports: [AdjustBalanceForm, AttendanceTable, ConfirmButton, Dialog, EmployeeCard, HrFlightCard, Icon, LeaveBalances, LeaveDaysForm, LeaveRequests, LeavingForm, ListSkeleton, PersonMenu, PhotoForm, PunchEditor, RecordLeaveForm, RouterLink, SuccessState, VisaCard, VisaForm],
   template: `
     <div class="page-view">
       <a routerLink="/hr/people" class="text-link back-link"><app-icon name="chevronLeft" [size]="15" /> People</a>
@@ -57,6 +60,7 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
           </div>
           <div class="title-actions">
             <!-- Both forms start from the leave types, so they wait for them rather than resetting under someone's typing. -->
+            <button type="button" class="secondary-button" [disabled]="isTypesLoading()" (click)="action.set('days')" data-testid="open-days">Leave days</button>
             <button type="button" class="secondary-button" [disabled]="isTypesLoading()" (click)="action.set('adjust')" data-testid="open-adjust">Adjust balance</button>
             <button type="button" class="secondary-button" (click)="action.set('visa')" data-testid="open-visa">Update visa</button>
             <button type="button" class="primary-button compact" [disabled]="isTypesLoading()" (click)="action.set('record')" data-testid="open-record"><app-icon name="plus" [size]="17" /> Record leave</button>
@@ -105,6 +109,7 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
           <div class="side-column">
             <app-employee-card [employee]="employee" />
             <app-visa-card [employee]="employee" reader="hr" />
+            <app-hr-flight-card [employeeId]="employee.id" />
           </div>
         </div>
 
@@ -125,6 +130,9 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
             <app-success-state [heading]="success[finished].heading" [body]="success[finished].body" (done)="close()" />
           } @else {
             @switch (action()) {
+              @case ('days') {
+                <app-leave-days-form [employeeId]="employee.id" [name]="employee.fullName" [types]="typeList()" [balances]="employee.leaveBalances" (saved)="finish('days')" (cancelled)="close()" />
+              }
               @case ('adjust') {
                 <app-adjust-balance-form [employeeId]="employee.id" [name]="employee.fullName" [types]="typeList()" (saved)="finish('adjust')" (cancelled)="close()" />
               }
@@ -179,7 +187,7 @@ export class HrPersonPage {
   // Same rule as applying: only types they hold a balance for, plus unlimited ones.
   protected readonly recordTypes = computed(() => {
     const held = new Set(this.employee()?.leaveBalances.map(({ type }) => type));
-    return this.typeList().filter(({ code, isUnlimited }) => isUnlimited || held.has(code));
+    return this.typeList().filter(({ code, isUnlimited, retiredOn }) => !retiredOn && (isUnlimited || held.has(code)));
   });
   protected readonly holidayDates = computed(() => new Set([...valueOr(this.thisYear, []), ...valueOr(this.nextYear, [])].map(({ date }) => date)));
   protected readonly rows = computed(() =>

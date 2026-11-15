@@ -22,9 +22,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 class AttendanceController {
 
-    // Where the browser says it is. Only needed from the office, and never stored.
+    // Where the browser says it is. Only needed at an office or a resort, and never stored.
     record PunchBody(
-            @NotNull @Pattern(regexp = "office|home") String mode,
+            @NotNull @Pattern(regexp = "office|resort|home") String mode,
             @DecimalMin("-90") @DecimalMax("90") Double latitude,
             @DecimalMin("-180") @DecimalMax("180") Double longitude,
             @PositiveOrZero Double accuracy) {

@@ -65,7 +65,7 @@ describe('TodayAttendanceCard', () => {
   });
 
   it('explains days off, absences and days not started', () => {
-    expect(text(render(day({ status: 'weekend' })))).toContain('Enjoy your weekend Friday and Saturday are off.');
+    expect(text(render(day({ status: 'weekend' })))).toContain('Enjoy your Friday Friday is the day off. See you on Saturday.');
     expect(text(render(day({ status: 'absent' })))).toContain('No punches today If you forgot to punch, ask for a punch fix.');
     expect(text(render(day({ status: 'not-in-yet' })))).toContain('You haven’t punched in yet Punch in Not punched in yet');
     expect(render(undefined).querySelector('[data-testid=punch-button]')).toBeNull();
