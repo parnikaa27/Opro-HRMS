@@ -8,3 +8,6 @@ playwright-report/
 .env
 .env.*
 !.env.example
+
+# Netlify CLI state, if anyone uses it locally
+.netlify

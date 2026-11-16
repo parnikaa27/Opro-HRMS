@@ -15,7 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-// Documents, announcements, change requests, photos and medical certificates.
+// Downloading documents, announcements, change requests, photos and medical certificates.
 @ApiTest
 class EmployeePiecesApiTests {
 
@@ -59,17 +59,19 @@ class EmployeePiecesApiTests {
     @Test
     void someoneSeesTheirOwnDocumentsAndDownloadsThem() throws Exception {
         String documents = arjun.get("/api/documents").body();
-        assertThat(JsonPath.<List<String>>read(documents, "$[*].name")).containsExactly("Employment contract", "Visa copy", "Passport copy", "Health insurance");
+        assertThat(JsonPath.<List<String>>read(documents, "$[*].name"))
+                .containsExactly("Employment contract", "National ID", "Visa copy", "Health insurance", "Passport copy", "Educational certificates");
         assertThat(JsonPath.<List<String>>read(documents, "$[?(@.name == 'Visa copy')].expiresOn")).containsExactly("2026-12-20");
+        assertThat(JsonPath.<List<String>>read(documents, "$[?(@.name == 'National ID')].status")).containsExactly("missing");
 
-        HttpResponse<byte[]> file = arjun.getBytes("/api/documents/OPR-0018-contract/file");
+        HttpResponse<byte[]> file = arjun.getBytes("/api/documents/employment-contract/file");
 
         assertThat(file.statusCode()).isEqualTo(200);
         assertThat(file.headers().firstValue("Content-Type")).hasValue("application/pdf");
         assertThat(file.headers().firstValue("Content-Disposition")).hasValueSatisfying(value -> assertThat(value).startsWith("attachment"));
         assertThat(file.headers().firstValue("Content-Security-Policy")).hasValue("sandbox");
         assertThat(new String(file.body(), 0, 5, StandardCharsets.US_ASCII)).isEqualTo("%PDF-");
-        assertThat(arjun.getBytes("/api/documents/OPR-0011-contract/file").statusCode()).isEqualTo(404);
+        assertThat(arjun.getBytes("/api/documents/national-id/file").statusCode()).isEqualTo(404);
     }
 
     @Test

@@ -15,7 +15,6 @@ public record AttendanceDay(
         OffsetDateTime firstIn,
         OffsetDateTime lastOut,
         long workedMinutes,
-        long overtimeMinutes,
         OffsetDateTime expectedOut,
         Long scheduledMinutes,
         boolean isCorrected,
@@ -25,7 +24,7 @@ public record AttendanceDay(
     public record PunchView(OffsetDateTime at, String direction, String device) {}
 
     public AttendanceDay named(String name) {
-        return new AttendanceDay(employeeId, name, date, status, punches, firstIn, lastOut, workedMinutes, overtimeMinutes, expectedOut,
+        return new AttendanceDay(employeeId, name, date, status, punches, firstIn, lastOut, workedMinutes, expectedOut,
                 scheduledMinutes, isCorrected, workMode, homeStatus);
     }
 }

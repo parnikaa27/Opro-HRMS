@@ -49,7 +49,7 @@ const RECEIPT_FAILED = "Your claim is in, but the receipt didn't upload. Give it
       }
       <div class="modal-actions">
         <button type="button" class="secondary-button" (click)="cancelled.emit()">Cancel</button>
-        <button type="submit" class="primary-button" [disabled]="claimForm().submitting()" data-testid="claim-submit">{{ claimForm().submitting() ? 'Sending…' : 'Send to HR' }}</button>
+        <button type="submit" class="primary-button" [disabled]="claimForm().submitting()" data-testid="claim-submit">{{ claimForm().submitting() ? 'Sending…' : 'Claim flight' }}</button>
       </div>
     </form>
   `,

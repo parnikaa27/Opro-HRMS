@@ -1,0 +1,27 @@
+# A demo of the portal on Netlify: the Angular app, with the dev mock answering /api as a function.
+# Everyone in it is made up. Spring and PostgreSQL can't run on Netlify; see TODO.md for where they'll go.
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist/opro-hrms/browser"
+
+[functions]
+  directory = "netlify/functions"
+  # The mock reads its JSON with fs, so bundlers can't see it. This keeps the files beside it.
+  node_bundler = "zisi"
+  included_files = ["dev-server/data/**"]
+
+# Every page is the Angular app, which routes in the browser. /api goes to the function first.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    Permissions-Policy = "geolocation=(self), camera=(), microphone=()"

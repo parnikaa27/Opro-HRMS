@@ -63,11 +63,14 @@ describe('app shell', () => {
     expect(text(page.querySelector('.profile-button small') as HTMLElement)).toBe('Operations Manager');
   });
 
-  it('gives HR the company nav with no leave to decide, only open inbox counts', async () => {
+  it('gives HR the company nav with no leave to decide, counting open changes and documents to check', async () => {
     session.user.set(employee({ fullName: 'Ananya Iyer', designation: 'HR Manager', roles: ['EMPLOYEE', 'HR'] }));
-    const page = await render('/hr', { '/api/hr/change-requests': [{ id: 'CR-1', status: 'open' }, { id: 'CR-2', status: 'done' }] });
+    const page = await render('/hr', {
+      '/api/hr/change-requests': [{ id: 'CR-1', status: 'open' }, { id: 'CR-2', status: 'done' }],
+      '/api/hr/documents': [{ type: 'passport-copy', employeeId: 'OPR-0018' }],
+    });
 
-    expect(navLabels(page)).toEqual(['Overview', 'People', 'Calendar', 'Visas', 'Inbox 1', 'Announcements', 'Policies']);
+    expect(navLabels(page)).toEqual(['Overview', 'People', 'Calendar', 'Visas', 'Inbox 2', 'Announcements', 'Policies']);
     expect([...page.querySelectorAll('.role-switch button')].map((button) => text(button))).toEqual(['Employee', 'HR']);
     expect(page.querySelector('[data-testid=view-hr]')?.getAttribute('aria-pressed')).toBe('true');
     http.expectNone((request) => request.url.includes('leave-requests') || request.url.includes('corrections'));

@@ -34,11 +34,6 @@ const toMinutes = (time: string) => {
       </div>
       <app-field-error id="schedule-grace-error" [errors]="scheduleForm.graceMinutes().errors()" [isTouched]="scheduleForm.graceMinutes().touched()" />
       <app-field-error id="schedule-half-error" [errors]="scheduleForm.halfDayHours().errors()" [isTouched]="scheduleForm.halfDayHours().touched()" />
-      <div class="form-row">
-        <label>Ramadan starts <input type="time" [formField]="scheduleForm.ramadanStart" data-testid="schedule-ramadan-start" /></label>
-        <label>Ramadan ends <input type="time" [formField]="scheduleForm.ramadanEnd" data-testid="schedule-ramadan-end" aria-describedby="schedule-ramadan-error" /></label>
-      </div>
-      <app-field-error id="schedule-ramadan-error" [errors]="scheduleForm.ramadanEnd().errors()" [isTouched]="scheduleForm.ramadanEnd().touched()" />
       <label>Reason <textarea [formField]="scheduleForm.reason" placeholder="New site hours agreed with the board" data-testid="schedule-reason" aria-describedby="schedule-reason-error"></textarea></label>
       <app-field-error id="schedule-reason-error" [errors]="scheduleForm.reason().errors()" [isTouched]="scheduleForm.reason().touched()" />
       @if (failed()) {
@@ -70,17 +65,14 @@ export class ScheduleForm {
       shiftEnd: current?.shiftEnd ?? '17:00',
       graceMinutes: current?.graceMinutes ?? 0,
       halfDayHours: (current?.halfDayMinutes ?? 0) / MINUTES_PER_HOUR,
-      ramadanStart: current?.ramadanStart ?? '09:00',
-      ramadanEnd: current?.ramadanEnd ?? '14:00',
       reason: '',
     };
   });
   protected readonly scheduleForm = form(this.draft, (path) => {
     required(path.effectiveFrom, { message: 'Pick the first day it applies.' });
-    [path.shiftStart, path.shiftEnd, path.ramadanStart, path.ramadanEnd].forEach((time) => required(time, { message: 'Enter a time.' }));
+    [path.shiftStart, path.shiftEnd].forEach((time) => required(time, { message: 'Enter a time.' }));
     validate(path.effectiveFrom, ({ value }) => (value() && value() < this.tomorrow ? { kind: 'past', message: 'Changes can only start after today.' } : undefined));
     validate(path.shiftEnd, ({ value, valueOf }) => (toMinutes(value()) <= toMinutes(valueOf(path.shiftStart)) ? { kind: 'order', message: 'The shift has to end after it starts.' } : undefined));
-    validate(path.ramadanEnd, ({ value, valueOf }) => (toMinutes(value()) <= toMinutes(valueOf(path.ramadanStart)) ? { kind: 'order', message: 'Ramadan hours have to end after they start.' } : undefined));
     min(path.graceMinutes, 0, { message: 'Grace can’t be negative.' });
     max(path.graceMinutes, MAX_GRACE_MINUTES, { message: `Keep grace to ${MAX_GRACE_MINUTES} minutes or less.` });
     validate(path.halfDayHours, ({ value, valueOf }) => {

@@ -294,7 +294,7 @@ class HrApiTests {
     void addsAFutureScheduleAndCancelsIt() throws Exception {
         String body = """
                 {"effectiveFrom":"2027-01-03","shiftStart":"08:30","shiftEnd":"16:30","graceMinutes":10,"halfDayMinutes":240,
-                 "ramadanStart":"09:00","ramadanEnd":"14:00","reason":"Earlier hours from the new year"}""";
+                 "reason":"Earlier hours from the new year"}""";
 
         String version = ananya.post("/api/hr/schedules", body).body();
         assertThat(JsonPath.<String>read(version, "$.shiftStart")).isEqualTo("08:30");
@@ -310,7 +310,7 @@ class HrApiTests {
     void aScheduleStartsAfterTodayAndMakesSense() throws Exception {
         String body = """
                 {"effectiveFrom":"%s","shiftStart":"09:00","shiftEnd":"%s","graceMinutes":15,"halfDayMinutes":240,
-                 "ramadanStart":"09:00","ramadanEnd":"14:00","reason":"Test"}""";
+                 "reason":"Test"}""";
 
         assertThat(ananya.post("/api/hr/schedules", body.formatted("2026-11-12", "17:00")).body())
                 .isEqualTo("{\"message\":\"A new schedule can only start after today.\"}");

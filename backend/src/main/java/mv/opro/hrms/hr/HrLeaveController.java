@@ -36,9 +36,11 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 // HR's leave work: every request in the company (read only, decisions are the manager's), balances and the policy.
 // HR never changes their own leave here.
+@Tag(name = "HR: leave", description = "Every leave request (read only), balances, leave types and certificates. HR only. Decisions are the HOD's.")
 @RestController
 class HrLeaveController {
 

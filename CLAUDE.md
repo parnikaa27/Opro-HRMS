@@ -25,6 +25,7 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 - **Always use the latest stable version of every dependency.** Verify the latest stable release on npm and pin it exactly (no `^` or `~`, except `@types/*` which may use `^`). Before starting any task, run `npm outdated` in `frontend/` and update stale packages. The only exception is a version a framework's peer range blocks (TypeScript is held to what Angular supports). Note those in `HOW-TO-RUN.md`.
 - **Use the ponytail skill** to question every piece of code and write the minimum code that does the job.
 - **Maintain `HOW-TO-RUN.md`** at the repo root: folder structure, what lives where, and how to run everything. Update it whenever any of that changes.
+- **Maintain `TODO.md`** at the repo root: everything left before launch, everything waiting on Parnika, and what's deferred. Add to it whenever something is left open, and remove items when they're done.
 - **Reuse and extend existing components** before creating a near duplicate.
 - **Prefer readability.** Keep comments short and only where genuinely needed.
 - **Think about security on every change** and act on it.
@@ -53,7 +54,7 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 
 ### Login
 
-- Real login is decided when the backend is built (SSO is the likely target). Session lives in an **httpOnly, Secure, SameSite=Strict cookie** set by the server. No tokens in `localStorage` or `sessionStorage`, ever.
+- **To do, to discuss with Parnika: Microsoft sign in (Entra ID SSO).** People will be matched to their employee record by their Microsoft email; roles and HODs are mapped by hand. Until then the dev pick a user screen is the only sign in, and it must never ship. Session lives in an **httpOnly, Secure, SameSite=Strict cookie** set by the server. No tokens in `localStorage` or `sessionStorage`, ever.
 - The mock server offers a "pick a user" login screen so every role can be tested.
 - Angular's built in XSRF support (`XSRF-TOKEN` cookie → `X-XSRF-TOKEN` header) is used for all mutations.
 
@@ -67,8 +68,8 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 |---|---|
 | `/login` | Mock user picker (dev only) |
 | `/` Overview | Welcome banner, today's attendance (time in, expected out, effective hours, punch in and out), leave balance, visa status, recent attendance table, dark staff card, next holiday and long weekend, latest leave request |
-| `/documents` | Employment documents with status and download (sample files from the mock until storage exists) |
-| `/attendance` | My attendance: four summary cards, the attendance log for a chosen month, CSV export, punch fix requests and their status, and the punch button while today is on screen |
+| `/documents` | Every document on HR's list that applies to them, with its status (missing, waiting for HR, verified, sent back with HR's reason, expired) and download. Upload a copy of the ones employees send, with an expiry date where the type expires |
+| `/attendance` | My attendance: three summary cards (days present, work hours, on time), the attendance log for a chosen month, CSV export, punch fix requests and their status, and the punch button while today is on screen |
 | `/leave` | Leave and time off: balance rings, other leave types, request history with cancel (pending, or approved and not started), and the Request leave modal with a working day preview and a success screen |
 | `/calendar` | Company calendar: month grid with public holidays and company events, upcoming holidays, the holiday policy. Islamic holidays are marked **tentative** until confirmed after moon sighting. `/holidays` redirects here |
 | `/profile` | Virtual ID card (printable), personal and job details, emergency contact, visa and work permit details, request a change to personal details, and the flight allowance (used, waiting and left in USD, MVR or INR) with flight claims |
@@ -104,15 +105,15 @@ Sidebar: Overview, People, Calendar, Visas, Inbox (count open), Announcements, P
 
 | Route | Contents |
 |---|---|
-| `/hr` | Welcome banner, people, waiting decisions, visas to act on and inbox counts, oldest waiting leave, visa alerts, tentative holidays in the next 60 days |
+| `/hr` | Welcome banner, people, on leave today, visas to act on and inbox counts, who is on leave today, visa alerts, tentative holidays in the next 60 days |
 | `/hr/people` | The People page for everyone at Opro, with Add person and a toggle to include people who have left |
 | `/hr/people/new`, `/hr/people/:employeeId/edit` | Add a person, or edit their details and manager. A page, not a modal, because the form is long |
 | `/hr/people/:employeeId` | One person's balances, this month's log, requests (with any medical certificate to open), balance change log, staff card and visa. Set their days of a type or give or take away a type (Leave days), adjust a balance, update visa, set their flight allowance. A More menu holds edit details, change photo and mark as leaving |
 | `/hr/calendar` | Holidays and events per year: add, edit, delete, confirm a tentative date, add the civil holidays to an empty year |
 | `/hr/visas` | Every expatriate, people with no record first, then soonest visa or passport expiry |
-| `/hr/inbox` | Profile change requests in tabs (Open, Done, Declined). Declining needs a reason |
+| `/hr/inbox` | Profile change requests in tabs (Open, Done, Declined), and documents to check, oldest first: verify, or send back with a reason. Declining needs a reason |
 | `/hr/announcements` | Post, edit and take down notes from HR. A new one notifies everyone |
-| `/hr/policy` | Policies: add, edit and remove leave types (yearly days, half days, given to everyone or people HR picks, lapse or carry forward up to a cap; a new entitlement applies from the next leave year), the work schedule as dated versions, and the exchange rates for flight allowances |
+| `/hr/policy` | Policies: add, edit and remove leave types (yearly days, half days, given to everyone or people HR picks, lapse or carry forward up to a cap; a new entitlement applies from the next leave year), the work schedule as dated versions, the documents Opro keeps, and the exchange rates for flight allowances |
 
 ### Attendance rules (placeholders, confirm with HR)
 
@@ -124,15 +125,12 @@ Sidebar: Overview, People, Calendar, Visas, Inbox (count open), Announcements, P
 | Late | First punch after 09:15 (15 minute grace, set by HR) |
 | Half day | Less than 4 hours worked (set by HR) |
 | Absent | No punch, no approved leave, not a holiday or weekend |
-| Ramadan hours | 09:00 to 14:00 |
-| Overtime | Minutes beyond the shift, shown only, no approval flow in v1 |
 
-- **Shift rules are dated versions.** HR sets shift start and end, grace, half day threshold and Ramadan hours from a date after today. Days already worked keep the version they were worked under. A version that hasn't started can be cancelled. Ramadan hours apply from the first day of Ramadan to the day before Eid al Fitr in the holiday calendar (backend). The work week is not editable.
+- **Shift rules are dated versions.** HR sets shift start and end, grace and the half day threshold from a date after today. Days already worked keep the version they were worked under. A version that hasn't started can be cancelled. The work week is not editable. There are no Ramadan hours and no overtime: every day follows the one schedule in force.
 - The backend sends `expectedOut` and `scheduledMinutes` with each day, from the version in force. The frontend shows them and never works out a shift itself.
 - **Punch fix requests** have a type: **Working from resort**, **Forgot to punch**, **Late punch** or **Other**. A reason is required for Late punch and Other only. Approving one adds the punch they missed; approving a **late punch** voids their late punch in (logged, never deleted) and puts in the time they arrived, so lateness and hours are worked out again. A late punch can't move the punch in later.
 - **Punch fixes are the HOD's to decide.** HR doesn't add or void punches. An approved fix adds a `manual` punch linked to its request, and the backend works the day out again. Corrected days show "Corrected" to everyone who sees them. HR's old punch edits stay in `punch_edit` as history.
 - Raw punches are never edited. A wrong one is voided and a missing one is added with source `manual`. Each day is worked out per request from the punches, the schedule version in force, holidays, approved full day leave and the weekend (`DayCalculator`).
-- Ramadan hours are stored on the schedule but not applied yet. HR now confirms the first day of Ramadan and Eid al Fitr in the calendar, so the next step is applying those dates when a day is worked out.
 - The dev profile fills recent weeks with believable portal punches on start up, mostly from the office and some from home (`DevPunchSeeder`).
 - A day may have **many punches** (breaks). The backend pairs them and works out first in, last out, time worked and status. **The frontend only displays these values. It never calculates attendance status.**
 
@@ -188,6 +186,15 @@ Sidebar: Overview, People, Calendar, Visas, Inbox (count open), Announcements, P
 - **Exchange rates** (MVR and INR per USD) are set by HR in Policies. The starting rates are placeholders. No outside rates service is used.
 - The profile shows allowance, used and left in USD, MVR or INR, remembered per browser.
 
+### Documents
+
+- **HR keeps the list** in Policies: each document's name, who uploads it (**the employee**, or **HR**), whether it **expires** (then a date after today is asked for), and whether only **expatriates** need it (anyone not Maldivian). A type nobody uploaded is deleted when removed; a used one is retired: nobody is asked for it, copies on file stay. The real list is still to come from Parnika; the dev seed has placeholders.
+- **One copy per type per person.** A new upload replaces the old file. PDF, JPG or PNG up to 5 MB, checked by its first bytes.
+- An employee's upload is **waiting for HR**. HR **verifies** it, or **sends it back** with a reason the employee sees, and they upload again. Both tell the employee.
+- HR can upload any type for someone (never for themselves). That copy counts as verified straight away, and the person is told.
+- Status is worked out on every read: **missing** without a copy, **expired** once a verified copy's date has passed.
+- Only the person and HR can see or open documents. HODs and super admins don't.
+
 ### Visa and work permit
 
 - Only expatriate staff have visa records. Maldivian nationals see "Not applicable" instead of an empty section.
@@ -228,7 +235,7 @@ Logo, "People first, always.", "© year Opro Pvt Ltd · Malé, Republic of Maldi
 
 ### Non functional
 
-- English only, but use CSS logical properties (`margin-inline-start`, not `margin-left`) so Dhivehi (right to left) can be added later without a rewrite.
+- English only. Dhivehi is not planned.
 - Fully responsive. Phones are a first class target, many staff will check punches and leave on mobile. Checked at 375, 768, 900, 1024 and 1280 px with nothing wider than the screen. On phones, tables turn into stacked rows (each value under its column's name, `class="stacks"` and `data-label` on each cell), request rows show their dates, amounts and reasons under the name instead of hiding them, and request tabs scroll on one line. Between 861 and 1100 px the side column sits under the main one.
 - Light and dark. The Figma design has no dark version, so dark is generated from the light stylesheets by `scripts/build-dark-theme.mjs` into `src/styles/dark.css`: light surfaces become navy tinted dark ones, text turns light, coloured text is lifted until it reads, and the parts that are dark on purpose (sidebar, staff card, welcome banner, primary buttons) stay as they are. The script reports any text under 4.5:1 against the dark card. Never edit `dark.css` by hand: change the script or the light styles and run `npm run theme:dark`. `npm run check` fails if it is stale.
 - The portal follows the device setting. Light, Dark or Auto in the name menu overrides it, remembered per browser. Printing is always light.
@@ -280,6 +287,7 @@ Respect `prefers-reduced-motion`. Keep visible `:focus-visible` styles. Use mode
 HRMS/
   CLAUDE.md
   HOW-TO-RUN.md
+  TODO.md
   design/figma-make/   # App.tsx and index.css from the Figma Make file. Reference only, not built
   frontend/
     src/styles.css     # Tailwind, fonts, tokens and our additions to the design
@@ -300,7 +308,8 @@ HRMS/
     public/            # Static assets, robots.txt
     src/testing/       # Test helpers and fixtures, never shipped
     e2e/               # Playwright tests
-    dev-server/        # Mock API (frontend development only)
+    netlify/functions/ # The Netlify demo's function, wrapping the mock
+    dev-server/        # Mock API (frontend development and the Netlify demo)
       server.mjs
       data/            # JSON fixtures
     proxy.conf.mjs     # Sends /api to the mock or to Spring
@@ -339,8 +348,11 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 - Never change a URL or add a branch in app code to support mocking. If the mock needs a code change, fix the mock.
 - When a new endpoint is added, add its mock route and fixture in the same change. When the real backend changes a response shape, update the mock immediately.
 - Keep the mock dumb: realistic fixtures, no business logic.
+- **Netlify demo:** `netlify.toml` deploys the frontend with the mock as a Netlify function (`frontend/netlify/functions/mock-api.mjs`, which calls the mock's exported `handle`). There, and only there, `MOCK_STATELESS_SESSIONS` lets the session cookie name the person, so a fresh function copy still knows them. Made up data only; never point it at real data.
 
 ### API contract (v1)
+
+The full, generated reference is Swagger UI at `http://localhost:8080/swagger-ui.html` when Spring runs on the dev profile (springdoc, off everywhere else). Every controller carries a `@Tag` with a plain description; add one to any new controller. This table is the summary.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -359,8 +371,8 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 | POST | `/api/profile/change-requests` | Ask HR to change personal details |
 | GET | `/api/announcements` | Company announcements |
 | GET | `/api/events?year=YYYY` | Company events for the calendar |
-| GET | `/api/documents` | Own documents (`updatedOn` or `expiresOn`, `status`) |
-| GET | `/api/documents/:id/file` | Download one document |
+| GET | `/api/documents` | Every document type that applies to them, with their copy's `status`, dates and any `decisionNote` |
+| PUT / GET | `/api/documents/:type/file?expiresOn=` | Upload own copy (raw body, 5 MB max) of a type employees send / download it |
 | GET | `/api/notifications` | Own notifications |
 | POST | `/api/notifications/read` | Mark all own notifications read |
 | GET | `/api/team` | Direct reports with today's attendance and visa |
@@ -394,6 +406,11 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 | POST | `/api/hr/holidays/start-year` | Add the fixed civil holidays to a year (`year`) |
 | POST / PUT / DELETE | `/api/hr/events`, `/api/hr/events/:id` | Manage company events |
 | GET | `/api/hr/change-requests` | Profile change requests |
+| GET / POST / PUT / DELETE | `/api/hr/document-types`, `/api/hr/document-types/:code` | HR's document list / add (`name`, `uploadedBy`, `hasExpiry`, `isForExpatriatesOnly`) / change / remove (deleted if unused, otherwise retired) |
+| GET | `/api/hr/documents` | Uploads waiting for HR, oldest first |
+| GET | `/api/hr/employees/:id/documents` | One person's documents |
+| PUT / GET | `/api/hr/employees/:id/documents/:type/file?expiresOn=` | Upload a copy for them, counted as verified / open it |
+| POST | `/api/hr/employees/:id/documents/:type/decision` | `verified`, or `rejected` with a `note` |
 | POST | `/api/hr/change-requests/:id/decision` | `done` or `declined` with a `note` |
 | POST / PUT / DELETE | `/api/hr/announcements`, `/api/hr/announcements/:id` | Manage announcements. A new one notifies everyone |
 | POST | `/api/hr/employees` | Add a person. The server sets the ID and roles, and seeds balances |
@@ -406,8 +423,8 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 | GET | `/api/leave/requests/:id/certificate`, `/api/hr/leave-requests/:id/certificate` | Open a certificate: own, or any for HR. Never for managers |
 
 ### Files
-- Photos, medical certificates and documents are stored in PostgreSQL (`stored_file`) for now, so they share transactions and backups with the rest. Moving to object storage later only touches the `files` package.
-- Every upload is the raw request body, read through `Upload.read`: allowed type, size limit (photos 1 MB JPEG, certificates 5 MB PDF, JPG or PNG), and the first bytes must match the type. Anything else is refused before it is stored.
+- Photos, medical certificates, receipts and documents are stored in PostgreSQL (`stored_file`) for now, so they share transactions and backups with the rest. Moving to object storage later only touches the `files` package.
+- Every upload is the raw request body, read through `Upload.read`: allowed type, size limit (photos 1 MB JPEG; certificates, receipts and documents 5 MB PDF, JPG or PNG), and the first bytes must match the type. Anything else is refused before it is stored.
 - Every file is served by `Files.serve` with `nosniff` and `Content-Security-Policy: sandbox`. Photo URLs carry a version and cache for good; certificates and documents are never cached.
 
 ### Backend conventions

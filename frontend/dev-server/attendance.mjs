@@ -85,7 +85,6 @@ const toRecord = ({ employeeId, date, status, punchMinutes, device, rules, workM
     ...(punchMinutes.length > 0 && { firstIn: toIso(date, punchMinutes[0]), expectedOut: toIso(date, punchMinutes[0] + shiftLength), scheduledMinutes: shiftLength }),
     ...(lastOut !== undefined && { lastOut: toIso(date, lastOut) }),
     workedMinutes: isComplete ? workedMinutes(punchMinutes) : 0,
-    overtimeMinutes: lastOut !== undefined ? Math.max(0, lastOut - toMinutes(rules.shiftEnd)) : 0,
     ...(punchMinutes.length > 0 && workMode && { workMode }),
     ...(workMode === 'home' && homeStatus && { homeStatus }),
   };
@@ -126,7 +125,7 @@ export const punchNow = ({ record, workMode, place, homeStatus, schedules }) => 
 
 // Spring's answer to a manager declining a day worked from home: it counts as absent.
 export const decideHomeDay = (record, status) =>
-  status === 'rejected' ? { ...record, homeStatus: status, status: 'absent', workedMinutes: 0, overtimeMinutes: 0 } : { ...record, homeStatus: status };
+  status === 'rejected' ? { ...record, homeStatus: status, status: 'absent', workedMinutes: 0 } : { ...record, homeStatus: status };
 
 export const buildAttendance = ({ employees, holidays, leaveRequests, schedules }) => {
   const now = maldivesNow();

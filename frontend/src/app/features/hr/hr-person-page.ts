@@ -1,6 +1,7 @@
 import { HttpErrorResponse, HttpStatusCode } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { Session } from '../../core/session';
 import { ConfirmButton } from '../../shared/ui/confirm-button';
 import { Dialog } from '../../shared/ui/dialog';
 import { Icon } from '../../shared/ui/icon';
@@ -22,6 +23,7 @@ import { LeavingForm } from './forms/leaving-form';
 import { PhotoForm } from './forms/photo-form';
 import { VisaForm } from './forms/visa-form';
 import { HrApi } from './hr-api';
+import { HrDocumentsCard } from './hr-documents-card';
 import { HrFlightCard } from './hr-flight-card';
 import { PersonMenu } from './person-menu';
 
@@ -36,7 +38,7 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
 
 @Component({
   selector: 'app-hr-person-page',
-  imports: [AdjustBalanceForm, AttendanceTable, ConfirmButton, Dialog, EmployeeCard, HrFlightCard, Icon, LeaveBalances, LeaveDaysForm, LeaveRequests, LeavingForm, ListSkeleton, PersonMenu, PhotoForm, RouterLink, SuccessState, VisaCard, VisaForm],
+  imports: [AdjustBalanceForm, AttendanceTable, ConfirmButton, Dialog, EmployeeCard, HrDocumentsCard, HrFlightCard, Icon, LeaveBalances, LeaveDaysForm, LeaveRequests, LeavingForm, ListSkeleton, PersonMenu, PhotoForm, RouterLink, SuccessState, VisaCard, VisaForm],
   template: `
     <div class="page-view">
       <a routerLink="/hr/people" class="text-link back-link"><app-icon name="chevronLeft" [size]="15" /> People</a>
@@ -101,6 +103,7 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
                 <p class="attendance-off">No manual changes. Balances follow the leave policy.</p>
               }
             </section>
+            <app-hr-documents-card [employeeId]="employee.id" [name]="employee.fullName" [isOwn]="employee.id === myId()" />
           </div>
           <div class="side-column">
             <app-employee-card [employee]="employee" />
@@ -142,6 +145,8 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
 })
 export class HrPersonPage {
   private readonly hr = inject(HrApi);
+  private readonly session = inject(Session);
+  protected readonly myId = computed(() => this.session.user()?.id);
   protected readonly today = maldivesToday();
 
   readonly employeeId = input.required<string>();

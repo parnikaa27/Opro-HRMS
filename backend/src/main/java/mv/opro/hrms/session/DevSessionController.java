@@ -22,9 +22,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 // The "pick a user" sign in, for development only. Real sign in (likely SSO) replaces it, and this class
 // does not exist outside the dev profile, so production has no way to sign in as someone else.
+@Tag(name = "Sign in (development)", description = "The pick a user sign in. Exists in the dev profile only.")
 @Profile("dev")
 @RestController
 class DevSessionController {

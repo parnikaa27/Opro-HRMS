@@ -22,7 +22,7 @@ describe('TodayAttendanceCard', () => {
   };
 
   const day = (overrides: Partial<AttendanceDay>): AttendanceDay => ({
-    employeeId: 'E', date: TODAY, status: 'present', punches: [], workedMinutes: 0, overtimeMinutes: 0, ...overrides,
+    employeeId: 'E', date: TODAY, status: 'present', punches: [], workedMinutes: 0, ...overrides,
   });
 
   it('shows time in the office, where they punched, and when the shift ends', () => {

@@ -16,9 +16,11 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 // HR puts up and takes down ID card photos. The browser has already cropped and re-encoded it to a small JPEG,
 // which also strips the location data phones put in photos.
+@Tag(name = "HR: photos", description = "Uploading and removing staff photos. HR only.")
 @RestController
 class HrPhotoController {
 

@@ -23,8 +23,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 // Someone's own flight allowance and claims.
+@Tag(name = "Flights", description = "Your flight allowance and claims. A claim counts as soon as it fits what is left.")
 @RestController
 class FlightController {
 

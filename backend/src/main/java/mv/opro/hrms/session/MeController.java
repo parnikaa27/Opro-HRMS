@@ -7,7 +7,9 @@ import mv.opro.hrms.employee.Photos;
 import mv.opro.hrms.employee.VisaRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "Me", description = "The signed in person: profile, roles and visa.")
 @RestController
 class MeController {
 

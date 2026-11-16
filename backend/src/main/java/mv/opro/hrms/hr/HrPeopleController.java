@@ -33,8 +33,10 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 // HR's view of everyone at Opro. Every endpoint starts with HrAccess.
+@Tag(name = "HR: people", description = "Everyone at Opro: adding, editing, leaving and visas. HR only.")
 @RestController
 class HrPeopleController {
 

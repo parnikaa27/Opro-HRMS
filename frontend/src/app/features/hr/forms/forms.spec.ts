@@ -313,7 +313,7 @@ describe('HR forms', () => {
   });
 
   describe('ScheduleForm', () => {
-    const CURRENT = { id: 'WS-1', effectiveFrom: '2024-01-01', shiftStart: '09:00', shiftEnd: '17:00', graceMinutes: 15, halfDayMinutes: 240, ramadanStart: '09:00', ramadanEnd: '14:00', reason: 'x', setBy: 'H', setOn: '2023-12-10' };
+    const CURRENT = { id: 'WS-1', effectiveFrom: '2024-01-01', shiftStart: '09:00', shiftEnd: '17:00', graceMinutes: 15, halfDayMinutes: 240, reason: 'x', setBy: 'H', setOn: '2023-12-10' };
 
     it('starts from the rules in force and only accepts sensible changes', async () => {
       const { root } = await render(ScheduleForm, { current: CURRENT });
@@ -321,7 +321,6 @@ describe('HR forms', () => {
 
       fill(root, 'schedule-from', '2026-11-12');
       fill(root, 'schedule-end', '08:00');
-      fill(root, 'schedule-ramadan-end', '08:00');
       fill(root, 'schedule-grace', '90');
       await submit(root);
 
@@ -330,7 +329,6 @@ describe('HR forms', () => {
         'The shift has to end after it starts.',
         'Keep grace to 60 minutes or less.',
         'A half day has to be shorter than the shift.',
-        'Ramadan hours have to end after they start.',
         'Say why, so the change makes sense later.',
       ]);
     });
@@ -345,7 +343,7 @@ describe('HR forms', () => {
 
       await submit(root);
       const request = http.expectOne('/api/hr/schedules');
-      expect(request.request.body).toEqual({ effectiveFrom: '2026-12-01', shiftStart: '08:30', shiftEnd: '16:30', graceMinutes: 15, halfDayMinutes: 210, ramadanStart: '09:00', ramadanEnd: '14:00', reason: 'Earlier start' });
+      expect(request.request.body).toEqual({ effectiveFrom: '2026-12-01', shiftStart: '08:30', shiftEnd: '16:30', graceMinutes: 15, halfDayMinutes: 210, reason: 'Earlier start' });
       request.flush({});
       await settle();
 

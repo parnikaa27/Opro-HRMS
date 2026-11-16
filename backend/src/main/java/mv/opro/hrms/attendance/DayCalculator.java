@@ -37,20 +37,19 @@ final class DayCalculator {
                 .toList();
 
         if (live.isEmpty()) {
-            return new AttendanceDay(employeeId, null, date, emptyStatus(date, today, offDay), views, null, null, 0, 0, null, null, isCorrected, null, null);
+            return new AttendanceDay(employeeId, null, date, emptyStatus(date, today, offDay), views, null, null, 0, null, null, isCorrected, null, null);
         }
         String workMode = live.stream().map(DayPunch::mode).filter(Objects::nonNull).findFirst().orElse(null);
         String home = "home".equals(workMode) ? homeStatus : null;
         // A declined home day counts as absent, whatever was punched.
         if ("rejected".equals(home)) {
-            return new AttendanceDay(employeeId, null, date, "absent", views, null, null, 0, 0, null, null, isCorrected, workMode, home);
+            return new AttendanceDay(employeeId, null, date, "absent", views, null, null, 0, null, null, isCorrected, workMode, home);
         }
 
         boolean isComplete = live.size() % 2 == 0;
         OffsetDateTime firstIn = live.getFirst().at();
         OffsetDateTime lastOut = isComplete ? live.getLast().at() : null;
         long worked = isComplete ? workedMinutes(live) : 0;
-        long overtime = lastOut == null ? 0 : Math.max(0, Duration.between(rules.shiftEnd(), lastOut.toLocalTime()).toMinutes());
         boolean isLate = firstIn.toLocalTime().isAfter(rules.shiftStart().plusMinutes(rules.graceMinutes()));
 
         String status;
@@ -62,7 +61,7 @@ final class DayCalculator {
         } else {
             status = isLate ? "late" : "present";
         }
-        return new AttendanceDay(employeeId, null, date, status, views, firstIn, lastOut, worked, overtime,
+        return new AttendanceDay(employeeId, null, date, status, views, firstIn, lastOut, worked,
                 firstIn.plusMinutes(rules.shiftMinutes()), rules.shiftMinutes(), isCorrected, workMode, home);
     }
 

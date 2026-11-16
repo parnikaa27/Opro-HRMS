@@ -13,7 +13,7 @@ const visa = (overrides: Partial<Visa> = {}): Visa => ({
   ...overrides,
 });
 
-const today = (status: AttendanceStatus) => ({ employeeId: '', date: '2026-11-12', status, punches: [], workedMinutes: 0, overtimeMinutes: 0 });
+const today = (status: AttendanceStatus) => ({ employeeId: '', date: '2026-11-12', status, punches: [], workedMinutes: 0});
 
 export const PEOPLE: HrEmployee[] = [
   { ...employee({ visa: visa({ visaExpiry: '2026-12-20' }) }), today: today('present') },

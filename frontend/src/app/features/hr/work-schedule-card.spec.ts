@@ -6,7 +6,7 @@ import { WorkScheduleCard } from './work-schedule-card';
 
 const URL = '/api/hr/schedules';
 const version = (overrides: Partial<WorkSchedule>): WorkSchedule => ({
-  id: 'WS', effectiveFrom: '2024-01-01', shiftStart: '09:00', shiftEnd: '17:00', graceMinutes: 15, halfDayMinutes: 240, ramadanStart: '09:00', ramadanEnd: '14:00',
+  id: 'WS', effectiveFrom: '2024-01-01', shiftStart: '09:00', shiftEnd: '17:00', graceMinutes: 15, halfDayMinutes: 240,
   reason: 'Company hours', setBy: 'OPR-0002', setByName: 'Ananya Iyer', setOn: '2023-12-10', ...overrides,
 });
 const VERSIONS = [
@@ -39,9 +39,9 @@ describe('WorkScheduleCard', () => {
     const root = await render();
 
     expect(texts(root, 'schedule-row')).toEqual([
-      '08:30 AM to 04:30 PM, late after 15 minutes Half day under 4 hours · Ramadan 09:00 AM to 02:00 PM Earlier start · Ananya Iyer, 11 Nov 2026 Cancel this change Starts 1 Dec',
-      '09:00 AM to 05:00 PM, late after 10 minutes Half day under 4 hours · Ramadan 09:00 AM to 02:00 PM Company hours · OPR-0002, 10 Dec 2023 In force',
-      '09:00 AM to 05:00 PM, late after 15 minutes Half day under 4 hours · Ramadan 09:00 AM to 02:00 PM Company hours · Ananya Iyer, 10 Dec 2023 From 01 Jan 2024',
+      '08:30 AM to 04:30 PM, late after 15 minutes Half day under 4 hours Earlier start · Ananya Iyer, 11 Nov 2026 Cancel this change Starts 1 Dec',
+      '09:00 AM to 05:00 PM, late after 10 minutes Half day under 4 hours Company hours · OPR-0002, 10 Dec 2023 In force',
+      '09:00 AM to 05:00 PM, late after 15 minutes Half day under 4 hours Company hours · Ananya Iyer, 10 Dec 2023 From 01 Jan 2024',
     ]);
   });
 

@@ -25,9 +25,9 @@ describe('TeamMemberPage', () => {
     await respond(http, {
       '/api/team/OPR-0018': { ...employee(), leaveBalances: [{ type: 'annual', entitled: 30, taken: 18, pending: 0 }] },
       '/api/team/attendance?month=2026-11': [
-        { employeeId: 'OPR-0018', date: '2026-11-10', status: 'absent', punches: [], workedMinutes: 0, overtimeMinutes: 0 },
-        { employeeId: 'OTHER', date: '2026-11-10', status: 'present', punches: [], workedMinutes: 0, overtimeMinutes: 0 },
-        { employeeId: 'OPR-0018', date: '2026-11-20', status: 'present', punches: [], workedMinutes: 0, overtimeMinutes: 0 },
+        { employeeId: 'OPR-0018', date: '2026-11-10', status: 'absent', punches: [], workedMinutes: 0},
+        { employeeId: 'OTHER', date: '2026-11-10', status: 'present', punches: [], workedMinutes: 0},
+        { employeeId: 'OPR-0018', date: '2026-11-20', status: 'present', punches: [], workedMinutes: 0},
       ],
       '/api/team/leave-requests': [
         { id: 'LR-1', employeeId: 'OPR-0018', type: 'annual', from: '2026-12-01', to: '2026-12-01', days: 1, reason: 'Trip', status: 'pending', appliedOn: '2026-11-10' },
@@ -63,7 +63,7 @@ describe('TeamMemberPage', () => {
     picker.value = '2026-10';
     picker.dispatchEvent(new Event('change'));
     await respond(http, {
-      '/api/company/attendance?month=2026-10': [{ employeeId: 'OPR-0018', date: '2026-10-05', status: 'present', punches: [], workedMinutes: 480, overtimeMinutes: 0 }],
+      '/api/company/attendance?month=2026-10': [{ employeeId: 'OPR-0018', date: '2026-10-05', status: 'present', punches: [], workedMinutes: 480}],
     });
 
     expect(texts(root, 'attendance-row')).toEqual(['Monday 5 Oct, Mon — — — Present']);

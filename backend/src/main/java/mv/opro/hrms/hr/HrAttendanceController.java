@@ -31,7 +31,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "HR: attendance and schedules", description = "Anyone's month of attendance, and the work schedule as dated versions. HR only.")
 @RestController
 class HrAttendanceController {
 
@@ -42,15 +44,14 @@ class HrAttendanceController {
 
     record ScheduleBody(@NotNull LocalDate effectiveFrom, @NotNull LocalTime shiftStart, @NotNull LocalTime shiftEnd,
             @NotNull @Min(0) @Max(MAX_GRACE) Integer graceMinutes, @NotNull @Min(1) @Max(MINUTES_IN_A_DAY) Integer halfDayMinutes,
-            @NotNull LocalTime ramadanStart, @NotNull LocalTime ramadanEnd, @NotBlank @Size(max = MAX_REASON) String reason) {}
+            @NotBlank @Size(max = MAX_REASON) String reason) {}
 
     record ScheduleResponse(String id, LocalDate effectiveFrom, String shiftStart, String shiftEnd, int graceMinutes, int halfDayMinutes,
-            String ramadanStart, String ramadanEnd, String reason, String setBy, String setByName, LocalDate setOn) {
+            String reason, String setBy, String setByName, LocalDate setOn) {
 
         static ScheduleResponse of(WorkSchedule version, Map<String, String> names) {
             return new ScheduleResponse(version.getId(), version.getEffectiveFrom(), version.getShiftStart().format(CLOCK), version.getShiftEnd().format(CLOCK),
-                    version.getGraceMinutes(), version.getHalfDayMinutes(), version.getRamadanStart().format(CLOCK), version.getRamadanEnd().format(CLOCK),
-                    version.getReason(), version.getSetBy(), names.get(version.getSetBy()), version.getSetOn());
+                    version.getGraceMinutes(), version.getHalfDayMinutes(), version.getReason(), version.getSetBy(), names.get(version.getSetBy()), version.getSetOn());
         }
     }
 
@@ -90,7 +91,7 @@ class HrAttendanceController {
     ScheduleResponse addSchedule(@Valid @RequestBody ScheduleBody body) {
         Employee me = hr.require(currentUser.get());
         WorkSchedule version = schedules.add(me, new ScheduleEditor.Rules(body.effectiveFrom(), body.shiftStart(), body.shiftEnd(), body.graceMinutes(),
-                body.halfDayMinutes(), body.ramadanStart(), body.ramadanEnd()), body.reason());
+                body.halfDayMinutes()), body.reason());
         return ScheduleResponse.of(version, Map.of(me.getId(), me.getFullName()));
     }
 

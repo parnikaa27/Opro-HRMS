@@ -17,6 +17,13 @@
 		<java.version>25</java.version>
 	</properties>
 	<dependencies>
+		<!-- API documentation built from the controllers. Spring Boot's parent doesn't manage springdoc, so it's pinned here.
+		     Turned on in the dev profile only (application-dev.yml). -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>3.2.0</version>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>

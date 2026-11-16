@@ -22,11 +22,6 @@ import { AttendanceSummary } from './attendance-summary';
         <strong data-testid="metric-on-time">{{ summary().onTimePercent }}%</strong>
         <p>{{ plural(summary().lateCount, 'late arrival') }}</p>
       </div>
-      <div class="card metric">
-        <span>Overtime</span>
-        <strong data-testid="metric-overtime">{{ formatDuration(summary().overtimeMinutes) }}</strong>
-        <p>Across {{ plural(summary().overtimeDays, 'workday') }}</p>
-      </div>
     </div>
   `,
   host: { class: 'contents' },

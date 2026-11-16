@@ -5,6 +5,7 @@ import { Dialog } from '../../shared/ui/dialog';
 import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { valueOr } from '../../shared/utils/resource';
 import { plural } from '../../shared/utils/text';
+import { DocumentTypesCard } from './document-types-card';
 import { ExchangeRatesCard } from './exchange-rates-card';
 import { PolicyForm } from './forms/policy-form';
 import { HrApi } from './hr-api';
@@ -15,14 +16,14 @@ type Editing = LeaveType | 'new' | undefined;
 
 @Component({
   selector: 'app-hr-policy-page',
-  imports: [ConfirmButton, Dialog, ExchangeRatesCard, ListSkeleton, PolicyForm, WorkScheduleCard],
+  imports: [ConfirmButton, Dialog, DocumentTypesCard, ExchangeRatesCard, ListSkeleton, PolicyForm, WorkScheduleCard],
   template: `
     <div class="page-view">
       <div class="page-title">
         <div>
           <span class="eyebrow">PEOPLE &amp; CULTURE</span>
           <h1>Policies</h1>
-          <p>Leave each person gets a year, the hours everyone works, and the rates for flight allowances. To change one person's leave, go to their page.</p>
+          <p>Leave each person gets a year, the hours everyone works, the documents Opro keeps, and the rates for flight allowances. To change one person's leave, go to their page.</p>
         </div>
         <div class="title-actions">
           <button type="button" class="primary-button compact" (click)="editing.set('new')" data-testid="add-policy">Add leave type</button>
@@ -68,6 +69,7 @@ type Editing = LeaveType | 'new' | undefined;
         </section>
       }
       <app-work-schedule-card />
+      <app-document-types-card />
       <app-exchange-rates-card />
     </div>
 

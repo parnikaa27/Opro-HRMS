@@ -17,7 +17,8 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 @Configuration
 class SecurityConfig {
 
-    private static final String[] PUBLIC = {"/api/session/users", "/api/session/login"};
+    // The API docs are switched off outside the dev profile, so these paths only answer in development.
+    private static final String[] PUBLIC = {"/api/session/users", "/api/session/login", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html"};
 
     @Bean
     SecurityFilterChain api(HttpSecurity http) throws Exception {

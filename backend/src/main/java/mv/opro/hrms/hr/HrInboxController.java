@@ -23,8 +23,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 // The profile change request inbox and the announcements HR posts.
+@Tag(name = "HR: inbox", description = "Profile change requests and announcements. HR only.")
 @RestController
 class HrInboxController {
 

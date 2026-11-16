@@ -4,7 +4,7 @@ import { toAttendanceRow } from './attendance-rows';
 
 const at = (time: string, date = TODAY) => `${date}T${time}:00+05:00`;
 const day = (overrides: Partial<AttendanceDay>): AttendanceDay => ({
-  employeeId: 'E', date: TODAY, status: 'present', punches: [], workedMinutes: 0, overtimeMinutes: 0, ...overrides,
+  employeeId: 'E', date: TODAY, status: 'present', punches: [], workedMinutes: 0, ...overrides,
 });
 
 describe('toAttendanceRow', () => {
