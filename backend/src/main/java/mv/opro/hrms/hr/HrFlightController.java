@@ -26,9 +26,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 // HR's side of flight allowances: each person's allowance and claims, and the exchange rates. Claims need no approval.
 // HR never sets their own allowance.
+@Tag(name = "HR: flights", description = "Allowances, receipts and exchange rates. HR only, never their own allowance.")
 @RestController
 class HrFlightController {
 

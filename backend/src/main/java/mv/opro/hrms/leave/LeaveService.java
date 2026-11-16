@@ -1,12 +1,10 @@
 package mv.opro.hrms.leave;
 
 import java.math.BigDecimal;
-import java.text.Normalizer;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import java.util.Map;
 import java.util.function.Function;
@@ -437,12 +435,8 @@ public class LeaveService {
         }
     }
 
-    // "Marriage leave" becomes "marriage-leave".
     private static String codeFor(String name) {
-        String code = Normalizer.normalize(name.strip().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
-                .replaceAll("[^a-z0-9]+", "-")
-                .replaceAll("^-|-$", "");
-        String trimmed = code.length() > MAX_CODE_LENGTH ? code.substring(0, MAX_CODE_LENGTH).replaceAll("-$", "") : code;
+        String trimmed = Ids.codeFor(name, MAX_CODE_LENGTH);
         if (trimmed.isEmpty()) {
             throw refused(HttpStatus.BAD_REQUEST, "Give the leave type a name with letters or numbers.");
         }

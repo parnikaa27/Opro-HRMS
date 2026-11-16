@@ -36,7 +36,7 @@ const PAST_SHOWN = 3;
             <div class="leave-type-icon"><app-icon name="clock" [size]="18" /></div>
             <div>
               <strong>{{ formatTimeOfDay(version.shiftStart) }} to {{ formatTimeOfDay(version.shiftEnd) }}, late after {{ plural(version.graceMinutes, 'minute') }}</strong>
-              <span>Half day under {{ plural(version.halfDayMinutes / minutesPerHour, 'hour') }} · Ramadan {{ formatTimeOfDay(version.ramadanStart) }} to {{ formatTimeOfDay(version.ramadanEnd) }}</span>
+              <span>Half day under {{ plural(version.halfDayMinutes / minutesPerHour, 'hour') }}</span>
               <span>{{ version.reason }} · {{ version.setByName ?? version.setBy }}, {{ formatCompactDate(version.setOn) }}</span>
               @if (version.effectiveFrom > today) {
                 <div class="row-actions">

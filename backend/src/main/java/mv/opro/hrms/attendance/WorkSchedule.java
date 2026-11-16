@@ -16,8 +16,6 @@ public class WorkSchedule {
     private LocalTime shiftEnd;
     private int graceMinutes;
     private int halfDayMinutes;
-    private LocalTime ramadanStart;
-    private LocalTime ramadanEnd;
     private String reason;
     private String setBy;
     private LocalDate setOn;
@@ -25,15 +23,13 @@ public class WorkSchedule {
     protected WorkSchedule() {}
 
     WorkSchedule(String id, LocalDate effectiveFrom, LocalTime shiftStart, LocalTime shiftEnd, int graceMinutes, int halfDayMinutes,
-            LocalTime ramadanStart, LocalTime ramadanEnd, String reason, String setBy, LocalDate setOn) {
+            String reason, String setBy, LocalDate setOn) {
         this.id = id;
         this.effectiveFrom = effectiveFrom;
         this.shiftStart = shiftStart;
         this.shiftEnd = shiftEnd;
         this.graceMinutes = graceMinutes;
         this.halfDayMinutes = halfDayMinutes;
-        this.ramadanStart = ramadanStart;
-        this.ramadanEnd = ramadanEnd;
         this.reason = reason;
         this.setBy = setBy;
         this.setOn = setOn;
@@ -45,14 +41,6 @@ public class WorkSchedule {
 
     public String getId() {
         return id;
-    }
-
-    public LocalTime getRamadanStart() {
-        return ramadanStart;
-    }
-
-    public LocalTime getRamadanEnd() {
-        return ramadanEnd;
     }
 
     public String getReason() {

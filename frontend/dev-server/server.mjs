@@ -2,12 +2,17 @@
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
+import { pathToFileURL } from 'node:url';
 import { buildAttendance, clockNow, decideHomeDay, maldivesNow, punchNow, rebuildDay, toMinutes } from './attendance.mjs';
 
 const PORT = Number(process.env.MOCK_PORT ?? 4300);
 const MAX_BODY_BYTES = 10_000;
 const SESSION_COOKIE = 'opro_session';
 const XSRF_COOKIE = 'XSRF-TOKEN';
+// The Netlify demo runs this file as a function that can restart at any time, losing every session in memory.
+// There the session cookie names who signed in, so a fresh start still knows them. Only acceptable because
+// everyone in the mock is made up and the sign in is "pick a user" anyway.
+const SESSIONS_SURVIVE_RESTARTS = process.env.MOCK_STATELESS_SESSIONS === 'true';
 
 const load = (name) => JSON.parse(readFileSync(new URL(`./data/${name}.json`, import.meta.url), 'utf8'));
 
@@ -28,11 +33,13 @@ const db = {
   flightAllowances: load('flight-allowances'),
   flightClaims: load('flight-claims'),
   rates: load('exchange-rates'),
+  documentTypes: load('document-types'),
   compOffs: [],
   receipts: new Map(),
   // Uploaded files live in memory like everything else, keyed by employee or request.
   photos: new Map(),
   certificates: new Map(),
+  documentFiles: new Map(),
 };
 db.attendance = buildAttendance(db);
 // The approvals that go with the generated days worked from home.
@@ -68,17 +75,18 @@ const samplePdf = (line) => {
   return `${body}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
 };
 
-const documentsOf = (user) => {
-  const visa = db.visas.find(({ employeeId }) => employeeId === user.id);
+// The same people's documents Spring seeds: their contract, visa or national ID papers, and insurance waiting for HR.
+const seedDocuments = (employees, visas) => employees.flatMap((employee) => {
+  const visa = visas.find(({ employeeId }) => employeeId === employee.id);
+  const verified = { employeeId: employee.id, status: 'verified', hasFile: true };
   return [
-    { id: 'contract', name: 'Employment contract', updatedOn: user.joinedOn, status: 'verified' },
-    ...(visa ? [{ id: 'visa', name: 'Visa copy', expiresOn: visa.visaExpiry, status: 'verified' }] : []),
-    user.nationality === 'Maldivian'
-      ? { id: 'national-id', name: 'National ID', status: 'verified' }
-      : { id: 'passport', name: 'Passport copy', expiresOn: visa?.passportExpiry, status: 'verified' },
-    { id: 'insurance', name: 'Health insurance', updatedOn: '2026-02-05', status: 'pending' },
+    { ...verified, type: 'employment-contract', updatedOn: employee.joinedOn },
+    ...(visa ? [{ ...verified, type: 'visa-copy', expiresOn: visa.visaExpiry }, { ...verified, type: 'passport-copy', expiresOn: visa.passportExpiry }] : []),
+    ...(employee.nationality === 'Maldivian' ? [{ ...verified, type: 'national-id' }] : []),
+    { ...verified, type: 'health-insurance', updatedOn: '2026-02-05', status: 'pending' },
   ];
-};
+});
+db.documents = seedDocuments(db.employees, db.visas);
 
 class HttpError extends Error {
   constructor(status, message) {
@@ -175,6 +183,80 @@ const removeFrom = (collection, id, what) => {
   return undefined;
 };
 
+// Every type that applies to them, plus anything they hold of a retired one, with missing and expired worked out.
+const documentEntries = (employee) => {
+  const held = db.documents.filter(({ employeeId }) => employeeId === employee.id);
+  const isExpatriate = employee.nationality !== 'Maldivian';
+  return [...db.documentTypes]
+    .sort((first, second) => first.sortOrder - second.sortOrder || first.name.localeCompare(second.name))
+    .map((type) => ({ type, document: held.find((entry) => entry.type === type.code) }))
+    .filter(({ type, document }) => document || (!type.retiredOn && (isExpatriate || !type.isForExpatriatesOnly)))
+    .map(({ type, document }) => documentView(type, document));
+};
+const documentView = (type, document) => ({
+  type: type.code, name: type.name, uploadedBy: type.uploadedBy, hasExpiry: type.hasExpiry, hasFile: false,
+  ...(document && { ...document, employeeName: nameOf(document.employeeId) }),
+  status: !document ? 'missing' : document.status === 'verified' && document.expiresOn && document.expiresOn < today() ? 'expired' : document.status,
+});
+const activeDocumentType = (code) => {
+  const type = db.documentTypes.find((entry) => entry.code === code && !entry.retiredOn);
+  if (!type) {
+    throw new HttpError(404, 'Document type not found');
+  }
+  return type;
+};
+const heldDocument = (employeeId, code) => {
+  const document = db.documents.find((entry) => entry.employeeId === employeeId && entry.type === code);
+  if (!document) {
+    throw new HttpError(404, 'Document not found');
+  }
+  return document;
+};
+// An employee's own upload waits for HR. HR's counts as verified, and the person is told.
+const uploadDocument = ({ by, owner, code, file, expiresOn }) => {
+  const type = activeDocumentType(code);
+  const isOwn = by.id === owner.id;
+  if (isOwn && type.uploadedBy !== 'employee') {
+    throw new HttpError(403, `HR adds your ${type.name.toLowerCase()}.`);
+  }
+  if (type.hasExpiry && !(DATE.test(String(expiresOn)) && expiresOn > today())) {
+    throw new HttpError(400, 'Enter the date it expires. It has to be after today.');
+  }
+  const document = {
+    employeeId: owner.id, type: code, status: isOwn ? 'pending' : 'verified', updatedOn: today(), hasFile: true, ...(type.hasExpiry && { expiresOn }),
+  };
+  db.documents = [...db.documents.filter((entry) => !(entry.employeeId === owner.id && entry.type === code)), document];
+  db.documentFiles.set(`${owner.id}/${code}`, file);
+  if (!isOwn) {
+    notify(owner.id, 'record', `HR added your ${type.name.toLowerCase()}.`);
+  }
+  return documentView(type, document);
+};
+const sendDocument = (res, employee, code) => {
+  const type = db.documentTypes.find((entry) => entry.code === code);
+  heldDocument(employee.id, code);
+  const uploaded = db.documentFiles.get(`${employee.id}/${code}`);
+  if (uploaded) {
+    return sendFile(res, uploaded, type.name);
+  }
+  // A one page sample PDF for the seeded copies, named the way Spring names real documents.
+  res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${type.name}.pdf"` });
+  res.end(samplePdf(`${type.name} for ${employee.fullName}`));
+  return SENT;
+};
+const validDocumentType = (body) => {
+  const name = String(body.name ?? '').trim();
+  if (!name || !['employee', 'hr'].includes(body.uploadedBy) || typeof body.hasExpiry !== 'boolean' || typeof body.isForExpatriatesOnly !== 'boolean') {
+    throw new HttpError(400, 'Give it a name, who uploads it, and whether it expires');
+  }
+  return { name, uploadedBy: body.uploadedBy, hasExpiry: body.hasExpiry, isForExpatriatesOnly: body.isForExpatriatesOnly };
+};
+const checkDocumentName = (name, code) => {
+  if (db.documentTypes.some((type) => !type.retiredOn && type.code !== code && type.name.toLowerCase() === name.toLowerCase())) {
+    throw new HttpError(409, "There's already a document called that.");
+  }
+};
+
 const pick = (body, keys) => Object.fromEntries(keys.filter((key) => body[key] !== undefined).map((key) => [key, body[key]]));
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -192,14 +274,14 @@ const requireReason = (body) => {
 
 // The same checks Spring would run on a new schedule version.
 const validSchedule = (body) => {
-  const times = ['shiftStart', 'shiftEnd', 'ramadanStart', 'ramadanEnd'];
+  const times = ['shiftStart', 'shiftEnd'];
   if (!times.every((key) => TIME.test(String(body[key] ?? '')))) {
     throw new HttpError(400, 'Times must look like 09:00');
   }
   const shiftLength = toMinutes(body.shiftEnd) - toMinutes(body.shiftStart);
   const grace = Number(body.graceMinutes);
   const halfDay = Number(body.halfDayMinutes);
-  if (shiftLength <= 0 || toMinutes(body.ramadanEnd) <= toMinutes(body.ramadanStart)) {
+  if (shiftLength <= 0) {
     throw new HttpError(400, 'A shift has to end after it starts');
   }
   if (!Number.isInteger(grace) || grace < 0 || grace > MAX_GRACE_MINUTES || !Number.isInteger(halfDay) || halfDay <= 0 || halfDay >= shiftLength) {
@@ -433,7 +515,7 @@ const routes = [
     if (!activeEmployees().some(({ id }) => id === body.employeeId)) {
       throw new HttpError(400, 'Unknown employee');
     }
-    const token = randomUUID();
+    const token = `${body.employeeId}.${randomUUID()}`;
     sessions.set(token, body.employeeId);
     // Secure is left off because the dev proxy runs on plain http. Spring must set it.
     res.appendHeader('Set-Cookie', `${SESSION_COOKIE}=${token}; HttpOnly; SameSite=Strict; Path=/`);
@@ -531,17 +613,10 @@ const routes = [
   ['GET', /^\/api\/holidays$/, ({ query }) => db.holidays.filter(({ date }) => date.startsWith(query.get('year') ?? today().slice(0, 4)))],
   ['GET', /^\/api\/announcements$/, () => db.announcements],
   ['GET', /^\/api\/events$/, ({ query }) => db.events.filter(({ date }) => date.startsWith(query.get('year') ?? today().slice(0, 4)))],
-  ['GET', /^\/api\/documents$/, ({ user }) => documentsOf(user)],
-  ['GET', /^\/api\/documents\/([\w-]+)\/file$/, ({ user, params: [id], res }) => {
-    const document = documentsOf(user).find((entry) => entry.id === id);
-    if (!document) {
-      throw new HttpError(404, 'Document not found');
-    }
-    // A one page sample PDF, named the way Spring names real documents.
-    res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${document.name}.pdf"` });
-    res.end(samplePdf(`${document.name} for ${user.fullName}`));
-    return SENT;
-  }],
+  ['GET', /^\/api\/documents$/, ({ user }) => documentEntries(user)],
+  ['PUT', /^\/api\/documents\/([\w-]+)\/file$/, ({ user, params: [code], query, body }) =>
+    uploadDocument({ by: user, owner: user, code, file: body, expiresOn: query.get('expiresOn') }), { upload: CERTIFICATE_UPLOAD }],
+  ['GET', /^\/api\/documents\/([\w-]+)\/file$/, ({ user, params: [code], res }) => sendDocument(res, user, code)],
   ['GET', /^\/api\/flights$/, ({ user }) => flightYearOf(user.id)],
   ['POST', /^\/api\/flights\/claims$/, ({ user, body }) => {
     const year = Number(String(body.flightDate).slice(0, 4));
@@ -626,7 +701,7 @@ const routes = [
     db.employees = [...db.employees, employee];
     // Spring works out every day from the joining date. The mock only needs today, so a new starter can punch in.
     if (employee.joinedOn <= today()) {
-      db.attendance = [...db.attendance, { employeeId: employee.id, date: today(), status: 'not-in-yet', punches: [], workedMinutes: 0, overtimeMinutes: 0 }];
+      db.attendance = [...db.attendance, { employeeId: employee.id, date: today(), status: 'not-in-yet', punches: [], workedMinutes: 0 }];
     }
     // New starters get the yearly types in full. Maternity and paternity are granted when they apply.
     db.leaveBalances = {
@@ -920,6 +995,82 @@ const routes = [
     requireHr(user);
     return removeFrom('announcements', id, 'Announcement');
   }],
+  ['GET', /^\/api\/hr\/document-types$/, ({ user }) => {
+    requireHr(user);
+    return [...db.documentTypes].sort((first, second) => first.sortOrder - second.sortOrder || first.name.localeCompare(second.name));
+  }],
+  ['POST', /^\/api\/hr\/document-types$/, ({ user, body }) => {
+    requireHr(user);
+    const rules = validDocumentType(body);
+    const code = rules.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    if (db.documentTypes.some((type) => type.code === code)) {
+      throw new HttpError(409, "There's already a document called that.");
+    }
+    checkDocumentName(rules.name, code);
+    const type = { code, ...rules, sortOrder: Math.max(0, ...db.documentTypes.map(({ sortOrder }) => sortOrder)) + 1 };
+    db.documentTypes = [...db.documentTypes, type];
+    return type;
+  }],
+  ['PUT', /^\/api\/hr\/document-types\/([\w-]+)$/, ({ user, params: [code], body }) => {
+    requireHr(user);
+    const rules = validDocumentType(body);
+    checkDocumentName(rules.name, code);
+    const type = { ...activeDocumentType(code), ...rules };
+    db.documentTypes = db.documentTypes.map((entry) => (entry.code === code ? type : entry));
+    return type;
+  }],
+  // Deleted if nobody ever uploaded one, otherwise retired with the copies kept.
+  ['DELETE', /^\/api\/hr\/document-types\/([\w-]+)$/, ({ user, params: [code] }) => {
+    requireHr(user);
+    activeDocumentType(code);
+    db.documentTypes = db.documents.some(({ type }) => type === code)
+      ? db.documentTypes.map((entry) => (entry.code === code ? { ...entry, retiredOn: today() } : entry))
+      : db.documentTypes.filter((entry) => entry.code !== code);
+    return undefined;
+  }],
+  ['GET', /^\/api\/hr\/documents$/, ({ user }) => {
+    requireHr(user);
+    return db.documents
+      .filter(({ status }) => status === 'pending')
+      .sort((first, second) => String(first.updatedOn).localeCompare(String(second.updatedOn)))
+      .map((document) => documentView(db.documentTypes.find(({ code }) => code === document.type), document));
+  }],
+  ['GET', /^\/api\/hr\/employees\/([\w-]+)\/documents$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    return documentEntries(findOr404('employees', id, 'Employee'));
+  }],
+  ['PUT', /^\/api\/hr\/employees\/([\w-]+)\/documents\/([\w-]+)\/file$/, ({ user, params: [id, code], query, body }) => {
+    requireHr(user);
+    if (id === user.id) {
+      throw new HttpError(403, 'Another HR person handles your own documents.');
+    }
+    return uploadDocument({ by: user, owner: findOr404('employees', id, 'Employee'), code, file: body, expiresOn: query.get('expiresOn') });
+  }, { upload: CERTIFICATE_UPLOAD }],
+  ['GET', /^\/api\/hr\/employees\/([\w-]+)\/documents\/([\w-]+)\/file$/, ({ user, params: [id, code], res }) => {
+    requireHr(user);
+    return sendDocument(res, findOr404('employees', id, 'Employee'), code);
+  }],
+  // Sending one back needs a reason, so they know what to fix.
+  ['POST', /^\/api\/hr\/employees\/([\w-]+)\/documents\/([\w-]+)\/decision$/, ({ user, params: [id, code], body }) => {
+    requireHr(user);
+    if (id === user.id) {
+      throw new HttpError(403, 'Another HR person handles your own documents.');
+    }
+    const document = heldDocument(id, code);
+    if (document.status !== 'pending' || !['verified', 'rejected'].includes(body.decision)) {
+      throw new HttpError(409, 'This document has already been checked.');
+    }
+    const note = String(body.note ?? '').trim();
+    if (body.decision === 'rejected' && !note) {
+      throw new HttpError(400, "Say what's wrong, so they can send the right one.");
+    }
+    const decided = { ...document, status: body.decision, ...(note && { decisionNote: note }) };
+    db.documents = db.documents.map((entry) => (entry === document ? decided : entry));
+    const type = db.documentTypes.find((entry) => entry.code === code);
+    const name = type.name.toLowerCase();
+    notify(id, 'record', body.decision === 'verified' ? `HR verified your ${name}.` : `HR sent back your ${name}: ${sentence(note)} Upload it again from Documents.`);
+    return documentView(type, decided);
+  }],
   ['GET', /^\/api\/hr\/schedules$/, ({ user }) => {
     requireHr(user);
     return [...db.schedules].sort((first, second) => second.effectiveFrom.localeCompare(first.effectiveFrom)).map((version) => ({ ...version, setByName: nameOf(version.setBy) }));
@@ -980,7 +1131,8 @@ const send = (res, status, payload) => {
   res.end(payload === undefined ? undefined : JSON.stringify(payload));
 };
 
-createServer(async (req, res) => {
+// Answers one request. The dev server below uses it, and so does the Netlify demo's function.
+export const handle = async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
     const cookies = parseCookies(req.headers.cookie);
@@ -999,7 +1151,8 @@ createServer(async (req, res) => {
     }
 
     const token = cookies[SESSION_COOKIE];
-    const found = activeEmployees().find(({ id }) => id === sessions.get(token));
+    const signedIn = sessions.get(token) ?? (SESSIONS_SURVIVE_RESTARTS ? token?.split('.')[0] : undefined);
+    const found = activeEmployees().find(({ id }) => id === signedIn);
     const user = found && withRoles(found);
     if (!user && !options.isPublic) {
       throw new HttpError(401, 'Please sign in');
@@ -1018,4 +1171,9 @@ createServer(async (req, res) => {
     }
     send(res, status, { message: status === 500 ? 'Something went wrong in the mock server' : error.message });
   }
-}).listen(PORT, () => console.log(`Mock API on http://localhost:${PORT}`));
+};
+
+// Started directly (npm run mock, the e2e runs), it listens. Imported by the Netlify function, it doesn't.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  createServer(handle).listen(PORT, () => console.log(`Mock API on http://localhost:${PORT}`));
+}

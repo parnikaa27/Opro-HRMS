@@ -30,12 +30,30 @@ export interface ChangeRequest {
   decisionNote?: string;
 }
 
-export interface EmployeeDocument {
-  id: string;
+// A document on HR's list, and whether employees or HR upload it.
+export interface DocumentType {
+  code: string;
   name: string;
+  uploadedBy: 'employee' | 'hr';
+  hasExpiry: boolean;
+  isForExpatriatesOnly: boolean;
+  retiredOn?: string;
+}
+
+// One type someone needs, and their copy if they have one. status is missing until there's a copy,
+// and expired once a verified one runs out.
+export interface DocumentEntry {
+  type: string;
+  name: string;
+  uploadedBy: DocumentType['uploadedBy'];
+  hasExpiry: boolean;
+  status: 'missing' | 'pending' | 'verified' | 'rejected' | 'expired';
   updatedOn?: string;
   expiresOn?: string;
-  status: 'verified' | 'pending';
+  decisionNote?: string;
+  hasFile: boolean;
+  employeeId?: string;
+  employeeName?: string;
 }
 
 export interface AppNotification {

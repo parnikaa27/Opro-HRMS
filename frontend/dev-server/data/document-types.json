@@ -1,0 +1,8 @@
+[
+  { "code": "employment-contract", "name": "Employment contract", "uploadedBy": "hr", "hasExpiry": false, "isForExpatriatesOnly": false, "sortOrder": 1 },
+  { "code": "national-id", "name": "National ID", "uploadedBy": "employee", "hasExpiry": false, "isForExpatriatesOnly": false, "sortOrder": 2 },
+  { "code": "visa-copy", "name": "Visa copy", "uploadedBy": "hr", "hasExpiry": true, "isForExpatriatesOnly": true, "sortOrder": 2 },
+  { "code": "health-insurance", "name": "Health insurance", "uploadedBy": "hr", "hasExpiry": false, "isForExpatriatesOnly": false, "sortOrder": 3 },
+  { "code": "passport-copy", "name": "Passport copy", "uploadedBy": "employee", "hasExpiry": true, "isForExpatriatesOnly": true, "sortOrder": 3 },
+  { "code": "educational-certificates", "name": "Educational certificates", "uploadedBy": "employee", "hasExpiry": false, "isForExpatriatesOnly": false, "sortOrder": 6 }
+]

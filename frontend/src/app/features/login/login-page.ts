@@ -6,7 +6,8 @@ import { Avatar } from '../../shared/ui/avatar';
 import { StatusPill } from '../../shared/ui/status-pill';
 import { valueOr } from '../../shared/utils/resource';
 
-const isManager = (person: EmployeeSummary) => person.roles.includes('MANAGER');
+// The badge for each person: their most senior role. Someone with no extra role gets none.
+const ROLE_LABELS: readonly [EmployeeSummary['roles'][number], string][] = [['SUPER_ADMIN', 'Super admin'], ['HR', 'HR'], ['MANAGER', 'HOD']];
 
 // Development only. Real sign in arrives with the Spring backend.
 @Component({
@@ -71,7 +72,7 @@ export class LoginPage {
   );
   protected readonly signingInAs = signal<string | undefined>(undefined);
   protected readonly signInFailed = signal(false);
-  protected readonly roleLabel = (person: EmployeeSummary) => (person.roles.includes('HR') ? 'HR' : isManager(person) ? 'Manager' : undefined);
+  protected readonly roleLabel = ({ roles }: EmployeeSummary) => ROLE_LABELS.find(([role]) => roles.includes(role))?.[1];
 
   protected async signIn(employeeId: string) {
     this.signingInAs.set(employeeId);

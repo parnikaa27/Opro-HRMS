@@ -2,7 +2,7 @@ import { HttpClient, httpResource } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AttendanceDay, WorkSchedule } from '../../models/attendance';
-import { Announcement, ChangeRequest, CompanyEvent, Holiday } from '../../models/company';
+import { Announcement, ChangeRequest, CompanyEvent, DocumentEntry, DocumentType, Holiday } from '../../models/company';
 import { Employee, EmployeeDetails, Visa } from '../../models/employee';
 import { FlightYear } from '../../models/flight';
 import { BalanceAdjustment, LeaveBalance, LeaveType } from '../../models/leave';
@@ -74,6 +74,21 @@ export class HrApi {
   saveEvent = ({ id, ...event }: Partial<CompanyEvent>) =>
     id ? this.send<CompanyEvent>('PUT', `/api/hr/events/${enc(id)}`, event) : this.send<CompanyEvent>('POST', '/api/hr/events', event);
   deleteEvent = (id: string) => this.send<void>('DELETE', `/api/hr/events/${enc(id)}`);
+
+  documentTypes = () => httpResource<DocumentType[]>(() => '/api/hr/document-types', { defaultValue: [] });
+  saveDocumentType = ({ code, ...rules }: Omit<DocumentType, 'code' | 'retiredOn'> & { code?: string }) =>
+    code ? this.send<DocumentType>('PUT', `/api/hr/document-types/${enc(code)}`, rules) : this.send<DocumentType>('POST', '/api/hr/document-types', rules);
+  // Deleted if nobody ever uploaded one, otherwise retired with the copies kept.
+  removeDocumentType = (code: string) => this.send<void>('DELETE', `/api/hr/document-types/${enc(code)}`);
+  waitingDocuments = ({ isEnabled = () => true }: { isEnabled?: () => boolean } = {}) =>
+    httpResource<DocumentEntry[]>(() => (isEnabled() ? '/api/hr/documents' : undefined), { defaultValue: [] });
+  employeeDocuments = (id: () => string) => httpResource<DocumentEntry[]>(() => `/api/hr/employees/${enc(id())}/documents`, { defaultValue: [] });
+  uploadDocumentFor = (employeeId: string, type: string, file: File, expiresOn?: string) =>
+    firstValueFrom(
+      this.http.put<DocumentEntry>(`/api/hr/employees/${enc(employeeId)}/documents/${enc(type)}/file`, file, { params: expiresOn ? { expiresOn } : {} }),
+    );
+  decideDocument = (employeeId: string, type: string, decision: 'verified' | 'rejected', note?: string) =>
+    this.send<DocumentEntry>('POST', `/api/hr/employees/${enc(employeeId)}/documents/${enc(type)}/decision`, { decision, ...(note && { note }) });
 
   decideChange = (id: string, decision: 'done' | 'declined', note?: string) =>
     this.send<ChangeRequest>('POST', `/api/hr/change-requests/${enc(id)}/decision`, { decision, ...(note && { note }) });

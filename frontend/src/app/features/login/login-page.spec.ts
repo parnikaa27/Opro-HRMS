@@ -8,6 +8,7 @@ const people = [
   { id: 'OPR-0018', fullName: 'Arjun Reddy', designation: 'Site Engineer', roles: ['EMPLOYEE'] },
   { id: 'OPR-0004', fullName: 'Vikram Singh', designation: 'Operations Manager', roles: ['EMPLOYEE', 'MANAGER'] },
   { id: 'OPR-0002', fullName: 'Ananya Iyer', designation: 'HR Manager', roles: ['EMPLOYEE', 'HR'] },
+  { id: 'OPR-0001', fullName: 'Rajesh Sharma', designation: 'Director of Operations', roles: ['EMPLOYEE', 'SUPER_ADMIN', 'MANAGER'] },
 ];
 
 describe('LoginPage', () => {
@@ -29,8 +30,8 @@ describe('LoginPage', () => {
     const element = await render();
 
     const buttons = [...element.querySelectorAll('[data-testid^=login-as-]')];
-    expect(buttons.map((button) => button.getAttribute('data-testid'))).toEqual(['login-as-OPR-0004', 'login-as-OPR-0002', 'login-as-OPR-0018']);
-    expect(buttons.map((button) => button.querySelector('app-status-pill')?.textContent?.trim())).toEqual(['Manager', 'HR', undefined]);
+    expect(buttons.map((button) => button.getAttribute('data-testid'))).toEqual(['login-as-OPR-0004', 'login-as-OPR-0002', 'login-as-OPR-0001', 'login-as-OPR-0018']);
+    expect(buttons.map((button) => button.querySelector('app-status-pill')?.textContent?.trim())).toEqual(['HOD', 'HR', 'Super admin', undefined]);
   });
 
   it('signs in as the chosen person', async () => {

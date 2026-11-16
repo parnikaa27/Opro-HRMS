@@ -25,7 +25,6 @@ export interface AttendanceDay {
   firstIn?: string;
   lastOut?: string;
   workedMinutes: number;
-  overtimeMinutes: number;
   // Set by the backend from the schedule in force that day.
   expectedOut?: string;
   scheduledMinutes?: number;
@@ -74,8 +73,6 @@ export interface WorkSchedule {
   shiftEnd: string;
   graceMinutes: number;
   halfDayMinutes: number;
-  ramadanStart: string;
-  ramadanEnd: string;
   reason: string;
   setBy: string;
   setByName?: string;

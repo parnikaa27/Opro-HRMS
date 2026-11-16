@@ -16,6 +16,8 @@
 HRMS/
   CLAUDE.md                Requirements and coding rules. Read this first.
   HOW-TO-RUN.md            This file.
+  TODO.md                  What's left before launch and what's waiting on information
+  netlify.toml             The Netlify demo: the frontend with the mock as a function
   .github/workflows/ci.yml GitHub Actions: backend build, frontend checks, and e2e on the mock and on Spring
   design/figma-make/       App.tsx and index.css copied from the Figma Make file. The design to match, not built
   frontend/                Angular 22 app
@@ -35,7 +37,7 @@ HRMS/
         features/
           login/           Test sign in (pick any employee)
           dashboard/       Overview: welcome banner, today's attendance, leave balance, visa, recent attendance, staff card, next holiday, latest request
-          documents/       Employment documents with download
+          documents/       Documents page: status, download, and uploading the ones employees send. Its upload form also serves HR
           leave/           Balance rings, request history with cancel, request modal with day count preview
           attendance/      Summary cards, attendance log, punch in and out, punch fixes, CSV export
           calendar/        Company calendar: holidays, events, and who is away for HODs and super admins
@@ -43,15 +45,16 @@ HRMS/
           profile/         Two sided printable ID card, visa and work permit status, change request to HR
           flights/         Flight allowance: the profile card, claim form, and the summary HR's pages share, with a USD, MVR or INR switch
           team/            HOD pages: overview, people directory, leave requests with tabs, team attendance table, one person's page. People, attendance, leave requests, the person page and the calendar also serve the super admin's company view (/company), and People serves HR
-          hr/              HR pages: overview, one person (leave days, adjust balance, visa, photo, leaving, flight allowance), add and edit a person, holiday calendar, visas, inbox, announcements, policies with the work schedule and exchange rates. HR decides no leave or punch fixes
+          hr/              HR pages: overview, one person (leave days, adjust balance, visa, documents, photo, leaving, flight allowance), add and edit a person, holiday calendar, visas, inbox with documents to check, announcements, policies with the work schedule, document list and exchange rates. HR decides no leave or punch fixes
             forms/         The HR dialogs' forms
       testing/             Test helpers, fixtures and setup.ts (a dialog shim, since jsdom has none). Never shipped
     public/                Static files served as is (favicon, robots.txt)
     e2e/                   Playwright tests
+    netlify/functions/     The Netlify demo's function, wrapping the mock
     dev-server/            Mock API that stands in for Spring
       server.mjs           Routes, sessions, XSRF check. Node built ins only
       attendance.mjs       Generates the last 62 days of punches relative to today, and works a day out again after an approved punch fix, using the schedule in force
-      data/                JSON fixtures: employees, visas, leave, flight allowances and claims, exchange rates, holidays, events, corrections, announcements, notifications, change requests, balance adjustments, work schedules, punch edits. Uploaded photos and certificates stay in memory until restart
+      data/                JSON fixtures: employees, visas, leave, flight allowances and claims, exchange rates, holidays, events, corrections, announcements, notifications, change requests, balance adjustments, work schedules, document types. Uploaded files stay in memory until restart
     proxy.conf.mjs         Sends /api to the mock or to Spring
     scripts/
       build-dark-theme.mjs Writes src/styles/dark.css from portal.css and styles.css (see theme:dark)
@@ -70,10 +73,10 @@ HRMS/
       notification/        The notifications panel, and the service every feature uses to tell people things, and VisaReminders
       team/                The HOD's view (/api/team) and the super admin's company view (/api/company), one set of endpoints: TeamAccess limits an HOD to their own active direct reports and lets only super admins reach everyone
       files/               Stored files (in PostgreSQL for now), upload checks, and serving them safely
-      document/            Someone's own employment documents and their downloads
+      document/            Document types HR keeps, everyone's copies, uploads and HR's checks (Documents service)
       announcement/        Notes from HR on everyone's overview, and AnnouncementEditor for posting them
       profile/             Change requests people send to HR from their profile, and HR's inbox of them
-      hr/                  HR only endpoints, behind HrAccess: people, leave balances and policy, calendar, schedules, inbox, announcements, photos, flight allowances
+      hr/                  HR only endpoints, behind HrAccess: people, leave balances and policy, calendar, schedules, inbox, announcements, photos, flight allowances, documents
       session/             Who is signed in, /api/me, and the dev only pick a user sign in
       security/            Session cookie, XSRF check, JSON errors instead of redirects
       common/              Error shape ({"message": ...}) shared by every endpoint
@@ -148,6 +151,23 @@ To see a working day on a weekend, pin Spring's clock the way `MOCK_NOW` pins th
 ```
 
 Needs Docker Desktop running: each run starts its own PostgreSQL and throws it away afterwards.
+
+### API documentation
+
+With Spring running on the dev profile, open http://localhost:8080/swagger-ui.html to browse every endpoint, grouped by feature, with request and response shapes, and try them out. The raw OpenAPI spec is at http://localhost:8080/v3/api-docs. Its front page explains sign in, the XSRF header, errors, uploads and roles. It's built from the controllers by springdoc, so it can't drift from the code, and it's switched off outside the dev profile.
+
+## Netlify demo
+
+`netlify.toml` at the repo root deploys the frontend to Netlify with the mock answering `/api` as a function (`frontend/netlify/functions/mock-api.mjs`). Spring and PostgreSQL can't run on Netlify.
+
+1. On Netlify: Add new site, Import an existing project, GitHub, then pick the Opro HRMS repository.
+2. Leave the build settings alone: they come from `netlify.toml` (base `frontend`, `npm run build`, publish `dist/opro-hrms/browser`).
+3. Deploy. Sign in with the same pick a user screen as in development.
+
+Things to know:
+- Everyone in it is made up, and anyone with the link can sign in as anyone. Put it behind Netlify's site password if it shouldn't be open.
+- Changes (leave, punches, uploads) live in the function's memory and reset whenever Netlify starts a fresh copy. Sessions survive that, because in the demo the session cookie names who signed in.
+- Office punches need a real location near the placeholder pins, so try "From home" there.
 
 ## Scripts (inside `frontend/`)
 

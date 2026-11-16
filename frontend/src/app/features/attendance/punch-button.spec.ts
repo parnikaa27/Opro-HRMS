@@ -8,7 +8,7 @@ const PUNCH = '/api/attendance/punch';
 const AT_THE_OFFICE = { latitude: 4.1757, longitude: 73.5094, accuracy: 18 };
 
 const day = (overrides: Partial<AttendanceDay> = {}): AttendanceDay => ({
-  employeeId: 'E', date: TODAY, status: 'not-in-yet', punches: [], workedMinutes: 0, overtimeMinutes: 0, ...overrides,
+  employeeId: 'E', date: TODAY, status: 'not-in-yet', punches: [], workedMinutes: 0, ...overrides,
 });
 
 // The browser's location, as the test wants it: found, or refused with a GeolocationPositionError code.

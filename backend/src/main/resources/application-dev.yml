@@ -18,3 +18,12 @@ server:
       cookie:
         # Safari refuses Secure cookies on http://localhost. Every other environment keeps them Secure.
         secure: false
+
+# Browse the API at http://localhost:8080/swagger-ui.html, or fetch the spec from /v3/api-docs.
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    tags-sorter: alpha
+    operations-sorter: alpha

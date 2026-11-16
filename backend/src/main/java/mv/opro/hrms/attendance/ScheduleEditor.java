@@ -23,8 +23,7 @@ public class ScheduleEditor {
 
     private static final int MAX_GRACE_MINUTES = 60;
 
-    public record Rules(LocalDate effectiveFrom, LocalTime shiftStart, LocalTime shiftEnd, int graceMinutes, int halfDayMinutes,
-            LocalTime ramadanStart, LocalTime ramadanEnd) {}
+    public record Rules(LocalDate effectiveFrom, LocalTime shiftStart, LocalTime shiftEnd, int graceMinutes, int halfDayMinutes) {}
 
     private final WorkScheduleRepository schedules;
     private final Notifications notifications;
@@ -46,7 +45,7 @@ public class ScheduleEditor {
         if (!rules.effectiveFrom().isAfter(today)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "A new schedule can only start after today.");
         }
-        if (!rules.shiftEnd().isAfter(rules.shiftStart()) || !rules.ramadanEnd().isAfter(rules.ramadanStart())) {
+        if (!rules.shiftEnd().isAfter(rules.shiftStart())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "A shift has to end after it starts.");
         }
         long shiftMinutes = Duration.between(rules.shiftStart(), rules.shiftEnd()).toMinutes();
@@ -57,7 +56,7 @@ public class ScheduleEditor {
             throw new ApiException(HttpStatus.CONFLICT, "A schedule already starts on that date.");
         }
         WorkSchedule version = schedules.save(new WorkSchedule(Ids.next("WS"), rules.effectiveFrom(), rules.shiftStart(), rules.shiftEnd(),
-                rules.graceMinutes(), rules.halfDayMinutes(), rules.ramadanStart(), rules.ramadanEnd(), reason.strip(), hr.getId(), today));
+                rules.graceMinutes(), rules.halfDayMinutes(), reason.strip(), hr.getId(), today));
         notifications.tellEveryone(Notification.Kind.SCHEDULE, "From " + Wording.date(rules.effectiveFrom()) + ", the working day is "
                 + Wording.time(rules.shiftStart()) + " to " + Wording.time(rules.shiftEnd()) + ", late after " + rules.graceMinutes() + " minutes. "
                 + Wording.sentence(reason));

@@ -5,7 +5,7 @@ import { click, fail, fill, NOW, respond, setupHttp, text, texts, TODAY } from '
 import { TeamAttendancePage } from './team-attendance-page';
 
 const day = (employeeId: string, employeeName: string, date: string, status: AttendanceDay['status'], workedMinutes = 0): AttendanceDay => ({
-  employeeId, employeeName, date, status, punches: workedMinutes ? [{ at: `${date}T09:00:00+05:00`, direction: 'in' }] : [], workedMinutes, overtimeMinutes: 0,
+  employeeId, employeeName, date, status, punches: workedMinutes ? [{ at: `${date}T09:00:00+05:00`, direction: 'in' }] : [], workedMinutes,
 });
 
 const NOVEMBER = [

@@ -11,6 +11,7 @@ import { valueOr } from '../../shared/utils/resource';
 import { DecisionState } from '../team/decision-state';
 import { DeclineForm } from '../team/decline-form';
 import { submittedAgo } from '../team/request-row';
+import { DocumentsToCheck } from './documents-to-check';
 import { HrApi } from './hr-api';
 
 type Status = ChangeRequest['status'];
@@ -23,14 +24,14 @@ const TABS: { value: Status; label: string; empty: string }[] = [
 
 @Component({
   selector: 'app-hr-inbox-page',
-  imports: [Avatar, DeclineForm, Dialog, Icon, ListSkeleton, RouterLink, StatusPill],
+  imports: [Avatar, DeclineForm, Dialog, DocumentsToCheck, Icon, ListSkeleton, RouterLink, StatusPill],
   template: `
     <div class="page-view">
       <div class="page-title">
         <div>
           <span class="eyebrow">PEOPLE &amp; CULTURE</span>
           <h1>Inbox</h1>
-          <p>Detail changes people send HR from their profile.</p>
+          <p>Detail changes people send HR from their profile, and documents they upload for you to check.</p>
         </div>
       </div>
 
@@ -77,6 +78,7 @@ const TABS: { value: Status; label: string; empty: string }[] = [
         }
       </section>
 
+      <app-documents-to-check />
     </div>
 
     <app-dialog heading="Decline change" [isOpen]="declining() !== undefined" (isOpenChange)="$event || declining.set(undefined)">

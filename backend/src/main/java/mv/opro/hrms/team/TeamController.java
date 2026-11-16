@@ -40,9 +40,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 // The HOD's view of their direct reports (/api/team), and the super admin's view of everyone (/api/company),
 // where they can step in on any decision when an HOD is away. Every endpoint goes through TeamAccess first.
+@Tag(name = "Team and company", description = "/api/team for an HOD's direct reports, /api/company for a super admin's view of everyone, with the same shapes. Both decide leave, punch fixes, home days and comp off, never their own.")
 @RestController
 class TeamController {
 

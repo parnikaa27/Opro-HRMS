@@ -45,3 +45,10 @@ opro:
         radius-metres: 5000
     # A phone that can't place itself closer than this can't show where it is.
     max-accuracy-metres: 150
+
+# The API docs are for development. Production doesn't publish a map of its own API.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

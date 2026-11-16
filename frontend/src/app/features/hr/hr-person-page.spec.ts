@@ -36,8 +36,8 @@ describe('HrPersonPage', () => {
       [PERSON]: detail,
       [EVERYONE]: [employee({ id: 'OPR-0030', fullName: 'Amit Kulkarni', managerId: 'OPR-0021' }), employee()],
       [ATTENDANCE]: [
-        { employeeId: 'OPR-0021', date: '2026-11-10', status: 'absent', punches: [], workedMinutes: 0, overtimeMinutes: 0 },
-        { employeeId: 'OPR-0021', date: '2026-11-20', status: 'present', punches: [], workedMinutes: 0, overtimeMinutes: 0 },
+        { employeeId: 'OPR-0021', date: '2026-11-10', status: 'absent', punches: [], workedMinutes: 0},
+        { employeeId: 'OPR-0021', date: '2026-11-20', status: 'present', punches: [], workedMinutes: 0},
       ],
       [LEAVE]: [
         { id: 'LR-1', employeeId: 'OPR-0021', type: 'annual', from: '2026-12-01', to: '2026-12-01', days: 1, reason: 'Trip', status: 'pending', appliedOn: '2026-11-10' },

@@ -5,7 +5,7 @@ import { ModalHeading } from '../../shared/ui/modal-heading';
   selector: 'app-decline-form',
   imports: [ModalHeading],
   template: `
-    <app-modal-heading [eyebrow]="eyebrow()" [heading]="'Decline ' + firstName() + '’s request?'" intro="Tell them why, so they know what to do next." />
+    <app-modal-heading [eyebrow]="eyebrow()" [heading]="heading() ?? 'Decline ' + firstName() + '’s request?'" intro="Tell them why, so they know what to do next." />
     <form novalidate (submit)="send($event)">
       <label>
         Reason
@@ -16,7 +16,7 @@ import { ModalHeading } from '../../shared/ui/modal-heading';
       }
       <div class="modal-actions">
         <button type="button" class="secondary-button" (click)="cancelled.emit()">Cancel</button>
-        <button type="submit" class="primary-button danger" data-testid="confirm-reject">Decline</button>
+        <button type="submit" class="primary-button danger" data-testid="confirm-reject">{{ confirmLabel() }}</button>
       </div>
     </form>
   `,
@@ -27,6 +27,8 @@ export class DeclineForm {
   readonly name = input.required<string>();
   readonly eyebrow = input('TEAM MANAGEMENT');
   readonly placeholder = input('Two others are off that week. Could you move it by a few days?');
+  readonly heading = input<string>();
+  readonly confirmLabel = input('Decline');
   readonly declined = output<string>();
   readonly cancelled = output();
 

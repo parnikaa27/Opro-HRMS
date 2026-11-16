@@ -32,7 +32,6 @@ class DayCalculatorTest {
 
         assertThat(day.status()).isEqualTo("present");
         assertThat(day.workedMinutes()).isEqualTo(460);
-        assertThat(day.overtimeMinutes()).isEqualTo(20);
         assertThat(day.punches()).extracting(AttendanceDay.PunchView::direction).containsExactly("in", "out", "in", "out");
         assertThat(day.expectedOut().toLocalTime()).isEqualTo(LocalTime.of(16, 55));
         assertThat(day.scheduledMinutes()).isEqualTo(480);

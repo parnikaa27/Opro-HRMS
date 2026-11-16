@@ -13,8 +13,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 // An employee's own punch fix requests. Managers decide them from the team view.
+@Tag(name = "Punch fixes", description = "Asking your HOD to fix a missed or late punch.")
 @RestController
 class CorrectionController {
 

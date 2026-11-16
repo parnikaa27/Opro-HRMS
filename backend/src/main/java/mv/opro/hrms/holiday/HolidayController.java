@@ -6,7 +6,9 @@ import mv.opro.hrms.employee.People;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "Calendar", description = "Public holidays and company events by year.")
 @RestController
 class HolidayController {
 
