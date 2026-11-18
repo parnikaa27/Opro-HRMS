@@ -23,6 +23,11 @@ public class Employee {
     private String workLocation;
     private String employmentType;
     private String managerId;
+    private String gender;
+    private LocalDate dateOfBirth;
+    private LocalDate probationEndsOn;
+    private LocalDate contractEndsOn;
+    private String jobCategory;
 
     @Column(name = "is_hr")
     private boolean hr;
@@ -39,9 +44,11 @@ public class Employee {
     protected Employee() {}
 
     // What HR sets on a person. Roles are worked out, the visa and photo have their own steps.
+    // jobCategory is where an expatriate's quota slot comes from.
     public record Details(String fullName, String designation, String department, String email, String phone, LocalDate joinedOn,
             String bloodGroup, String nationality, String workLocation, String employmentType, String managerId,
-            EmergencyContact emergencyContact) {}
+            EmergencyContact emergencyContact, String gender, LocalDate dateOfBirth, LocalDate probationEndsOn, LocalDate contractEndsOn,
+            String jobCategory) {}
 
     public static Employee hire(String id, Details details) {
         Employee employee = new Employee();
@@ -63,6 +70,11 @@ public class Employee {
         employmentType = details.employmentType();
         managerId = details.managerId();
         emergencyContact = details.emergencyContact();
+        gender = details.gender();
+        dateOfBirth = details.dateOfBirth();
+        probationEndsOn = details.probationEndsOn();
+        contractEndsOn = details.contractEndsOn();
+        jobCategory = details.jobCategory();
     }
 
     public void leave(LocalDate day, String reason) {
@@ -126,6 +138,26 @@ public class Employee {
 
     public String getManagerId() {
         return managerId;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public LocalDate getDateOfBirth() {
+        return dateOfBirth;
+    }
+
+    public LocalDate getProbationEndsOn() {
+        return probationEndsOn;
+    }
+
+    public LocalDate getContractEndsOn() {
+        return contractEndsOn;
+    }
+
+    public String getJobCategory() {
+        return jobCategory;
     }
 
     public boolean isHr() {

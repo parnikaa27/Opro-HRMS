@@ -22,7 +22,7 @@ class HrApiTests {
     private static final int SEEDED_NOTIFICATIONS = 7;
     private static final String NEWCOMER = """
             {"fullName":"Riya Kapoor","designation":"Accountant","department":"Finance","email":"riya.kapoor@opro.mv","phone":"+960 777 1030",
-             "joinedOn":"2026-11-01","bloodGroup":"B+","nationality":"Indian","workLocation":"Malé office","employmentType":"Full-time",
+             "joinedOn":"2026-11-01","bloodGroup":"B+","nationality":"Indian","workLocation":"Malé office","employmentType":"Permanent","gender":"female","dateOfBirth":"1995-03-14",
              "managerId":"OPR-0004","emergencyContact":{"name":"Sameer Kapoor","relation":"Brother","phone":"+91 98470 11111"}}""";
 
     @LocalServerPort

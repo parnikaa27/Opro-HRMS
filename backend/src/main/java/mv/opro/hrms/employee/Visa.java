@@ -21,22 +21,31 @@ public class Visa {
     private LocalDate passportExpiry;
     private LocalDate visaIssuedOn;
     private LocalDate visaExpiry;
+    private String employmentApprovalNumber;
+    private LocalDate employmentApprovalExpiry;
+    private LocalDate medicalDueOn;
 
     protected Visa() {}
+
+    // Everything HR records on renewal. The employment approval and medical date are optional.
+    public record Papers(String workPermitNumber, String visaNumber, String passportLast4, LocalDate passportExpiry, LocalDate visaIssuedOn,
+            LocalDate visaExpiry, String employmentApprovalNumber, LocalDate employmentApprovalExpiry, LocalDate medicalDueOn) {}
 
     public Visa(String employeeId) {
         this.employeeId = employeeId;
     }
 
     // Only the last 4 passport characters are ever kept.
-    public void renew(String workPermitNumber, String visaNumber, String passportLast4, LocalDate passportExpiry, LocalDate visaIssuedOn,
-            LocalDate visaExpiry) {
-        this.workPermitNumber = workPermitNumber;
-        this.visaNumber = visaNumber;
-        this.passportLast4 = passportLast4;
-        this.passportExpiry = passportExpiry;
-        this.visaIssuedOn = visaIssuedOn;
-        this.visaExpiry = visaExpiry;
+    public void renew(Papers papers) {
+        workPermitNumber = papers.workPermitNumber();
+        visaNumber = papers.visaNumber();
+        passportLast4 = papers.passportLast4();
+        passportExpiry = papers.passportExpiry();
+        visaIssuedOn = papers.visaIssuedOn();
+        visaExpiry = papers.visaExpiry();
+        employmentApprovalNumber = papers.employmentApprovalNumber();
+        employmentApprovalExpiry = papers.employmentApprovalExpiry();
+        medicalDueOn = papers.medicalDueOn();
     }
 
     public String getEmployeeId() {
@@ -65,5 +74,17 @@ public class Visa {
 
     public LocalDate getVisaExpiry() {
         return visaExpiry;
+    }
+
+    public String getEmploymentApprovalNumber() {
+        return employmentApprovalNumber;
+    }
+
+    public LocalDate getEmploymentApprovalExpiry() {
+        return employmentApprovalExpiry;
+    }
+
+    public LocalDate getMedicalDueOn() {
+        return medicalDueOn;
     }
 }

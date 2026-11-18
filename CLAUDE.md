@@ -72,8 +72,8 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 | `/attendance` | My attendance: three summary cards (days present, work hours, on time), the attendance log for a chosen month, CSV export, punch fix requests and their status, and the punch button while today is on screen |
 | `/leave` | Leave and time off: balance rings, other leave types, request history with cancel (pending, or approved and not started), and the Request leave modal with a working day preview and a success screen |
 | `/calendar` | Company calendar: month grid with public holidays and company events, upcoming holidays, the holiday policy. Islamic holidays are marked **tentative** until confirmed after moon sighting. `/holidays` redirects here |
-| `/profile` | Virtual ID card (printable), personal and job details, emergency contact, visa and work permit details, request a change to personal details, and the flight allowance (used, waiting and left in USD, MVR or INR) with flight claims |
-| Notifications | Header panel, not a page: leave, punch fix, home working, compensatory off and flight claim decisions, visa reminders, announcements, every change HR makes to your record (punches, leave recorded for you, balance adjustments, visa, details, photo, a detail change request) and changes to working hours. Each says what changed and why, in plain words. Marking someone as leaving sends nothing: HR tells people in person |
+| `/profile` | Virtual ID card (printable), personal and job details, emergency contact, visa and work permit details (with employment approval and the work permit medical), their record (bank details they enter for HR to verify, shown as the last 4 digits; insurance, education and experience HR keeps), request a change to personal details, and the flight allowance (used, waiting and left in USD, MVR or INR) with flight claims |
+| Notifications | Header panel, not a page: leave, punch fix, home working, compensatory off and flight claim decisions, visa reminders, announcements, every change HR makes to your record (punches, leave recorded for you, balance adjustments, visa, details, photo, a detail change request) changes to working hours, and on the day, birthdays and work anniversaries (theirs, and their reports' for HODs and HR). Each says what changed and why, in plain words. Marking someone as leaving sends nothing: HR tells people in person |
 | Search | Top bar, ⌘K or Ctrl K. Finds pages, and people for managers |
 
 **Team view (HODs only)**
@@ -108,10 +108,10 @@ Sidebar: Overview, People, Calendar, Visas, Inbox (count open), Announcements, P
 | `/hr` | Welcome banner, people, on leave today, visas to act on and inbox counts, who is on leave today, visa alerts, tentative holidays in the next 60 days |
 | `/hr/people` | The People page for everyone at Opro, with Add person and a toggle to include people who have left |
 | `/hr/people/new`, `/hr/people/:employeeId/edit` | Add a person, or edit their details and manager. A page, not a modal, because the form is long |
-| `/hr/people/:employeeId` | One person's balances, this month's log, requests (with any medical certificate to open), balance change log, staff card and visa. Set their days of a type or give or take away a type (Leave days), adjust a balance, update visa, set their flight allowance. A More menu holds edit details, change photo and mark as leaving |
+| `/hr/people/:employeeId` | One person's balances, this month's log, requests (with any medical certificate to open), balance change log, staff card, visa and their record (insurance, bank details to verify, education, experience). Set their days of a type or give or take away a type (Leave days), adjust a balance, update visa, set their flight allowance. A More menu holds edit details, change photo and mark as leaving |
 | `/hr/calendar` | Holidays and events per year: add, edit, delete, confirm a tentative date, add the civil holidays to an empty year |
-| `/hr/visas` | Every expatriate, people with no record first, then soonest visa or passport expiry |
-| `/hr/inbox` | Profile change requests in tabs (Open, Done, Declined), and documents to check, oldest first: verify, or send back with a reason. Declining needs a reason |
+| `/hr/visas` | Every expatriate, people with no record first, then soonest visa or passport expiry, and the expatriate quota: approvals by job category with slots used, expiry, and any job category with no quota |
+| `/hr/inbox` | Profile change requests in tabs (Open, Done, Declined), and documents and bank details to check, oldest first: verify, or send back with a reason. Declining needs a reason |
 | `/hr/announcements` | Post, edit and take down notes from HR. A new one notifies everyone |
 | `/hr/policy` | Policies: add, edit and remove leave types (yearly days, half days, given to everyone or people HR picks, lapse or carry forward up to a cap; a new entitlement applies from the next leave year), the work schedule as dated versions, the documents Opro keeps, and the exchange rates for flight allowances |
 
@@ -198,10 +198,17 @@ Sidebar: Overview, People, Calendar, Visas, Inbox (count open), Announcements, P
 ### Visa and work permit
 
 - Only expatriate staff have visa records. Maldivian nationals see "Not applicable" instead of an empty section.
-- Fields: work permit number, visa number, passport (**last 4 digits only, the API never sends the full number**), passport expiry, visa issue date, visa expiry date.
+- Fields: work permit number, visa number, passport (**last 4 digits only, the API never sends the full number**), passport expiry, visa issue date, visa expiry date, and optionally the employment approval (number and expiry, given together) and when the work permit medical is due.
 - Status shown: **Valid**, **Expiring soon** (60 days or less), **Expired**. Passport expiry gets the same treatment.
 - Managers see visa status for their reports. Visa reminders appear on the dashboard and in notifications.
-- A daily job at 08:00 Maldives time (and on start up) sends each reminder once, at 60, 30 and 7 days and on the day it runs out, to the holder, their manager and HR (`VisaReminders`). If the server was down, only the most urgent missed one goes out. A renewal starts the reminders again.
+- A daily job at 08:00 Maldives time (and on start up) sends each reminder once, at 60, 30 and 7 days and on the day it runs out, to the holder, their manager and HR (`VisaReminders`): visa, passport, work permit medical, employment approval and medical insurance. A contract ending (same steps) and probation ending (14 days before and on the day) go to the HOD and HR only. Birthdays and work anniversaries go out on the day (`PeopleReminders`; a 29 February birthday is the 28th in other years). If the server was down, only the most urgent missed one goes out. A renewal starts the reminders again.
+- **Expatriate quota:** HR records each approval from the Ministry (job category, slots, approval number, approved and expiry dates). Slots used are counted from active expatriates with that job category on their record, never stored.
+
+### Employee record
+
+- **Bank details:** the person enters bank, name on the account, number and currency (MVR or USD) on their profile. They wait for HR, who checks them against the bank letter and verifies them, or sends them back with a reason. Only HR sees the full number; the person sees the last 4. HODs and super admins never see them. New details always wait for HR again.
+- **Medical insurance, education and work experience** are kept by HR on the person's page; the person sees them on their profile and asks HR for changes.
+- HR never changes or checks their own record.
 
 ### Virtual ID card
 
@@ -220,7 +227,7 @@ Logo, "People first, always.", "© year Opro Pvt Ltd · Malé, Republic of Maldi
 - **Company events** on the calendar ("Office social", "Team review"), managed by HR.
 - **Leave policy:** leave types, yearly entitlements, who gets them and carry forward. See Leave rules.
 - **Work schedule**, see Attendance rules. Leave, punch fixes, home days and comp off are decided by the HOD alone; HR has no approve buttons and the server has no HR decision endpoints.
-- **People:** add someone (ID, roles and full annual, sick and family balances come from the server), edit details and reporting manager (required, except for a super admin) (never themselves or anyone below them), and mark someone as leaving. Nobody is ever deleted: after their last day they can't sign in and drop out of live lists, their records stay, and leave booked after that day is cancelled. Someone with active reports can't leave until those reports have a new manager.
+- **People:** add someone (ID, roles and full annual, sick and family balances come from the server) with gender (male or female), date of birth, employment type (Permanent, Contract, Casual or Intern), when probation and a contract end, and an expatriate's quota job category; edit details and reporting manager (required, except for a super admin) (never themselves or anyone below them), and mark someone as leaving. Nobody is ever deleted: after their last day they can't sign in and drop out of live lists, their records stay, and leave booked after that day is cancelled. Someone with active reports can't leave until those reports have a new manager.
 - **Photos:** HR uploads them from the person's page. The browser crops to 4:5 and re-encodes a small JPEG, which also strips location data. They show on the ID card, the staff card and avatars.
 - **Balance adjustments:** add or remove days for one person with a required reason. Every change is logged with who, when and why. Adjusting a type they don't hold yet (paternity, say) creates that balance.
 - **Visa records:** add or update visa, work permit and passport details on renewal.
@@ -406,6 +413,12 @@ The full, generated reference is Swagger UI at `http://localhost:8080/swagger-ui
 | POST | `/api/hr/holidays/start-year` | Add the fixed civil holidays to a year (`year`) |
 | POST / PUT / DELETE | `/api/hr/events`, `/api/hr/events/:id` | Manage company events |
 | GET | `/api/hr/change-requests` | Profile change requests |
+| GET / PUT | `/api/profile/record`, `/api/profile/bank-account` | Own record (bank shown as last 4) / enter bank details for HR to verify (`bankName`, `accountName`, `accountNumber`, `currency`) |
+| GET | `/api/hr/employees/:id/record` | One person's insurance, bank details (full number), education and experience |
+| PUT / DELETE | `/api/hr/employees/:id/insurance` | Set (`provider`, `policyNumber`, `expiresOn`) or remove someone's medical insurance |
+| POST / DELETE | `/api/hr/employees/:id/education`, `.../education/:entryId`, `/api/hr/employees/:id/experience`, `.../experience/:entryId` | Add or remove a qualification or a past job |
+| GET / POST | `/api/hr/bank-accounts`, `/api/hr/employees/:id/bank-account/decision` | Bank details waiting for HR / `verified`, or `rejected` with a `note` |
+| GET / POST / PUT / DELETE | `/api/hr/quotas`, `/api/hr/quotas/:id` | Expatriate quota approvals with `used` counted per job category |
 | GET / POST / PUT / DELETE | `/api/hr/document-types`, `/api/hr/document-types/:code` | HR's document list / add (`name`, `uploadedBy`, `hasExpiry`, `isForExpatriatesOnly`) / change / remove (deleted if unused, otherwise retired) |
 | GET | `/api/hr/documents` | Uploads waiting for HR, oldest first |
 | GET | `/api/hr/employees/:id/documents` | One person's documents |

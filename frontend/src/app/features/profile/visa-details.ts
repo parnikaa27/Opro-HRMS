@@ -38,7 +38,7 @@ interface DocumentRow {
             <div class="leave-type-icon"><app-icon [name]="document.icon" [size]="18" /></div>
             <div>
               <strong>{{ document.name }}</strong>
-              <span>{{ document.number }}@if (document.dates) { · {{ document.dates }}}</span>
+              <span>{{ document.number }}@if (document.number && document.dates) { · }{{ document.dates }}</span>
             </div>
             <span>{{ document.countdown }}</span>
             @if (document.status; as status) {
@@ -83,10 +83,13 @@ export class VisaDetails {
         countdown: status === 'valid' ? '' : daysLeft >= 0 ? `${plural(daysLeft, 'day')} left` : `${plural(-daysLeft, 'day')} ago`,
       };
     };
+    const { employmentApprovalNumber: approval, employmentApprovalExpiry: approvalExpiry, medicalDueOn } = visa;
     return [
       describe('Work visa', 'globe', visa.visaNumber, visa.visaExpiry, visa.visaIssuedOn),
       describe('Passport', 'file', `Ending ${visa.passportLast4}`, visa.passportExpiry),
       { name: 'Work permit', icon: 'badgeCheck', number: visa.workPermitNumber, dates: '', countdown: '' },
+      ...(approval && approvalExpiry ? [describe('Employment approval', 'badgeCheck', approval, approvalExpiry)] : []),
+      ...(medicalDueOn ? [{ ...describe('Work permit medical', 'shieldCheck', '', medicalDueOn), dates: `Due ${formatFullDate(medicalDueOn)}` }] : []),
     ];
   });
 }

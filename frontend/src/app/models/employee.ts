@@ -14,7 +14,14 @@ export interface Visa {
   passportExpiry: string;
   visaIssuedOn: string;
   visaExpiry: string;
+  employmentApprovalNumber?: string;
+  employmentApprovalExpiry?: string;
+  // When the medical the work permit needs is due.
+  medicalDueOn?: string;
 }
+
+export type EmploymentType = 'Permanent' | 'Contract' | 'Casual' | 'Intern';
+export type Gender = 'male' | 'female';
 
 export interface Employee {
   id: string;
@@ -27,8 +34,14 @@ export interface Employee {
   bloodGroup: string;
   nationality: string;
   workLocation: string;
-  employmentType: string;
+  employmentType: EmploymentType;
   managerId?: string;
+  gender?: Gender;
+  dateOfBirth?: string;
+  probationEndsOn?: string;
+  contractEndsOn?: string;
+  // An expatriate's quota category, from HR's quota approvals.
+  jobCategory?: string;
   roles: Role[];
   emergencyContact: EmergencyContact;
   visa?: Visa;

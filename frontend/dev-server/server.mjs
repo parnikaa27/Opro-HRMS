@@ -34,6 +34,7 @@ const db = {
   flightClaims: load('flight-claims'),
   rates: load('exchange-rates'),
   documentTypes: load('document-types'),
+  records: load('records'),
   compOffs: [],
   receipts: new Map(),
   // Uploaded files live in memory like everything else, keyed by employee or request.
@@ -159,6 +160,9 @@ const notify = (employeeId, kind, text) => {
 const clockFormat = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' });
 const sayTime = (time) => clockFormat.format(new Date(`2000-01-01T${time}:00Z`));
 const sayDate = (date) => longDate.format(new Date(`${date}T00:00:00Z`));
+// A date in another year says the year, so a far off one is never mistaken for a near one.
+const otherYearFormat = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+const sayDateFromToday = (date) => (date.slice(0, 4) === today().slice(0, 4) ? sayDate(date) : otherYearFormat.format(new Date(`${date}T00:00:00Z`)));
 const sayDates = ({ from, to }) => (from === to ? sayDate(from) : `${sayDate(from)} to ${sayDate(to)}`);
 const sayDays = (days) => `${Math.abs(days)} ${Math.abs(days) === 1 ? 'day' : 'days'}`;
 const typeName = (code) => db.leaveTypes.find((type) => type.code === code)?.name.toLowerCase() ?? code;
@@ -257,6 +261,45 @@ const checkDocumentName = (name, code) => {
   }
 };
 
+// The rest of someone's record. The full account number goes to HR only; everyone else sees the last 4.
+const bankView = (employeeId, account, isFull) => {
+  const { accountNumber, ...rest } = account;
+  return { employeeId, employeeName: nameOf(employeeId), ...rest, ...(isFull && { accountNumber }), accountLast4: accountNumber.slice(-4) };
+};
+const recordOf = (employeeId, isFullBank) => {
+  const bank = db.records.bankAccounts[employeeId];
+  const withoutOwner = ({ employeeId: _owner, ...entry }) => entry;
+  return {
+    ...(db.records.insurance[employeeId] && { insurance: db.records.insurance[employeeId] }),
+    ...(bank && { bankAccount: { ...bankView(employeeId, bank, isFullBank), employeeName: undefined } }),
+    education: db.records.education.filter((entry) => entry.employeeId === employeeId).sort((first, second) => second.completedYear - first.completedYear).map(withoutOwner),
+    experience: db.records.experience.filter((entry) => entry.employeeId === employeeId).sort((first, second) => second.from.localeCompare(first.from)).map(withoutOwner),
+  };
+};
+// HR never changes their own record.
+const someoneElse = (user, id) => {
+  requireHr(user);
+  if (id === user.id) {
+    throw new HttpError(403, 'Another HR person handles your own record.');
+  }
+  return findOr404('employees', id, 'Employee').id;
+};
+// Used slots are counted from the active expatriates in that job category, never stored.
+const quotaView = (quota) => ({
+  ...quota,
+  used: activeEmployees().filter((employee) => employee.nationality !== 'Maldivian' && employee.jobCategory?.trim().toLowerCase() === quota.jobCategory.trim().toLowerCase()).length,
+});
+const validQuota = (body) => {
+  const slots = Number(body.slots);
+  if (!String(body.jobCategory ?? '').trim() || !Number.isInteger(slots) || slots < 1 || !String(body.approvalNumber ?? '').trim() || !DATE.test(String(body.approvedOn)) || !DATE.test(String(body.expiresOn))) {
+    throw new HttpError(400, 'Give the job category, slots, approval number and dates');
+  }
+  if (body.expiresOn <= body.approvedOn) {
+    throw new HttpError(400, 'The expiry has to come after the approval date.');
+  }
+  return { jobCategory: body.jobCategory.trim(), slots, approvalNumber: body.approvalNumber.trim(), approvedOn: body.approvedOn, expiresOn: body.expiresOn };
+};
+
 const pick = (body, keys) => Object.fromEntries(keys.filter((key) => body[key] !== undefined).map((key) => [key, body[key]]));
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -300,9 +343,10 @@ const MAX_FIELD = 120;
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 // The fields HR can set. Anything else in the body is ignored, the way a Spring DTO would.
+const EMPLOYMENT_TYPES = ['Permanent', 'Contract', 'Casual', 'Intern'];
 const validEmployee = (body, id) => {
   const text = (value) => String(value ?? '').trim();
-  const fields = ['fullName', 'designation', 'department', 'email', 'phone', 'nationality', 'workLocation', 'employmentType'];
+  const fields = ['fullName', 'designation', 'department', 'email', 'phone', 'nationality', 'workLocation'];
   const details = Object.fromEntries(fields.map((key) => [key, text(body[key])]));
   const contact = { name: text(body.emergencyContact?.name), relation: text(body.emergencyContact?.relation), phone: text(body.emergencyContact?.phone) };
   if ([...Object.values(details), ...Object.values(contact)].some((value) => !value || value.length > MAX_FIELD)) {
@@ -314,7 +358,17 @@ const validEmployee = (body, id) => {
   if (!DATE.test(String(body.joinedOn)) || !BLOOD_GROUPS.includes(body.bloodGroup)) {
     throw new HttpError(400, 'Check the joining date and blood group');
   }
-  return { ...details, joinedOn: body.joinedOn, bloodGroup: body.bloodGroup, emergencyContact: contact, ...(body.managerId && { managerId: String(body.managerId) }) };
+  if (!['male', 'female'].includes(body.gender) || !DATE.test(String(body.dateOfBirth)) || body.dateOfBirth >= today() || !EMPLOYMENT_TYPES.includes(body.employmentType)) {
+    throw new HttpError(400, 'Check the gender, date of birth and employment type');
+  }
+  if ([body.probationEndsOn, body.contractEndsOn].some((end) => end && end <= body.joinedOn)) {
+    throw new HttpError(400, 'Probation and contract end dates come after the joining date.');
+  }
+  const optional = Object.fromEntries(['probationEndsOn', 'contractEndsOn', 'jobCategory'].filter((key) => text(body[key])).map((key) => [key, text(body[key])]));
+  return {
+    ...details, employmentType: body.employmentType, gender: body.gender, dateOfBirth: body.dateOfBirth, ...optional,
+    joinedOn: body.joinedOn, bloodGroup: body.bloodGroup, emergencyContact: contact, ...(body.managerId && { managerId: String(body.managerId) }),
+  };
 };
 
 // Everyone but a super admin reports to someone: active, and never the person or anyone below them.
@@ -617,6 +671,19 @@ const routes = [
   ['PUT', /^\/api\/documents\/([\w-]+)\/file$/, ({ user, params: [code], query, body }) =>
     uploadDocument({ by: user, owner: user, code, file: body, expiresOn: query.get('expiresOn') }), { upload: CERTIFICATE_UPLOAD }],
   ['GET', /^\/api\/documents\/([\w-]+)\/file$/, ({ user, params: [code], res }) => sendDocument(res, user, code)],
+  ['GET', /^\/api\/profile\/record$/, ({ user }) => recordOf(user.id, false)],
+  // New details wait for HR to verify them before payroll uses them.
+  ['PUT', /^\/api\/profile\/bank-account$/, ({ user, body }) => {
+    const account = {
+      bankName: String(body.bankName ?? '').trim(), accountName: String(body.accountName ?? '').trim(),
+      accountNumber: String(body.accountNumber ?? '').replace(/\s/g, ''), currency: body.currency, status: 'pending', submittedOn: today(),
+    };
+    if (!account.bankName || !account.accountName || !/^\d{6,40}$/.test(account.accountNumber) || !['MVR', 'USD'].includes(account.currency)) {
+      throw new HttpError(400, 'Give the bank, the name on the account, a 6 to 40 digit number and the currency');
+    }
+    db.records.bankAccounts = { ...db.records.bankAccounts, [user.id]: account };
+    return bankView(user.id, account, false);
+  }],
   ['GET', /^\/api\/flights$/, ({ user }) => flightYearOf(user.id)],
   ['POST', /^\/api\/flights\/claims$/, ({ user, body }) => {
     const year = Number(String(body.flightDate).slice(0, 4));
@@ -807,7 +874,13 @@ const routes = [
     requireHr(user);
     findOr404('employees', id, 'Employee');
     // Only the last 4 passport digits are ever stored or sent.
-    const visa = { employeeId: id, ...pick(body, ['workPermitNumber', 'visaNumber', 'visaIssuedOn', 'visaExpiry', 'passportExpiry']), passportLast4: String(body.passportLast4 ?? '').slice(-4) };
+    if (Boolean(body.employmentApprovalNumber) !== Boolean(body.employmentApprovalExpiry)) {
+      throw new HttpError(400, "Give the employment approval's number and expiry together.");
+    }
+    const visa = {
+      employeeId: id, ...pick(body, ['workPermitNumber', 'visaNumber', 'visaIssuedOn', 'visaExpiry', 'passportExpiry', 'employmentApprovalNumber', 'employmentApprovalExpiry', 'medicalDueOn']),
+      passportLast4: String(body.passportLast4 ?? '').slice(-4),
+    };
     db.visas = [...db.visas.filter(({ employeeId }) => employeeId !== id), visa];
     notify(id, 'visa', 'HR updated your visa and work permit details. Expiry reminders follow the new dates.');
     return visa;
@@ -1070,6 +1143,103 @@ const routes = [
     const name = type.name.toLowerCase();
     notify(id, 'record', body.decision === 'verified' ? `HR verified your ${name}.` : `HR sent back your ${name}: ${sentence(note)} Upload it again from Documents.`);
     return documentView(type, decided);
+  }],
+  ['GET', /^\/api\/hr\/employees\/([\w-]+)\/record$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    findOr404('employees', id, 'Employee');
+    return recordOf(id, true);
+  }],
+  ['PUT', /^\/api\/hr\/employees\/([\w-]+)\/insurance$/, ({ user, params: [id], body }) => {
+    const policy = { provider: String(body.provider ?? '').trim(), policyNumber: String(body.policyNumber ?? '').trim(), expiresOn: body.expiresOn };
+    if (!policy.provider || !policy.policyNumber || !DATE.test(String(policy.expiresOn))) {
+      throw new HttpError(400, 'Give the provider, policy number and expiry');
+    }
+    db.records.insurance = { ...db.records.insurance, [someoneElse(user, id)]: policy };
+    notify(id, 'record', `HR updated your medical insurance. It runs until ${sayDateFromToday(policy.expiresOn)}.`);
+    return policy;
+  }],
+  ['DELETE', /^\/api\/hr\/employees\/([\w-]+)\/insurance$/, ({ user, params: [id] }) => {
+    const { [someoneElse(user, id)]: _removed, ...rest } = db.records.insurance;
+    db.records.insurance = rest;
+    return undefined;
+  }],
+  ['POST', /^\/api\/hr\/employees\/([\w-]+)\/education$/, ({ user, params: [id], body }) => {
+    const year = Number(body.completedYear);
+    if (!String(body.qualification ?? '').trim() || !String(body.institution ?? '').trim() || !Number.isInteger(year) || year > Number(today().slice(0, 4))) {
+      throw new HttpError(400, 'Give the qualification, where and a year that has happened');
+    }
+    const entry = { id: `ED-${randomUUID().slice(0, 6)}`, employeeId: someoneElse(user, id), qualification: body.qualification.trim(), institution: body.institution.trim(), completedYear: year };
+    db.records.education = [...db.records.education, entry];
+    return entry;
+  }],
+  ['DELETE', /^\/api\/hr\/employees\/([\w-]+)\/education\/([\w-]+)$/, ({ user, params: [id, entryId] }) => {
+    someoneElse(user, id);
+    db.records.education = db.records.education.filter((entry) => entry.id !== entryId);
+    return undefined;
+  }],
+  ['POST', /^\/api\/hr\/employees\/([\w-]+)\/experience$/, ({ user, params: [id], body }) => {
+    if (!String(body.employer ?? '').trim() || !String(body.role ?? '').trim() || !DATE.test(String(body.from)) || (body.to && body.to < body.from)) {
+      throw new HttpError(400, 'Give the employer, role and dates in order');
+    }
+    const entry = { id: `EX-${randomUUID().slice(0, 6)}`, employeeId: someoneElse(user, id), employer: body.employer.trim(), role: body.role.trim(), from: body.from, ...(body.to && { to: body.to }) };
+    db.records.experience = [...db.records.experience, entry];
+    return entry;
+  }],
+  ['DELETE', /^\/api\/hr\/employees\/([\w-]+)\/experience\/([\w-]+)$/, ({ user, params: [id, entryId] }) => {
+    someoneElse(user, id);
+    db.records.experience = db.records.experience.filter((entry) => entry.id !== entryId);
+    return undefined;
+  }],
+  ['GET', /^\/api\/hr\/bank-accounts$/, ({ user }) => {
+    requireHr(user);
+    return Object.entries(db.records.bankAccounts)
+      .filter(([, account]) => account.status === 'pending')
+      .sort(([, first], [, second]) => first.submittedOn.localeCompare(second.submittedOn))
+      .map(([employeeId, account]) => bankView(employeeId, account, true));
+  }],
+  // Sending them back needs a reason, so the person knows what to fix.
+  ['POST', /^\/api\/hr\/employees\/([\w-]+)\/bank-account\/decision$/, ({ user, params: [id], body }) => {
+    const account = db.records.bankAccounts[someoneElse(user, id)];
+    if (!account) {
+      throw new HttpError(404, 'No bank details to check.');
+    }
+    if (account.status !== 'pending' || !['verified', 'rejected'].includes(body.decision)) {
+      throw new HttpError(409, 'These bank details have already been checked.');
+    }
+    const note = String(body.note ?? '').trim();
+    if (body.decision === 'rejected' && !note) {
+      throw new HttpError(400, "Say what's wrong, so they can fix it.");
+    }
+    const decided = { ...account, status: body.decision, ...(note && { decisionNote: note }) };
+    db.records.bankAccounts = { ...db.records.bankAccounts, [id]: decided };
+    notify(id, 'record', body.decision === 'verified'
+      ? 'HR verified your bank details. Your pay goes to this account.'
+      : `HR sent back your bank details: ${sentence(note)} Enter them again from your profile.`);
+    return bankView(id, decided, true);
+  }],
+  ['GET', /^\/api\/hr\/quotas$/, ({ user }) => {
+    requireHr(user);
+    return [...db.records.quotas].sort((first, second) => first.jobCategory.localeCompare(second.jobCategory)).map(quotaView);
+  }],
+  ['POST', /^\/api\/hr\/quotas$/, ({ user, body }) => {
+    requireHr(user);
+    const quota = { id: `QA-${randomUUID().slice(0, 6)}`, ...validQuota(body) };
+    db.records.quotas = [...db.records.quotas, quota];
+    return quotaView(quota);
+  }],
+  ['PUT', /^\/api\/hr\/quotas\/([\w-]+)$/, ({ user, params: [id], body }) => {
+    requireHr(user);
+    if (!db.records.quotas.some((quota) => quota.id === id)) {
+      throw new HttpError(404, 'Quota not found');
+    }
+    const quota = { id, ...validQuota(body) };
+    db.records.quotas = db.records.quotas.map((entry) => (entry.id === id ? quota : entry));
+    return quotaView(quota);
+  }],
+  ['DELETE', /^\/api\/hr\/quotas\/([\w-]+)$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    db.records.quotas = db.records.quotas.filter((quota) => quota.id !== id);
+    return undefined;
   }],
   ['GET', /^\/api\/hr\/schedules$/, ({ user }) => {
     requireHr(user);

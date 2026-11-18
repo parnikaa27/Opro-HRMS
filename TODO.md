@@ -30,3 +30,82 @@ What's left before Opro HRMS can go live, and what's waiting on someone. Kept up
 - [ ] Granting the HR or super admin role from the portal. Today it's set in the database.
 - [ ] Moving files (photos, certificates, receipts, documents) from PostgreSQL to object storage. Only the `files` package changes.
 - [ ] A designed dark theme, if the designer sends one. Today's is generated from the light styles.
+
+## From "HR Software Requirements for Maldives" (received 18 November 2026)
+
+What the document asks for, against what's built. "Done" means built and tested; "Partly" says what's missing.
+
+**Decided on 18 November**
+- Build order: **foundations first** (employee record, Maldives compliance, executive dashboard, reports, people alerts), then the other modules. The record, compliance and alerts are built; **the executive dashboard and reports (CSV, Excel and PDF, made in the browser with exceljs and jspdf) are next**.
+- **Overtime comes back**: worked out from punches beyond the shift and approved by the HOD, ready for payroll.
+- **Biometric devices stay out** until there's a device make and model to integrate with. Punching stays in the portal.
+- **Approvals become chains HR can set** for each kind of request. Today's single HOD step is the default.
+- **Email is the first alert channel**, through Opro's Microsoft 365, so it's tied to Microsoft sign in. SMS and a native app come later.
+
+**1. Executive dashboard**
+- Partly: headcount, today's attendance, people on leave, visa and passport alerts (HR, HOD and super admin overviews).
+- Not yet: new joiners and leavers over time, nationality, department, gender and employment type breakdowns, local vs expat ratio, business travel, shift status, and the recruitment, payroll, performance, training and engagement dashboards (those modules don't exist yet).
+
+**2. Employee information**
+- Done: profile with gender, date of birth and employment type, emergency contact, passport (last 4 digits), work permit and visa, medical insurance, bank details (entered by the person, verified by HR), education, work experience, documents repository with HR checks.
+
+**3. Recruitment**: not started (vacancy approval, job posting, career portal, resume database, applicant tracking, interviews, evaluation, offer letters, joining checklist).
+
+**4. Onboarding**
+- Done: employee number generation, document collection.
+- Not yet: email creation and system access (needs Microsoft 365), welcome kit, orientation, induction training, probation tracking.
+
+**5. Attendance**
+- Done: GPS punching from the office, a resort or home, mobile friendly, late arrivals, breaks.
+- Not yet: biometric integration (clash above), shift scheduling and rosters (one company schedule today), early departure, overtime (clash above).
+
+**6. Leave**
+- Done: all the listed types (HR adds any type, emergency leave included), approval by the HOD, calendar, balances.
+- Not yet: multi-level approval (clash above).
+
+**7. Payroll**: not started (salary structure in USD and MVR, allowances, overtime, deductions, advances, loans, final settlement, payslips, bank transfer files, reports). Needs the Maldives pension and income tax rules and each bank's file format confirmed.
+
+**8. Performance**: not started (goals, KPIs, probation review, annual appraisal, 360° feedback, ratings, promotion and increment recommendations).
+
+**9. Learning and development**: not started (calendar, nominations, attendance, feedback, certificates, hours, competency matrix).
+
+**10. HR letters**
+- Done: uploading and storing documents.
+- Not yet: generating letters from templates (offer, contract, confirmation, promotion, salary revision, transfer, warning, experience, relieving, NOC) and an HR policies library.
+
+**11. Visa and immigration**
+- Done: work permit and visa tracking, employment approval tracking, expatriate quota by job category with slots used, and alerts at 60, 30 and 7 days and on the day for visa, passport, work permit medical, employment approval and medical insurance.
+- Not yet: quota expiry and "quota full" alerts (shown on the Visas page today, not sent).
+
+**12. Employee self service**
+- Done: apply for leave, attendance records, ask HR to change details, flight claims.
+- Not yet: payslips, downloading generated letters, general HR requests, training calendar, other expense claims.
+
+**13. Manager self service**
+- Done: approve leave, punch fixes and home days, team dashboard, team attendance export.
+- Not yet: approve overtime (clash above), appraisals, recruitment requests, wider reports.
+
+**14. Reports**
+- Partly: attendance exports as CSV.
+- Not yet: headcount, attrition, turnover, recruitment, leave, payroll, nationality, department, gender, age, visa and permit expiry, training, performance, overtime, salary cost, budget vs actual. Excel and PDF as well as CSV.
+
+**15. Workflows**
+- Partly: leave, punch fixes, home days, comp off and document checks, all single level.
+- Not yet: recruitment, promotion, salary revision, expense, travel and resignation approvals, multi-level chains.
+
+**16. Notifications**
+- Done: in-app notifications, visa, passport, medical, approval and insurance reminders, contract and probation endings, birthdays and work anniversaries, leave decisions.
+- Not yet: payroll and training reminders. Email (decided first), SMS and a mobile app as channels.
+
+**17. Security**
+- Done: role-based access enforced on the server, logs of HR's changes, XSRF protection, secure sessions.
+- Not yet: multi-factor authentication (comes with Microsoft sign in), encryption at rest and backups (with hosting), a log of every user's activity.
+
+**18. Integrations**: not started (biometric devices, accounting or ERP, bank payroll files, Microsoft 365 email, Outlook calendar, Teams, a mobile app, a public API).
+
+**19. Maldives compliance**
+- Done: Maldives public holidays with tentative Islamic dates, the Saturday to Thursday week, custom work schedules, visa lifecycle.
+- Done since: expatriate quota, employment approval tracking, medical and insurance reminders.
+- Not yet: local vs expat reporting, Employment Act compliance reports (both come with the dashboard and reports).
+
+**20. Executive KPIs**: depends on the modules above. Workforce, attendance, leave and compliance KPIs can be built from today's data.

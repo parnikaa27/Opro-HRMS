@@ -26,9 +26,6 @@ class HrPeople {
     private static final String ID_PREFIX = "OPR-";
     private static final int ID_DIGITS = 4;
 
-    record VisaDetails(String workPermitNumber, String visaNumber, String passportLast4, LocalDate passportExpiry, LocalDate visaIssuedOn,
-            LocalDate visaExpiry) {}
-
     private final EmployeeRepository employees;
     private final VisaRepository visas;
     private final People people;
@@ -57,6 +54,7 @@ class HrPeople {
         employees.lockNewIds();
         String id = nextId();
         checkEmail(details.email(), id);
+        checkDates(details);
         checkManager(id, details.managerId(), false);
         Employee employee = employees.save(Employee.hire(id, details));
         leave.openYearFor(employee.getId());
@@ -67,6 +65,7 @@ class HrPeople {
     Employee update(String id, Employee.Details details) {
         Employee employee = find(id);
         checkEmail(details.email(), id);
+        checkDates(details);
         checkManager(id, details.managerId(), employee.isSuperAdmin());
         boolean isNewManager = details.managerId() != null && !details.managerId().equals(employee.getManagerId());
         employee.update(details);
@@ -105,14 +104,16 @@ class HrPeople {
     }
 
     @Transactional
-    Visa saveVisa(String id, VisaDetails details) {
+    Visa saveVisa(String id, Visa.Papers papers) {
         find(id);
-        if (!details.visaExpiry().isAfter(details.visaIssuedOn())) {
+        if (!papers.visaExpiry().isAfter(papers.visaIssuedOn())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Expiry must come after the issue date.");
         }
+        if ((papers.employmentApprovalNumber() == null) != (papers.employmentApprovalExpiry() == null)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Give the employment approval's number and expiry together.");
+        }
         Visa visa = visas.findById(id).orElseGet(() -> new Visa(id));
-        visa.renew(details.workPermitNumber().strip(), details.visaNumber().strip(), details.passportLast4().toUpperCase(), details.passportExpiry(),
-                details.visaIssuedOn(), details.visaExpiry());
+        visa.renew(papers);
         Visa saved = visas.save(visa);
         notifications.tell(id, Notification.Kind.VISA, "HR updated your visa and work permit details. Expiry reminders follow the new dates.");
         return saved;
@@ -129,7 +130,16 @@ class HrPeople {
         }
     }
 
-    // Everyone but a super admin reports to someone: active, and never the person or anyone below them.
+    // Probation and a contract both end after someone joins.
+    private static void checkDates(Employee.Details details) {
+        boolean isBadEnd = Stream.of(details.probationEndsOn(), details.contractEndsOn())
+                .anyMatch(end -> end != null && !end.isAfter(details.joinedOn()));
+        if (isBadEnd) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Probation and contract end dates come after the joining date.");
+        }
+    }
+
+        // Everyone but a super admin reports to someone: active, and never the person or anyone below them.
     private void checkManager(String id, String managerId, boolean isSuperAdmin) {
         if (managerId == null) {
             if (isSuperAdmin) {

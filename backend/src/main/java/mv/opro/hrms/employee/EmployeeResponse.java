@@ -22,7 +22,12 @@ public record EmployeeResponse(
         VisaResponse visa,
         String photoUrl,
         LocalDate lastDay,
-        String leavingReason) {
+        String leavingReason,
+        String gender,
+        LocalDate dateOfBirth,
+        LocalDate probationEndsOn,
+        LocalDate contractEndsOn,
+        String jobCategory) {
 
     public record VisaResponse(
             String workPermitNumber,
@@ -30,11 +35,15 @@ public record EmployeeResponse(
             String passportLast4,
             LocalDate passportExpiry,
             LocalDate visaIssuedOn,
-            LocalDate visaExpiry) {
+            LocalDate visaExpiry,
+            String employmentApprovalNumber,
+            LocalDate employmentApprovalExpiry,
+            LocalDate medicalDueOn) {
 
-        static VisaResponse of(Visa visa) {
+        public static VisaResponse of(Visa visa) {
             return new VisaResponse(visa.getWorkPermitNumber(), visa.getVisaNumber(), visa.getPassportLast4(),
-                    visa.getPassportExpiry(), visa.getVisaIssuedOn(), visa.getVisaExpiry());
+                    visa.getPassportExpiry(), visa.getVisaIssuedOn(), visa.getVisaExpiry(), visa.getEmploymentApprovalNumber(),
+                    visa.getEmploymentApprovalExpiry(), visa.getMedicalDueOn());
         }
     }
 
@@ -42,6 +51,7 @@ public record EmployeeResponse(
         return new EmployeeResponse(employee.getId(), employee.getFullName(), employee.getDesignation(), employee.getDepartment(),
                 employee.getEmail(), employee.getPhone(), employee.getJoinedOn(), employee.getBloodGroup(), employee.getNationality(),
                 employee.getWorkLocation(), employee.getEmploymentType(), employee.getManagerId(), roles, employee.getEmergencyContact(),
-                visa == null ? null : VisaResponse.of(visa), photoUrl, employee.getLastDay(), employee.getLeavingReason());
+                visa == null ? null : VisaResponse.of(visa), photoUrl, employee.getLastDay(), employee.getLeavingReason(),
+                employee.getGender(), employee.getDateOfBirth(), employee.getProbationEndsOn(), employee.getContractEndsOn(), employee.getJobCategory());
     }
 }

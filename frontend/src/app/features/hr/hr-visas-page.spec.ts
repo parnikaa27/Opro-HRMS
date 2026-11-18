@@ -40,10 +40,10 @@ describe('HrVisasPage', () => {
     http.expectOne('/api/hr/employees/OPR-0021/visa').flush({});
     await respond(http, { '/api/hr/employees': PEOPLE });
 
-    expect(text(root.querySelector('dialog') as HTMLElement)).toContain('Papers updated');
+    expect(text(root.querySelector('dialog[open]') as HTMLElement)).toContain('Papers updated');
     (root.querySelector('[data-testid=success-state] button') as HTMLButtonElement).click();
     TestBed.tick();
-    expect(root.querySelector('dialog')?.open).toBe(false);
+    expect(root.querySelector('dialog[open]')).toBeNull();
   });
 
   it('says so when the list fails and when nobody needs a visa', async () => {

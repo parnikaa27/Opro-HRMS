@@ -6,6 +6,7 @@ import { Announcement, ChangeRequest, CompanyEvent, DocumentEntry, DocumentType,
 import { Employee, EmployeeDetails, Visa } from '../../models/employee';
 import { FlightYear } from '../../models/flight';
 import { BalanceAdjustment, LeaveBalance, LeaveType } from '../../models/leave';
+import { BankAccount, Education, EmployeeRecord, Experience, MedicalInsurance, Quota } from '../../models/record';
 
 export interface HrEmployee extends Employee {
   today?: AttendanceDay;
@@ -89,6 +90,22 @@ export class HrApi {
     );
   decideDocument = (employeeId: string, type: string, decision: 'verified' | 'rejected', note?: string) =>
     this.send<DocumentEntry>('POST', `/api/hr/employees/${enc(employeeId)}/documents/${enc(type)}/decision`, { decision, ...(note && { note }) });
+
+  employeeRecord = (id: () => string) => httpResource<EmployeeRecord>(() => `/api/hr/employees/${enc(id())}/record`);
+  saveInsurance = (employeeId: string, insurance: MedicalInsurance) => this.send<MedicalInsurance>('PUT', `/api/hr/employees/${enc(employeeId)}/insurance`, insurance);
+  removeInsurance = (employeeId: string) => this.send<void>('DELETE', `/api/hr/employees/${enc(employeeId)}/insurance`);
+  addEducation = (employeeId: string, entry: Omit<Education, 'id'>) => this.send<Education>('POST', `/api/hr/employees/${enc(employeeId)}/education`, entry);
+  removeEducation = (employeeId: string, id: string) => this.send<void>('DELETE', `/api/hr/employees/${enc(employeeId)}/education/${enc(id)}`);
+  addExperience = (employeeId: string, entry: Omit<Experience, 'id'>) => this.send<Experience>('POST', `/api/hr/employees/${enc(employeeId)}/experience`, entry);
+  removeExperience = (employeeId: string, id: string) => this.send<void>('DELETE', `/api/hr/employees/${enc(employeeId)}/experience/${enc(id)}`);
+  waitingBanks = ({ isEnabled = () => true }: { isEnabled?: () => boolean } = {}) =>
+    httpResource<BankAccount[]>(() => (isEnabled() ? '/api/hr/bank-accounts' : undefined), { defaultValue: [] });
+  decideBank = (employeeId: string, decision: 'verified' | 'rejected', note?: string) =>
+    this.send<BankAccount>('POST', `/api/hr/employees/${enc(employeeId)}/bank-account/decision`, { decision, ...(note && { note }) });
+  quotas = () => httpResource<Quota[]>(() => '/api/hr/quotas', { defaultValue: [] });
+  saveQuota = ({ id, ...terms }: Omit<Quota, 'id' | 'used'> & { id?: string }) =>
+    id ? this.send<Quota>('PUT', `/api/hr/quotas/${enc(id)}`, terms) : this.send<Quota>('POST', '/api/hr/quotas', terms);
+  removeQuota = (id: string) => this.send<void>('DELETE', `/api/hr/quotas/${enc(id)}`);
 
   decideChange = (id: string, decision: 'done' | 'declined', note?: string) =>
     this.send<ChangeRequest>('POST', `/api/hr/change-requests/${enc(id)}/decision`, { decision, ...(note && { note }) });

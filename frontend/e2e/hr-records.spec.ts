@@ -42,6 +42,8 @@ test('HR adds a person, gives them a photo, and marks them as leaving', async ({
   await page.getByTestId('employee-joined').fill('2026-01-04');
   await page.getByTestId('employee-phone').fill('+960 777 1030');
   await page.getByTestId('employee-nationality').fill('Maldivian');
+  await page.getByTestId('employee-gender').selectOption('female');
+  await page.getByTestId('employee-birth').fill('1994-05-02');
   await page.getByTestId('employee-contact-name').fill('Mohan Pillai');
   await page.getByTestId('employee-contact-relation').fill('Father');
   await page.getByTestId('employee-contact-phone').fill('+960 777 2030');

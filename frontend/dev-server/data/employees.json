@@ -10,7 +10,7 @@
     "bloodGroup": "O+",
     "nationality": "Indian",
     "workLocation": "Malé office",
-    "employmentType": "Full-time",
+    "employmentType": "Permanent",
     "roles": [
       "EMPLOYEE",
       "SUPER_ADMIN"
@@ -19,7 +19,10 @@
       "name": "Meera Sharma",
       "relation": "Spouse",
       "phone": "+960 777 2001"
-    }
+    },
+    "gender": "male",
+    "dateOfBirth": "1978-06-14",
+    "jobCategory": "Management"
   },
   {
     "id": "OPR-0002",
@@ -32,7 +35,7 @@
     "bloodGroup": "A+",
     "nationality": "Indian",
     "workLocation": "Malé office",
-    "employmentType": "Full-time",
+    "employmentType": "Permanent",
     "managerId": "OPR-0001",
     "roles": [
       "EMPLOYEE",
@@ -42,7 +45,10 @@
       "name": "Arvind Iyer",
       "relation": "Husband",
       "phone": "+960 777 2002"
-    }
+    },
+    "gender": "female",
+    "dateOfBirth": "1985-09-22",
+    "jobCategory": "Management"
   },
   {
     "id": "OPR-0004",
@@ -55,7 +61,7 @@
     "bloodGroup": "B+",
     "nationality": "Indian",
     "workLocation": "Malé office",
-    "employmentType": "Full-time",
+    "employmentType": "Permanent",
     "managerId": "OPR-0001",
     "roles": [
       "EMPLOYEE"
@@ -64,7 +70,10 @@
       "name": "Pooja Singh",
       "relation": "Sister",
       "phone": "+960 777 2004"
-    }
+    },
+    "gender": "male",
+    "dateOfBirth": "1983-01-30",
+    "jobCategory": "Management"
   },
   {
     "id": "OPR-0011",
@@ -77,7 +86,7 @@
     "bloodGroup": "A+",
     "nationality": "Maldivian",
     "workLocation": "Malé office",
-    "employmentType": "Full-time",
+    "employmentType": "Permanent",
     "managerId": "OPR-0004",
     "roles": [
       "EMPLOYEE"
@@ -86,7 +95,9 @@
       "name": "Amit Kulkarni",
       "relation": "Father",
       "phone": "+960 777 2011"
-    }
+    },
+    "gender": "female",
+    "dateOfBirth": "1996-04-18"
   },
   {
     "id": "OPR-0015",
@@ -99,7 +110,7 @@
     "bloodGroup": "AB+",
     "nationality": "Indian",
     "workLocation": "Malé office",
-    "employmentType": "Full-time",
+    "employmentType": "Permanent",
     "managerId": "OPR-0004",
     "roles": [
       "EMPLOYEE"
@@ -108,7 +119,10 @@
       "name": "Ravi Nair",
       "relation": "Brother",
       "phone": "+91 98470 12015"
-    }
+    },
+    "gender": "female",
+    "dateOfBirth": "1992-11-20",
+    "jobCategory": "Administration"
   },
   {
     "id": "OPR-0018",
@@ -130,7 +144,11 @@
       "name": "Lakshmi Reddy",
       "relation": "Spouse",
       "phone": "+91 98450 21018"
-    }
+    },
+    "gender": "male",
+    "dateOfBirth": "1996-02-29",
+    "jobCategory": "Engineering",
+    "contractEndsOn": "2027-01-15"
   },
   {
     "id": "OPR-0021",
@@ -143,7 +161,7 @@
     "bloodGroup": "B-",
     "nationality": "Indian",
     "workLocation": "Malé office",
-    "employmentType": "Full-time",
+    "employmentType": "Permanent",
     "managerId": "OPR-0004",
     "roles": [
       "EMPLOYEE"
@@ -152,7 +170,10 @@
       "name": "Sunita Verma",
       "relation": "Mother",
       "phone": "+91 98450 21021"
-    }
+    },
+    "gender": "male",
+    "dateOfBirth": "1988-07-07",
+    "jobCategory": "Logistics"
   },
   {
     "id": "OPR-0023",
@@ -165,7 +186,7 @@
     "bloodGroup": "A-",
     "nationality": "Maldivian",
     "workLocation": "Malé office",
-    "employmentType": "Full-time",
+    "employmentType": "Permanent",
     "managerId": "OPR-0004",
     "roles": [
       "EMPLOYEE"
@@ -174,7 +195,9 @@
       "name": "Neha Mehta",
       "relation": "Spouse",
       "phone": "+960 777 2023"
-    }
+    },
+    "gender": "male",
+    "dateOfBirth": "1990-12-03"
   },
   {
     "id": "OPR-0027",
@@ -187,7 +210,7 @@
     "bloodGroup": "O+",
     "nationality": "Indian",
     "workLocation": "Malé office",
-    "employmentType": "Full-time",
+    "employmentType": "Permanent",
     "managerId": "OPR-0004",
     "roles": [
       "EMPLOYEE"
@@ -196,6 +219,10 @@
       "name": "Suresh Menon",
       "relation": "Father",
       "phone": "+91 98450 21027"
-    }
+    },
+    "gender": "female",
+    "dateOfBirth": "1998-08-11",
+    "jobCategory": "Administration",
+    "probationEndsOn": "2026-12-20"
   }
 ]

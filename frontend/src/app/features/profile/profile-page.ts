@@ -7,11 +7,12 @@ import { FlightCard } from '../flights/flight-card';
 import { ChangeRequestForm } from './change-request-form';
 import { EmployeeCard } from './employee-card';
 import { IdCard } from './id-card';
+import { RecordCard } from './record-card';
 import { VisaDetails } from './visa-details';
 
 @Component({
   selector: 'app-profile-page',
-  imports: [ChangeRequestForm, Dialog, EmployeeCard, FlightCard, Icon, IdCard, SuccessState, VisaDetails],
+  imports: [ChangeRequestForm, Dialog, EmployeeCard, FlightCard, Icon, IdCard, RecordCard, SuccessState, VisaDetails],
   template: `
     @if (session.user(); as user) {
       <div class="page-view">
@@ -39,6 +40,9 @@ import { VisaDetails } from './visa-details';
             </section>
             <div class="no-print">
               <app-visa-details [visa]="user.visa" [nationality]="user.nationality" />
+            </div>
+            <div class="no-print">
+              <app-record-card />
             </div>
             <div class="no-print">
               <app-flight-card />

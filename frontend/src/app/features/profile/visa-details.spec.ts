@@ -36,6 +36,12 @@ describe('VisaDetails', () => {
     ]);
   });
 
+  it('adds the employment approval and the work permit medical when HR has recorded them', async () => {
+    const rows = texts(await render({ ...VISA, employmentApprovalNumber: 'EA-1', employmentApprovalExpiry: '2027-12-20', medicalDueOn: '2026-12-01' }), 'visa-document');
+
+    expect(rows.slice(3)).toEqual(['Employment approval EA-1 · Expires 20 December 2027 Valid', 'Work permit medical Due 1 December 2026 19 days left Expires soon']);
+  });
+
   it('says how long ago an expired visa ran out', async () => {
     expect(texts(await render({ ...VISA, visaExpiry: '2026-11-02' }), 'visa-document')[0]).toContain('10 days ago Expired');
   });
