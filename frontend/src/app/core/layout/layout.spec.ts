@@ -70,7 +70,7 @@ describe('app shell', () => {
       '/api/hr/documents': [{ type: 'passport-copy', employeeId: 'OPR-0018' }],
     });
 
-    expect(navLabels(page)).toEqual(['Overview', 'People', 'Calendar', 'Visas', 'Inbox 2', 'Announcements', 'Policies']);
+    expect(navLabels(page)).toEqual(['Overview', 'Dashboard', 'People', 'Calendar', 'Visas', 'Inbox 2', 'Announcements', 'Policies', 'Reports']);
     expect([...page.querySelectorAll('.role-switch button')].map((button) => text(button))).toEqual(['Employee', 'HR']);
     expect(page.querySelector('[data-testid=view-hr]')?.getAttribute('aria-pressed')).toBe('true');
     http.expectNone((request) => request.url.includes('leave-requests') || request.url.includes('corrections'));
@@ -85,7 +85,7 @@ describe('app shell', () => {
       '/api/company/comp-offs?status=pending': [],
     });
 
-    expect(navLabels(page)).toEqual(['People', 'Attendance', 'Leave 3', 'Calendar']);
+    expect(navLabels(page)).toEqual(['People', 'Dashboard', 'Attendance', 'Leave 3', 'Calendar', 'Reports']);
     expect([...page.querySelectorAll('.role-switch button')].map((button) => text(button))).toEqual(['Employee', 'HOD', 'Super admin']);
     expect(page.querySelector('[data-testid=view-company]')?.getAttribute('aria-pressed')).toBe('true');
   });

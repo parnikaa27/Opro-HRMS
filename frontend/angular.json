@@ -20,6 +20,7 @@
           "builder": "@angular/build:application",
           "options": {
             "browser": "src/main.ts",
+            "allowedCommonJsDependencies": ["exceljs", "core-js", "html2canvas", "raf", "rgbcolor"],
             "tsConfig": "tsconfig.app.json",
             "assets": [
               {

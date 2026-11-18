@@ -74,6 +74,7 @@ HRMS/
       team/                The HOD's view (/api/team) and the super admin's company view (/api/company), one set of endpoints: TeamAccess limits an HOD to their own active direct reports and lets only super admins reach everyone
       files/               Stored files (in PostgreSQL for now), upload checks, and serving them safely
       document/            Document types HR keeps, everyone's copies, uploads and HR's checks (Documents service)
+      insight/             The facts behind the executive dashboard and reports, for HR and super admins (/api/insights)
       record/              Medical insurance, bank details (entered by the person, verified by HR), education and work experience (Records service)
       announcement/        Notes from HR on everyone's overview, and AnnouncementEditor for posting them
       profile/             Change requests people send to HR from their profile, and HR's inbox of them
@@ -222,5 +223,7 @@ Everyone has an Indian name. Sneha and Karan are Maldivian nationals, so they se
 | `MOCK_NOW` | unset | Pins the mock's clock, for example `MOCK_NOW=2026-11-12T15:10:00+05:00 npm run mock`. Handy on weekends, when every screen shows days off |
 
 ## Version notes
+
+The Excel export uses exceljs 4.4.0, its latest stable release (December 2024). It depends on an old `uuid` flagged by `npm audit` (GHSA-w5hq-g745-h8pq, a missing bounds check when a buffer is passed). exceljs only calls `uuid.v4()` without a buffer, and the browser loads exceljs's own pre-bundled copy, so the flagged code never runs and an override wouldn't change what ships. `angular.json` allows exceljs and the CommonJS pieces jspdf's optional SVG support pulls in (core-js, html2canvas, raf, rgbcolor), so the build stays free of warnings; all of them load only when someone exports.
 
 TypeScript is held at 6.0.3 because Angular 22 only supports `>=6.0 <6.1`. TypeScript 7 is out but Angular doesn't support it yet.
