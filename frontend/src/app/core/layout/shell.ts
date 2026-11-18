@@ -3,7 +3,8 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { valueOr } from '../../shared/utils/resource';
-import { HrApi } from '../../features/hr/hr-api';
+import { HrApi, NOTHING_WAITING } from '../../features/hr/hr-api';
+import { isWaitingForHr } from '../../shared/utils/approval-step';
 import { TeamApi, ViewScope } from '../../features/team/team-api';
 import { SavedChanges } from '../saved-changes';
 import { PortalView, Session } from '../session';
@@ -61,9 +62,14 @@ export class Shell {
   private readonly changeRequests = this.hr.changeRequests({ isEnabled: () => this.view() === 'hr' && this.session.isHr() });
   private readonly waitingDocuments = this.hr.waitingDocuments({ isEnabled: () => this.view() === 'hr' && this.session.isHr() });
   private readonly waitingBanks = this.hr.waitingBanks({ isEnabled: () => this.view() === 'hr' && this.session.isHr() });
+  private readonly waitingApprovals = this.hr.approvals({ isEnabled: () => this.view() === 'hr' && this.session.isHr() });
   protected readonly badges = computed<Partial<Record<BadgeKey, number>>>(() => ({
-    approvals: [valueOr(this.pendingLeave, []), valueOr(this.pendingFixes, []), valueOr(this.pendingHomeDays, []), valueOr(this.pendingCompOffs, []), valueOr(this.pendingOvertime, [])].reduce((total, list) => total + list.length, 0),
-    inbox: valueOr(this.changeRequests, []).filter(({ status }) => status === 'open').length + valueOr(this.waitingDocuments, []).length + valueOr(this.waitingBanks, []).length,
+    approvals: [valueOr(this.pendingLeave, []), valueOr(this.pendingFixes, []), valueOr(this.pendingHomeDays, []), valueOr(this.pendingCompOffs, []), valueOr(this.pendingOvertime, [])].reduce(
+      (total, list) => total + list.filter((item) => !isWaitingForHr(item)).length,
+      0,
+    ),
+    inbox: valueOr(this.changeRequests, []).filter(({ status }) => status === 'open').length + valueOr(this.waitingDocuments, []).length + valueOr(this.waitingBanks, []).length +
+      Object.values(valueOr(this.waitingApprovals, NOTHING_WAITING)).reduce((total, list) => total + list.length, 0),
   }));
 
   constructor() {
@@ -71,7 +77,7 @@ export class Shell {
     const seen = saves();
     effect(() => {
       if (saves() !== seen) {
-        untracked(() => [this.pendingLeave, this.pendingFixes, this.pendingHomeDays, this.pendingCompOffs, this.pendingOvertime, this.changeRequests, this.waitingDocuments, this.waitingBanks].forEach((counts) => counts.reload()));
+        untracked(() => [this.pendingLeave, this.pendingFixes, this.pendingHomeDays, this.pendingCompOffs, this.pendingOvertime, this.changeRequests, this.waitingDocuments, this.waitingBanks, this.waitingApprovals].forEach((counts) => counts.reload()));
       }
     });
   }

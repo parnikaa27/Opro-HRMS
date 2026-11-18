@@ -19,6 +19,8 @@ public class CompOffClaim {
     private String decidedBy;
     private LocalDate decidedOn;
     private String decisionNote;
+    private String hodApprovedBy;
+    private LocalDate hodApprovedOn;
 
     protected CompOffClaim() {}
 
@@ -77,5 +79,23 @@ public class CompOffClaim {
 
     public String getDecisionNote() {
         return decisionNote;
+    }
+
+    // The HOD approved and HR is next. It stays pending until HR decides.
+    void approveForHod(String by, LocalDate on) {
+        hodApprovedBy = by;
+        hodApprovedOn = on;
+    }
+
+    public boolean isWaitingForHr() {
+        return isPending() && hodApprovedBy != null;
+    }
+
+    public String getHodApprovedBy() {
+        return hodApprovedBy;
+    }
+
+    public LocalDate getHodApprovedOn() {
+        return hodApprovedOn;
     }
 }

@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import mv.opro.hrms.approval.ApprovalSteps;
 import mv.opro.hrms.common.ApiException;
 import mv.opro.hrms.common.Ids;
 import mv.opro.hrms.common.Wording;
@@ -48,11 +49,12 @@ public class LeaveService {
     private final Holidays holidays;
     private final Notifications notifications;
     private final Files files;
+    private final ApprovalSteps steps;
     private final Clock clock;
 
     LeaveService(LeaveTypeRepository types, LeaveEntitlementRepository entitlements, LeaveRequestRepository requests,
             BalanceAdjustmentRepository adjustments, EmployeeRepository employees, Holidays holidays, Notifications notifications, Files files,
-            Clock clock) {
+            ApprovalSteps steps, Clock clock) {
         this.types = types;
         this.entitlements = entitlements;
         this.requests = requests;
@@ -61,6 +63,7 @@ public class LeaveService {
         this.holidays = holidays;
         this.notifications = notifications;
         this.files = files;
+        this.steps = steps;
         this.clock = clock;
     }
 
@@ -88,6 +91,30 @@ public class LeaveService {
         if (!request.isPending()) {
             throw refused(HttpStatus.CONFLICT, "This request has already been decided.");
         }
+        steps.checkHodStep(request.isWaitingForHr());
+        boolean needsHr = types.findById(request.getType()).map(LeaveType::needsHrApproval).orElse(false);
+        if (LeaveRequest.APPROVED.equals(decision.decision()) && steps.passesToHr(decider, needsHr)) {
+            request.approveForHod(decider.getId(), today());
+            steps.passToHr(decider, request.getEmployeeId(), Notification.Kind.LEAVE, typeName(request.getType()) + " for "
+                    + Wording.dates(request.getFromDate(), request.getToDate()));
+            return request;
+        }
+        return finish(decider, request, decision);
+    }
+
+    public List<LeaveRequest> waitingForHr() {
+        return requests.findByStatusAndHodApprovedByNotNullOrderByFromDate(LeaveRequest.PENDING);
+    }
+
+    // The HR step, after the HOD approved.
+    @Transactional
+    public LeaveRequest decideForHr(Employee hr, String id, Decision decision) {
+        LeaveRequest request = requests.findById(id).orElseThrow(() -> refused(HttpStatus.NOT_FOUND, "Request not found"));
+        steps.checkHrStep(hr, request.getEmployeeId(), request.isWaitingForHr());
+        return finish(hr, request, decision);
+    }
+
+    private LeaveRequest finish(Employee decider, LeaveRequest request, Decision decision) {
         String note = decision.note() == null || decision.note().isBlank() ? null : decision.note().strip();
         boolean isApproved = LeaveRequest.APPROVED.equals(decision.decision());
         if (!isApproved && note == null) {
@@ -425,7 +452,7 @@ public class LeaveService {
             throw refused(HttpStatus.BAD_REQUEST, "Say how many days can carry forward.");
         }
         return new LeaveType.Rules(rules.name().strip(), rules.allowsHalfDay(), rules.isUnlimited(), rules.defaultEntitlement(),
-                rules.documentRequiredAfterDays(), rules.isForEveryone(), rules.carriesForward(), rules.carryForwardCap());
+                rules.documentRequiredAfterDays(), rules.isForEveryone(), rules.carriesForward(), rules.carryForwardCap(), rules.needsHrApproval());
     }
 
     private void checkName(String name, String code) {

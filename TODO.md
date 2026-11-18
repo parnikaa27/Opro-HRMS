@@ -28,6 +28,7 @@ What's left before Opro HRMS can go live, and what's waiting on someone. Kept up
 
 ## Later, if needed
 
+- [ ] A second HR approver. If the only HR person asks for something that needs HR after the HOD, nobody can give that approval.
 - [ ] Granting the HR or super admin role from the portal. Today it's set in the database.
 - [ ] Moving files (photos, certificates, receipts, documents) from PostgreSQL to object storage. Only the `files` package changes.
 - [ ] A designed dark theme, if the designer sends one. Today's is generated from the light styles.
@@ -37,10 +38,10 @@ What's left before Opro HRMS can go live, and what's waiting on someone. Kept up
 What the document asks for, against what's built. "Done" means built and tested; "Partly" says what's missing.
 
 **Decided on 18 November**
-- Build order: **foundations first** (employee record, Maldives compliance, executive dashboard, reports, people alerts), then the other modules. The record, compliance and alerts are built, and so are the executive dashboard and reports (CSV, Excel and PDF) for HR and super admins. Overtime is built too. **Next: approval chains, then the modules (payroll first)**.
+- Build order: **foundations first** (employee record, Maldives compliance, executive dashboard, reports, people alerts), then the other modules. The record, compliance and alerts are built, and so are the executive dashboard and reports (CSV, Excel and PDF) for HR and super admins. Overtime and HR's approval step are built too. **Next: the modules, payroll first**.
 - **Overtime comes back**: worked out from punches beyond the shift and approved by the HOD, ready for payroll. Done: time after the shift ends, from 30 minutes, raised by itself, working days only (days off keep earning comp off).
 - **Biometric devices stay out** until there's a device make and model to integrate with. Punching stays in the portal.
-- **Approvals become chains HR can set** for each kind of request. Today's single HOD step is the default.
+- **Approvals become chains HR can set** for each kind of request. Done on 19 November as one optional step: HR approves after the HOD, set per leave type and for punch fixes, home days, comp off and overtime.
 - **Email is the first alert channel**, through Opro's Microsoft 365, so it's tied to Microsoft sign in. SMS and a native app come later.
 
 **1. Executive dashboard**
@@ -63,7 +64,7 @@ What the document asks for, against what's built. "Done" means built and tested;
 
 **6. Leave**
 - Done: all the listed types (HR adds any type, emergency leave included), approval by the HOD, calendar, balances.
-- Not yet: multi-level approval (clash above).
+- Done since: HR can approve after the HOD.
 
 **7. Payroll**: not started (salary structure in USD and MVR, allowances, overtime, deductions, advances, loans, final settlement, payslips, bank transfer files, reports). Needs the Maldives pension and income tax rules and each bank's file format confirmed.
 
@@ -93,8 +94,8 @@ What the document asks for, against what's built. "Done" means built and tested;
 - Not yet: an overtime report (the data exists now), and recruitment, payroll, salary cost, budget vs actual, training and performance (with their modules).
 
 **15. Workflows**
-- Partly: leave, punch fixes, home days, comp off and document checks, all single level.
-- Not yet: recruitment, promotion, salary revision, expense, travel and resignation approvals, multi-level chains.
+- Partly: leave, punch fixes, home days, comp off and overtime (the HOD, then HR where Policies say so), and document checks.
+- Not yet: recruitment, promotion, salary revision, expense, travel and resignation approvals, steps beyond HR (the HOD's own HOD, a named person).
 
 **16. Notifications**
 - Done: in-app notifications, visa, passport, medical, approval and insurance reminders, contract and probation endings, birthdays and work anniversaries, leave decisions.

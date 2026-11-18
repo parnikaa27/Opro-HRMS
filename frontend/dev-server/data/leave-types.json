@@ -1,9 +1,9 @@
 [
-  {"code": "annual", "name": "Annual leave", "allowsHalfDay": true, "isUnlimited": false, "defaultEntitlement": 30, "isForEveryone": true, "carriesForward": false},
-  {"code": "sick", "name": "Sick leave", "allowsHalfDay": true, "isUnlimited": false, "documentRequiredAfterDays": 2, "defaultEntitlement": 30, "isForEveryone": true, "carriesForward": false},
-  {"code": "family", "name": "Family responsibility leave", "allowsHalfDay": true, "isUnlimited": false, "defaultEntitlement": 10, "isForEveryone": true, "carriesForward": false},
-  {"code": "maternity", "name": "Maternity leave", "allowsHalfDay": false, "isUnlimited": false, "defaultEntitlement": 60, "isForEveryone": false, "carriesForward": false},
-  {"code": "paternity", "name": "Paternity leave", "allowsHalfDay": false, "isUnlimited": false, "defaultEntitlement": 3, "isForEveryone": false, "carriesForward": false},
-  {"code": "unpaid", "name": "Unpaid leave", "allowsHalfDay": true, "isUnlimited": true, "isForEveryone": true, "carriesForward": false},
-  {"code": "comp-off", "name": "Compensatory off", "allowsHalfDay": true, "isUnlimited": false, "isForEveryone": false, "carriesForward": false}
+  {"code": "annual", "name": "Annual leave", "allowsHalfDay": true, "isUnlimited": false, "defaultEntitlement": 30, "isForEveryone": true, "carriesForward": false, "needsHrApproval": false},
+  {"code": "sick", "name": "Sick leave", "allowsHalfDay": true, "isUnlimited": false, "documentRequiredAfterDays": 2, "defaultEntitlement": 30, "isForEveryone": true, "carriesForward": false, "needsHrApproval": false},
+  {"code": "family", "name": "Family responsibility leave", "allowsHalfDay": true, "isUnlimited": false, "defaultEntitlement": 10, "isForEveryone": true, "carriesForward": false, "needsHrApproval": false},
+  {"code": "maternity", "name": "Maternity leave", "allowsHalfDay": false, "isUnlimited": false, "defaultEntitlement": 60, "isForEveryone": false, "carriesForward": false, "needsHrApproval": false},
+  {"code": "paternity", "name": "Paternity leave", "allowsHalfDay": false, "isUnlimited": false, "defaultEntitlement": 3, "isForEveryone": false, "carriesForward": false, "needsHrApproval": false},
+  {"code": "unpaid", "name": "Unpaid leave", "allowsHalfDay": true, "isUnlimited": true, "isForEveryone": true, "carriesForward": false, "needsHrApproval": false},
+  {"code": "comp-off", "name": "Compensatory off", "allowsHalfDay": true, "isUnlimited": false, "isForEveryone": false, "carriesForward": false, "needsHrApproval": false}
 ]

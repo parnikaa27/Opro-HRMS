@@ -6,6 +6,7 @@ import { Dialog } from '../../shared/ui/dialog';
 import { Icon } from '../../shared/ui/icon';
 import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { StatusPill } from '../../shared/ui/status-pill';
+import { isWaitingForHr } from '../../shared/utils/approval-step';
 import { formatDayShort } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { fixCategoryLabel } from '../attendance/fix-categories';
@@ -27,6 +28,8 @@ interface Declining {
   kind: 'leave' | 'fix' | 'home' | 'comp-off' | 'overtime';
 }
 
+// Still the HOD's to decide: not yet passed on to HR.
+const isHodStep = (item: { status: string; hodApprovedOn?: string }) => !isWaitingForHr(item);
 const isOpen = ({ status }: LeaveRequest) => status === 'approved' || status === 'pending';
 const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= second.to && first.to >= second.from;
 
@@ -131,7 +134,9 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
               <div><small>DATES</small><strong>{{ describeDates(request) }}</strong></div>
               <div><small>DURATION</small><strong>{{ describeLength(request) }}</strong></div>
               <div><small>{{ request.decisionNote ? 'YOUR NOTE' : 'REASON' }}</small><strong>{{ request.decisionNote ?? request.reason }}</strong></div>
-              @if (request.status === 'pending') {
+              @if (isWaitingForHr(request)) {
+                <app-status-pill tone="late">Waiting for HR</app-status-pill>
+              } @else if (request.status === 'pending') {
                 <div class="request-actions labeled">
                   <button type="button" class="decline" [disabled]="decisions.busyId() === request.id" (click)="declining.set({ id: request.id, name: request.employeeName ?? '', kind: 'leave' })" data-testid="reject"><app-icon name="x" [size]="16" /> Decline</button>
                   <button type="button" class="approve" [disabled]="decisions.busyId() === request.id" (click)="approveLeave(request)" data-testid="approve"><app-icon name="check" [size]="16" /> Approve</button>
@@ -178,16 +183,16 @@ export class ApprovalsPage {
   protected readonly leaveList = computed(() => valueOr(this.leave, []));
   protected readonly pendingFixes = computed(() =>
     valueOr(this.fixes, [])
-      .filter(({ status }) => status === 'pending')
+      .filter((fix) => fix.status === 'pending' && !isWaitingForHr(fix))
       .sort((first, second) => first.raisedOn.localeCompare(second.raisedOn)),
   );
-  protected readonly pendingHomeDays = computed(() => [...valueOr(this.homeDays, [])].sort((first, second) => first.date.localeCompare(second.date)));
-  protected readonly pendingCompOffs = computed(() => [...valueOr(this.compOffs, [])].sort((first, second) => first.date.localeCompare(second.date)));
-  protected readonly pendingOvertime = computed(() => [...valueOr(this.overtime, [])].sort((first, second) => first.date.localeCompare(second.date)));
+  protected readonly pendingHomeDays = computed(() => valueOr(this.homeDays, []).filter(isHodStep).sort((first, second) => first.date.localeCompare(second.date)));
+  protected readonly pendingCompOffs = computed(() => valueOr(this.compOffs, []).filter(isHodStep).sort((first, second) => first.date.localeCompare(second.date)));
+  protected readonly pendingOvertime = computed(() => valueOr(this.overtime, []).filter(isHodStep).sort((first, second) => first.date.localeCompare(second.date)));
   private readonly byStatus = (status: LeaveRequest['status']) => this.leaveList().filter((request) => request.status === status);
 
   protected readonly tabs = computed(() => [
-    { value: 'pending' as const, label: 'Pending', count: this.byStatus('pending').length },
+    { value: 'pending' as const, label: 'Pending', count: this.byStatus('pending').filter(isHodStep).length },
     { value: 'approved' as const, label: 'Approved', count: 0 },
     { value: 'rejected' as const, label: 'Declined', count: 0 },
     { value: 'fixes' as const, label: 'Punch fixes', count: this.pendingFixes().length },
@@ -232,6 +237,7 @@ export class ApprovalsPage {
       .join(', ');
 
   protected readonly describeDates = describeDates;
+  protected readonly isWaitingForHr = isWaitingForHr;
   protected readonly describeLength = describeLength;
   protected readonly formatDayShort = formatDayShort;
   protected readonly fixCategoryLabel = fixCategoryLabel;

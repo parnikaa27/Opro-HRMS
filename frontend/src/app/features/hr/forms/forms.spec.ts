@@ -278,7 +278,7 @@ describe('HR forms', () => {
       await submit(root);
       const request = http.expectOne('/api/hr/leave-types/annual');
       expect(request.request.body).toEqual({
-        name: 'Annual leave', allowsHalfDay: false, isUnlimited: false, defaultEntitlement: 32, isForEveryone: true, carriesForward: false,
+        name: 'Annual leave', allowsHalfDay: false, isUnlimited: false, defaultEntitlement: 32, isForEveryone: true, carriesForward: false, needsHrApproval: false,
       });
       request.flush({});
       await settle();
@@ -292,7 +292,7 @@ describe('HR forms', () => {
 
       await submit(root);
 
-      expect(http.expectOne('/api/hr/leave-types/unpaid').request.body).toEqual({ name: 'Unpaid leave', allowsHalfDay: false, isUnlimited: true, isForEveryone: true, carriesForward: false });
+      expect(http.expectOne('/api/hr/leave-types/unpaid').request.body).toEqual({ name: 'Unpaid leave', allowsHalfDay: false, isUnlimited: true, isForEveryone: true, carriesForward: false, needsHrApproval: false });
     });
 
     it('adds a type given one by one that carries forward up to a cap', async () => {
@@ -302,11 +302,12 @@ describe('HR forms', () => {
       fill(root, 'policy-given', 'individual');
       fill(root, 'policy-year-end', 'carry');
       fill(root, 'policy-cap', '2');
+      fill(root, 'policy-approval', 'hr');
       await submit(root);
 
       const request = http.expectOne((sent) => sent.method === 'POST' && sent.url === '/api/hr/leave-types');
       expect(request.request.body).toEqual({
-        name: 'Marriage leave', allowsHalfDay: true, isUnlimited: false, defaultEntitlement: 5, isForEveryone: false, carriesForward: true, carryForwardCap: 2,
+        name: 'Marriage leave', allowsHalfDay: true, isUnlimited: false, defaultEntitlement: 5, isForEveryone: false, carriesForward: true, carryForwardCap: 2, needsHrApproval: true,
       });
       request.flush({});
       await settle();

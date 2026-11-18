@@ -2,7 +2,7 @@ import { HttpClient, httpResource } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AttendanceDay, WorkSchedule } from '../../models/attendance';
-import { Announcement, ChangeRequest, CompanyEvent, DocumentEntry, DocumentType, Holiday } from '../../models/company';
+import { Announcement, ApprovalRules, ApprovalsWaiting, ChangeRequest, CompanyEvent, DocumentEntry, DocumentType, Holiday } from '../../models/company';
 import { Employee, EmployeeDetails, Visa } from '../../models/employee';
 import { FlightYear } from '../../models/flight';
 import { BalanceAdjustment, LeaveBalance, LeaveType } from '../../models/leave';
@@ -21,6 +21,11 @@ export type NewAdjustment = Pick<BalanceAdjustment, 'employeeId' | 'type' | 'day
 export type NewSchedule = Omit<WorkSchedule, 'id' | 'setBy' | 'setByName' | 'setOn'>;
 
 const enc = encodeURIComponent;
+
+// The lists HR decides from, as the server names them in the decision URL.
+export type ApprovalKind = 'leave' | 'corrections' | 'home-days' | 'comp-offs' | 'overtime';
+
+export const NOTHING_WAITING: ApprovalsWaiting = { leave: [], corrections: [], homeDays: [], compOffs: [], overtime: [] };
 
 @Injectable({ providedIn: 'root' })
 export class HrApi {
@@ -81,6 +86,13 @@ export class HrApi {
     code ? this.send<DocumentType>('PUT', `/api/hr/document-types/${enc(code)}`, rules) : this.send<DocumentType>('POST', '/api/hr/document-types', rules);
   // Deleted if nobody ever uploaded one, otherwise retired with the copies kept.
   removeDocumentType = (code: string) => this.send<void>('DELETE', `/api/hr/document-types/${enc(code)}`);
+  // What the HOD approved and HR approves too.
+  approvals = ({ isEnabled = () => true }: { isEnabled?: () => boolean } = {}) =>
+    httpResource<ApprovalsWaiting>(() => (isEnabled() ? '/api/hr/approvals' : undefined), { defaultValue: NOTHING_WAITING });
+  decideApproval = (kind: ApprovalKind, id: string, decision: 'approved' | 'rejected', note?: string) =>
+    this.send<void>('POST', `/api/hr/approvals/${kind}/${enc(id)}/decision`, { decision, ...(note && { note }) });
+  approvalRules = () => httpResource<ApprovalRules>(() => '/api/hr/approval-rules');
+  saveApprovalRules = (rules: ApprovalRules) => this.send<ApprovalRules>('PUT', '/api/hr/approval-rules', rules);
   waitingDocuments = ({ isEnabled = () => true }: { isEnabled?: () => boolean } = {}) =>
     httpResource<DocumentEntry[]>(() => (isEnabled() ? '/api/hr/documents' : undefined), { defaultValue: [] });
   employeeDocuments = (id: () => string) => httpResource<DocumentEntry[]>(() => `/api/hr/employees/${enc(id())}/documents`, { defaultValue: [] });

@@ -54,6 +54,9 @@ export interface CompOffClaim {
   decidedByName?: string;
   decidedOn?: string;
   decisionNote?: string;
+  // Set while it waits for HR after the HOD approved.
+  hodApprovedByName?: string;
+  hodApprovedOn?: string;
 }
 
 // A working day someone stayed past the shift. minutes is what was approved, or what the punches show now.
@@ -67,6 +70,9 @@ export interface OvertimeClaim {
   decidedByName?: string;
   decidedOn?: string;
   decisionNote?: string;
+  // Set while it waits for HR after the HOD approved.
+  hodApprovedByName?: string;
+  hodApprovedOn?: string;
 }
 
 export interface HomeDay {
@@ -79,6 +85,9 @@ export interface HomeDay {
   decidedByName?: string;
   decidedOn?: string;
   decisionNote?: string;
+  // Set while it waits for HR after the HOD approved.
+  hodApprovedByName?: string;
+  hodApprovedOn?: string;
 }
 
 export interface WorkSchedule {
@@ -109,4 +118,7 @@ export interface CorrectionRequest {
   decidedBy?: string;
   decidedOn?: string;
   decisionNote?: string;
+  // Set while it waits for HR after the HOD approved.
+  hodApprovedByName?: string;
+  hodApprovedOn?: string;
 }

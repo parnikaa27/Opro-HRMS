@@ -38,6 +38,8 @@ const db = {
   compOffs: [],
   // The two late days in Spring's dev seed, with the minutes Spring works out from its fixed punches.
   overtime: load('overtime'),
+  // Which requests HR approves after the HOD. Leave types carry their own needsHrApproval.
+  approvalRules: { punchFixes: false, homeDays: false, compOff: false, overtime: false },
   receipts: new Map(),
   // Uploaded files live in memory like everything else, keyed by employee or request.
   photos: new Map(),
@@ -100,7 +102,12 @@ class HttpError extends Error {
 
 const today = () => maldivesNow().date;
 const nameOf = (employeeId) => db.employees.find(({ id }) => id === employeeId)?.fullName;
-const withName = (item) => ({ ...item, employeeName: nameOf(item.employeeId), ...(item.decidedBy && { decidedByName: nameOf(item.decidedBy) }) });
+const withName = (item) => ({
+  ...item,
+  employeeName: nameOf(item.employeeId),
+  ...(item.decidedBy && { decidedByName: nameOf(item.decidedBy) }),
+  ...(item.hodApprovedBy && { hodApprovedByName: nameOf(item.hodApprovedBy) }),
+});
 // Photos are versioned in the URL, so a new one is never hidden behind a cached old one.
 const profileOf = (employee) => ({
   ...employee,
@@ -449,19 +456,66 @@ const homeDecisionText = (user, { status, decisionNote, date }) =>
     ? `${user.fullName} approved working from home on ${sayDate(date)}.`
     : `${user.fullName} didn't approve working from home on ${sayDate(date)}, so it counts as absent: ${sentence(decisionNote ?? 'no reason given')}`;
 
-// Never for themselves.
-const decide = (collection, user, scope, id, { decision, note }) => {
+const RULE_FOR = { corrections: 'punchFixes', homeDays: 'homeDays', compOffs: 'compOff', overtime: 'overtime' };
+const NOTICE_KIND = { leaveRequests: 'leave', corrections: 'correction', homeDays: 'home', compOffs: 'leave', overtime: 'overtime' };
+const needsHr = (collection, item) =>
+  collection === 'leaveRequests' ? Boolean(db.leaveTypes.find(({ code }) => code === item.type)?.needsHrApproval) : db.approvalRules[RULE_FOR[collection]];
+const whatFor = (collection, item) => ({
+  leaveRequests: () => `${typeName(item.type)} for ${sayDates(item)}`,
+  corrections: () => `punch fix for ${sayDate(item.date)}`,
+  homeDays: () => `day working from home on ${sayDate(item.date)}`,
+  compOffs: () => `compensatory off for working on ${sayDate(item.date)}`,
+  overtime: () => `${sayDuration(overtimeView(item).minutes)} of overtime on ${sayDate(item.date)}`,
+})[collection]();
+const viewOf = (collection, item) => (collection === 'compOffs' ? compOffView(item) : collection === 'overtime' ? overtimeView(item) : withName(item));
+
+// The HOD step, never for themselves. When HR approves after the HOD, an approval passes it to HR, unless the HOD is HR.
+const decide = (collection, user, scope, id, body) => {
   const ids = idsIn(user, scope);
   const item = db[collection].find((entry) => entry.id === id && entry.employeeId !== user.id && ids.has(entry.employeeId));
   if (!item) {
     throw new HttpError(404, 'Request not found');
   }
-  if (item.status !== 'pending' || !['approved', 'rejected'].includes(decision)) {
+  if (item.status !== 'pending' || !['approved', 'rejected'].includes(body.decision)) {
     throw new HttpError(409, 'This request has already been decided');
   }
-  if (collection === 'overtime' && decision === 'approved' && !overtimeView(item).minutes) {
+  if (item.hodApprovedBy) {
+    throw new HttpError(409, 'Their HOD approved this. It now waits for HR.');
+  }
+  if (collection === 'overtime' && body.decision === 'approved' && !overtimeView(item).minutes) {
     throw new HttpError(409, 'Their punches that day no longer show half an hour past the shift. Decline it, or fix their punches.');
   }
+  if (body.decision === 'approved' && needsHr(collection, item) && !user.roles.includes('HR')) {
+    const passed = { ...item, hodApprovedBy: user.id, hodApprovedOn: today() };
+    db[collection] = db[collection].map((entry) => (entry.id === id ? passed : entry));
+    const what = whatFor(collection, item);
+    notify(item.employeeId, NOTICE_KIND[collection], `${user.fullName} approved your ${what}. It now waits for HR.`);
+    activeEmployees()
+      .filter((employee) => employee.roles.includes('HR') && employee.id !== item.employeeId)
+      .forEach((hr) => notify(hr.id, 'approval', `${user.fullName} approved ${nameOf(item.employeeId)}'s ${what}. It needs HR too. Decide it from Inbox.`));
+    return viewOf(collection, passed);
+  }
+  return finishDecision(collection, user, item, body);
+};
+
+// The HR step: only what the HOD passed on, never their own.
+const decideForHr = (collection, user, id, body) => {
+  requireHr(user);
+  const item = db[collection].find((entry) => entry.id === id && entry.status === 'pending' && entry.hodApprovedBy);
+  if (!item) {
+    throw new HttpError(404, 'Nothing waiting for HR with that id');
+  }
+  if (item.employeeId === user.id) {
+    throw new HttpError(403, 'Your own requests go to another HR person.');
+  }
+  if (body.decision === 'rejected' && !String(body.note ?? '').trim()) {
+    throw new HttpError(400, 'Give a short reason so they know what to do next.');
+  }
+  return finishDecision(collection, user, item, body);
+};
+
+const finishDecision = (collection, user, item, { decision, note }) => {
+  const id = item.id;
   if (collection === 'corrections' && decision === 'approved') {
     applyFix(item);
     raiseOvertime(item.employeeId, item.date);
@@ -968,13 +1022,39 @@ const routes = [
     notify(adjustment.employeeId, 'leave', `HR ${days > 0 ? 'added' : 'removed'} ${sayDays(days)} ${days > 0 ? 'to' : 'from'} your ${typeName(adjustment.type)}. ${sentence(adjustment.reason)}`);
     return { ...adjustment, byName: user.fullName };
   }],
+  ['GET', /^\/api\/hr\/approvals$/, ({ user }) => {
+    requireHr(user);
+    const waiting = (collection, dateOf) =>
+      db[collection]
+        .filter((entry) => entry.status === 'pending' && entry.hodApprovedBy && entry.employeeId !== user.id)
+        .sort((first, second) => dateOf(first).localeCompare(dateOf(second)))
+        .map((entry) => viewOf(collection, entry));
+    return {
+      leave: waiting('leaveRequests', ({ from }) => from),
+      corrections: waiting('corrections', ({ raisedOn }) => raisedOn),
+      homeDays: waiting('homeDays', ({ date }) => date),
+      compOffs: waiting('compOffs', ({ date }) => date),
+      overtime: waiting('overtime', ({ date }) => date),
+    };
+  }],
+  ['POST', /^\/api\/hr\/approvals\/(leave|corrections|home-days|comp-offs|overtime)\/([\w-]+)\/decision$/, ({ user, params: [kind, id], body }) =>
+    decideForHr({ leave: 'leaveRequests', corrections: 'corrections', 'home-days': 'homeDays', 'comp-offs': 'compOffs', overtime: 'overtime' }[kind], user, id, body)],
+  ['GET', /^\/api\/hr\/approval-rules$/, ({ user }) => {
+    requireHr(user);
+    return db.approvalRules;
+  }],
+  ['PUT', /^\/api\/hr\/approval-rules$/, ({ user, body }) => {
+    requireHr(user);
+    db.approvalRules = { punchFixes: Boolean(body.punchFixes), homeDays: Boolean(body.homeDays), compOff: Boolean(body.compOff), overtime: Boolean(body.overtime) };
+    return db.approvalRules;
+  }],
   ['PUT', /^\/api\/hr\/leave-types\/([\w-]+)$/, ({ user, params: [code], body }) => {
     requireHr(user);
     const type = db.leaveTypes.find((entry) => entry.code === code);
     if (!type) {
       throw new HttpError(404, 'Leave type not found');
     }
-    const updated = { ...type, ...pick(body, ['name', 'allowsHalfDay', 'defaultEntitlement', 'documentRequiredAfterDays', 'isForEveryone', 'carriesForward', 'carryForwardCap']) };
+    const updated = { ...type, ...pick(body, ['name', 'allowsHalfDay', 'defaultEntitlement', 'documentRequiredAfterDays', 'isForEveryone', 'carriesForward', 'carryForwardCap', 'needsHrApproval']) };
     db.leaveTypes = db.leaveTypes.map((entry) => (entry.code === code ? updated : entry));
     return updated;
   }],
@@ -984,7 +1064,7 @@ const routes = [
     if (!code || db.leaveTypes.some((entry) => entry.code === code)) {
       throw new HttpError(409, "There's already a leave type called that.");
     }
-    const type = { code, ...pick(body, ['name', 'allowsHalfDay', 'isUnlimited', 'defaultEntitlement', 'documentRequiredAfterDays', 'isForEveryone', 'carriesForward', 'carryForwardCap']) };
+    const type = { code, ...pick(body, ['name', 'allowsHalfDay', 'isUnlimited', 'defaultEntitlement', 'documentRequiredAfterDays', 'isForEveryone', 'carriesForward', 'carryForwardCap', 'needsHrApproval']) };
     db.leaveTypes = [...db.leaveTypes.filter(({ code: existing }) => existing !== 'comp-off'), type, ...db.leaveTypes.filter(({ code: existing }) => existing === 'comp-off')];
     if (type.isForEveryone && !type.isUnlimited) {
       activeEmployees().forEach(({ id }) => setEntitled(id, code, Number(type.defaultEntitlement ?? 0)));

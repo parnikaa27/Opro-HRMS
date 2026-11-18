@@ -239,7 +239,7 @@ class HrApiTests {
 
     private static final String ANNUAL_POLICY = """
             {"name":"Annual leave","allowsHalfDay":true,"isUnlimited":false,"defaultEntitlement":32,"isForEveryone":true,
-             "carriesForward":true,"carryForwardCap":15}""";
+             "carriesForward":true,"carryForwardCap":15,"needsHrApproval":false}""";
 
     @Test
     void changesALeaveType() throws Exception {

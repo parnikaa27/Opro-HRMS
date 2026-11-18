@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import mv.opro.hrms.employee.Employee;
 import mv.opro.hrms.employee.People;
 import mv.opro.hrms.files.Files;
@@ -68,7 +69,8 @@ class LeaveController {
     List<LeaveRequestResponse> requests() {
         Employee me = currentUser.get();
         List<LeaveRequest> requests = leave.requestsOf(me.getId());
-        Map<String, String> deciders = people.namesOf(requests.stream().map(LeaveRequest::getDecidedBy).filter(Objects::nonNull).collect(Collectors.toSet()));
+        Map<String, String> deciders = people.namesOf(requests.stream()
+                .flatMap(request -> Stream.of(request.getDecidedBy(), request.getHodApprovedBy())).filter(Objects::nonNull).collect(Collectors.toSet()));
         return requests.stream().map(request -> LeaveRequestResponse.of(request, me.getFullName(), deciders)).toList();
     }
 

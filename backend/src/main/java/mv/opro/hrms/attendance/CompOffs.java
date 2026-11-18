@@ -5,6 +5,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import mv.opro.hrms.approval.ApprovalSteps;
 import mv.opro.hrms.common.ApiException;
 import mv.opro.hrms.common.Wording;
 import mv.opro.hrms.employee.Employee;
@@ -32,15 +33,17 @@ public class CompOffs {
     private final EmployeeRepository employees;
     private final AttendanceService attendance;
     private final LeaveService leave;
+    private final ApprovalSteps steps;
     private final Notifications notifications;
     private final Clock clock;
 
-    CompOffs(CompOffClaimRepository claims, EmployeeRepository employees, AttendanceService attendance, LeaveService leave, Notifications notifications,
-            Clock clock) {
+    CompOffs(CompOffClaimRepository claims, EmployeeRepository employees, AttendanceService attendance, LeaveService leave, ApprovalSteps steps,
+            Notifications notifications, Clock clock) {
         this.claims = claims;
         this.employees = employees;
         this.attendance = attendance;
         this.leave = leave;
+        this.steps = steps;
         this.notifications = notifications;
         this.clock = clock;
     }
@@ -59,6 +62,29 @@ public class CompOffs {
         if (!claim.isPending()) {
             throw new ApiException(HttpStatus.CONFLICT, "This day has already been decided.");
         }
+        steps.checkHodStep(claim.isWaitingForHr());
+        if (APPROVED.equals(decision.decision()) && steps.passesToHr(decider, steps.needsHr(ApprovalSteps.Kind.COMP_OFF))) {
+            earnedNow(claim);
+            claim.approveForHod(decider.getId(), LocalDate.now(clock));
+            steps.passToHr(decider, claim.getEmployeeId(), Notification.Kind.LEAVE, "compensatory off for working on " + Wording.date(claim.getWorkDate()));
+            return view(claim);
+        }
+        return finish(decider, claim, decision);
+    }
+
+    public List<Claim> waitingForHr() {
+        return claims.findByStatusAndHodApprovedByNotNullOrderByWorkDate("pending").stream().map(this::view).toList();
+    }
+
+    // The HR step, after the HOD approved.
+    @Transactional
+    public Claim decideForHr(Employee hr, String id, Corrections.Decision decision) {
+        CompOffClaim claim = claims.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Claim not found"));
+        steps.checkHrStep(hr, claim.getEmployeeId(), claim.isWaitingForHr());
+        return finish(hr, claim, decision);
+    }
+
+    private Claim finish(Employee decider, CompOffClaim claim, Corrections.Decision decision) {
         String date = Wording.date(claim.getWorkDate());
         LocalDate today = LocalDate.now(clock);
         if (!APPROVED.equals(decision.decision())) {
@@ -70,6 +96,16 @@ public class CompOffs {
                     + date + ": " + Wording.sentence(decision.note()));
             return view(claim);
         }
+        BigDecimal days = earnedNow(claim);
+        leave.earnCompOff(decider, claim.getEmployeeId(), claim.getWorkDate(), days);
+        claim.approve(days, decider.getId(), today);
+        notifications.tell(claim.getEmployeeId(), Notification.Kind.LEAVE, decider.getFullName() + " approved " + Wording.days(days)
+                + " of compensatory off for working on " + date + ".");
+        return view(claim);
+    }
+
+    // What approving gives now, if the day can be approved: punched, and punched out.
+    private BigDecimal earnedNow(CompOffClaim claim) {
         AttendanceDay day = dayOf(claim);
         if (day == null || day.punches().isEmpty()) {
             throw new ApiException(HttpStatus.CONFLICT, "There are no punches on that day any more.");
@@ -77,12 +113,7 @@ public class CompOffs {
         if (day.punches().size() % 2 == 1) {
             throw new ApiException(HttpStatus.CONFLICT, "They haven't punched out that day yet. Approve it once they have, or fix their punches.");
         }
-        BigDecimal days = earned(day);
-        leave.earnCompOff(decider, claim.getEmployeeId(), claim.getWorkDate(), days);
-        claim.approve(days, decider.getId(), today);
-        notifications.tell(claim.getEmployeeId(), Notification.Kind.LEAVE, decider.getFullName() + " approved " + Wording.days(days)
-                + " of compensatory off for working on " + date + ".");
-        return view(claim);
+        return earned(day);
     }
 
     private Claim view(CompOffClaim claim) {

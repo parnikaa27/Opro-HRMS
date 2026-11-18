@@ -11,4 +11,6 @@ interface CorrectionRequestRepository extends JpaRepository<CorrectionRequest, S
     List<CorrectionRequest> findByEmployeeIdInOrderByRaisedOnDesc(Collection<String> employeeIds);
 
     List<CorrectionRequest> findByEmployeeIdInAndStatusOrderByRaisedOnDesc(Collection<String> employeeIds, String status);
+
+    List<CorrectionRequest> findByStatusAndHodApprovedByNotNullOrderByRaisedOn(String status);
 }

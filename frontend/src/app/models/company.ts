@@ -1,3 +1,6 @@
+import { CompOffClaim, CorrectionRequest, HomeDay, OvertimeClaim } from './attendance';
+import { LeaveRequest } from './leave';
+
 export interface Holiday {
   id: string;
   date: string;
@@ -62,4 +65,21 @@ export interface AppNotification {
   text: string;
   createdOn: string;
   isRead: boolean;
+}
+
+// Requests the HOD approved that HR approves too, by kind.
+export interface ApprovalsWaiting {
+  leave: LeaveRequest[];
+  corrections: CorrectionRequest[];
+  homeDays: HomeDay[];
+  compOffs: CompOffClaim[];
+  overtime: OvertimeClaim[];
+}
+
+// Which requests HR approves after the HOD. Leave types carry their own needsHrApproval.
+export interface ApprovalRules {
+  punchFixes: boolean;
+  homeDays: boolean;
+  compOff: boolean;
+  overtime: boolean;
 }

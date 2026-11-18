@@ -21,7 +21,7 @@ class LeaveTypesApiTests {
     private static final int SEEDED_NOTIFICATIONS = 7;
     private static final String MARRIAGE = """
             {"name":"Marriage leave","allowsHalfDay":false,"isUnlimited":false,"defaultEntitlement":5,"isForEveryone":%s,
-             "carriesForward":false}""";
+             "carriesForward":false,"needsHrApproval":false}""";
 
     @LocalServerPort
     int port;
