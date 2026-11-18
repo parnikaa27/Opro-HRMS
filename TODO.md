@@ -23,6 +23,7 @@ What's left before Opro HRMS can go live, and what's waiting on someone. Kept up
 - [ ] **The document list:** each document's name, who uploads it, whether it expires, and whether only expatriates need it. HR enters it in Policies. The dev data has placeholders.
 - [ ] **Exchange rates:** MVR 15.42 and INR 88 per USD are starting values. HR can change them in Policies.
 - [ ] **Footer:** legal name, address, HR email, and the Privacy and HR policy links in `frontend/src/app/core/config.ts`.
+- [ ] **Overtime:** 30 minutes past the shift is the placeholder minimum, and whether overtime is paid (at what rate) or taken as time off. Payroll needs the rate.
 - [ ] **Comp off for super admins:** today they earn none for working a Friday or a holiday, because nobody is above them to approve it.
 
 ## Later, if needed
@@ -36,15 +37,15 @@ What's left before Opro HRMS can go live, and what's waiting on someone. Kept up
 What the document asks for, against what's built. "Done" means built and tested; "Partly" says what's missing.
 
 **Decided on 18 November**
-- Build order: **foundations first** (employee record, Maldives compliance, executive dashboard, reports, people alerts), then the other modules. The record, compliance and alerts are built, and so are the executive dashboard and reports (CSV, Excel and PDF) for HR and super admins. **Next: overtime, approval chains, then the modules (payroll first)**.
-- **Overtime comes back**: worked out from punches beyond the shift and approved by the HOD, ready for payroll.
+- Build order: **foundations first** (employee record, Maldives compliance, executive dashboard, reports, people alerts), then the other modules. The record, compliance and alerts are built, and so are the executive dashboard and reports (CSV, Excel and PDF) for HR and super admins. Overtime is built too. **Next: approval chains, then the modules (payroll first)**.
+- **Overtime comes back**: worked out from punches beyond the shift and approved by the HOD, ready for payroll. Done: time after the shift ends, from 30 minutes, raised by itself, working days only (days off keep earning comp off).
 - **Biometric devices stay out** until there's a device make and model to integrate with. Punching stays in the portal.
 - **Approvals become chains HR can set** for each kind of request. Today's single HOD step is the default.
 - **Email is the first alert channel**, through Opro's Microsoft 365, so it's tied to Microsoft sign in. SMS and a native app come later.
 
 **1. Executive dashboard**
 - Done: workforce (headcount, joiners, leavers, attrition, retention, locals and expatriates, gender, employment type, age, departments, nationalities), attendance today and this month, leave (waiting, annual used, sick trend), compliance (expired and expiring papers, quota use), birthdays, anniversaries, probation and contract endings. For HR and super admins.
-- Not yet: business travel, shift status, overtime, and the recruitment, payroll, performance, training and engagement sections (they arrive with their modules).
+- Not yet: business travel, shift status, overtime (built, not on the dashboard yet), and the recruitment, payroll, performance, training and engagement sections (they arrive with their modules).
 
 **2. Employee information**
 - Done: profile with gender, date of birth and employment type, emergency contact, passport (last 4 digits), work permit and visa, medical insurance, bank details (entered by the person, verified by HR), education, work experience, documents repository with HR checks.
@@ -57,7 +58,8 @@ What the document asks for, against what's built. "Done" means built and tested;
 
 **5. Attendance**
 - Done: GPS punching from the office, a resort or home, mobile friendly, late arrivals, breaks.
-- Not yet: biometric integration (clash above), shift scheduling and rosters (one company schedule today), early departure, overtime (clash above).
+- Done since: overtime, approved by the HOD.
+- Not yet: biometric integration (clash above), shift scheduling and rosters (one company schedule today), early departure.
 
 **6. Leave**
 - Done: all the listed types (HR adds any type, emergency leave included), approval by the HOD, calendar, balances.
@@ -83,11 +85,12 @@ What the document asks for, against what's built. "Done" means built and tested;
 
 **13. Manager self service**
 - Done: approve leave, punch fixes and home days, team dashboard, team attendance export.
-- Not yet: approve overtime (clash above), appraisals, recruitment requests, wider reports.
+- Done since: approve overtime.
+- Not yet: appraisals, recruitment requests, wider reports.
 
 **14. Reports**
 - Done: headcount, joiners and leavers (attrition and turnover), workforce mix by department, nationality, gender, age or employment type, leave balances, leave taken, attendance, visa and permit expiry. Each as CSV, Excel or PDF.
-- Not yet: recruitment, payroll, salary cost, budget vs actual, training, performance, overtime (with their modules).
+- Not yet: an overtime report (the data exists now), and recruitment, payroll, salary cost, budget vs actual, training and performance (with their modules).
 
 **15. Workflows**
 - Partly: leave, punch fixes, home days, comp off and document checks, all single level.

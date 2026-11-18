@@ -61,7 +61,8 @@ public class Notification {
         RECORD("record"),
         SCHEDULE("schedule"),
         HOME("home"),
-        FLIGHT("flight");
+        FLIGHT("flight"),
+        OVERTIME("overtime");
 
         private final String value;
 

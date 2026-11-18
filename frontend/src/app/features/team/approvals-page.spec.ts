@@ -1,6 +1,6 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { CompOffClaim, CorrectionRequest, HomeDay } from '../../models/attendance';
+import { CompOffClaim, CorrectionRequest, HomeDay, OvertimeClaim } from '../../models/attendance';
 import { LeaveRequest } from '../../models/leave';
 import { click, fail, fill, NOW, respond, setupHttp, settle, text, texts } from '../../../testing/fixtures';
 import { ApprovalsPage } from './approvals-page';
@@ -21,6 +21,10 @@ const LEAVE = [
 const FIXES = [fix({ id: 'AC-1', employeeName: 'Rohit Verma' }), fix({ id: 'AC-2', status: 'approved' })];
 const HOME_DAYS: HomeDay[] = [{ id: 'HW-1', employeeId: 'K', employeeName: 'Arjun Reddy', date: '2026-11-12', status: 'pending' }];
 const COMP_OFFS: CompOffClaim[] = [{ id: 'CO-1', employeeId: 'R', employeeName: 'Rohit Verma', date: '2026-11-06', status: 'pending', days: 0.5, workedMinutes: 130 }];
+const OVERTIME: OvertimeClaim[] = [
+  { id: 'OT-2', employeeId: 'R', employeeName: 'Rohit Verma', date: '2026-11-10', status: 'pending', minutes: 0 },
+  { id: 'OT-1', employeeId: 'A', employeeName: 'Arjun Reddy', date: '2026-11-09', status: 'pending', minutes: 80 },
+];
 
 describe('ApprovalsPage', () => {
   let http: HttpTestingController;
@@ -36,13 +40,14 @@ describe('ApprovalsPage', () => {
     vi.restoreAllMocks();
   });
 
-  const render = async (leaveRequests: LeaveRequest[] = LEAVE, fixes: CorrectionRequest[] = FIXES, homeDays: HomeDay[] = HOME_DAYS, compOffs: CompOffClaim[] = COMP_OFFS) => {
+  const render = async (leaveRequests: LeaveRequest[] = LEAVE, fixes: CorrectionRequest[] = FIXES, homeDays: HomeDay[] = HOME_DAYS, compOffs: CompOffClaim[] = COMP_OFFS, overtime: OvertimeClaim[] = OVERTIME) => {
     const fixture = TestBed.createComponent(ApprovalsPage);
     await respond(http, {
       '/api/team/leave-requests': leaveRequests,
       '/api/team/corrections': fixes,
       '/api/team/home-days?status=pending': homeDays,
       '/api/team/comp-offs?status=pending': compOffs,
+      '/api/team/overtime?status=pending': overtime,
       '/api/leave/types': [{ code: 'annual', name: 'Annual leave', allowsHalfDay: true }],
     });
     return fixture.nativeElement as HTMLElement;
@@ -54,7 +59,7 @@ describe('ApprovalsPage', () => {
   it('shows waiting leave oldest first with counts on the tabs and overlap warnings', async () => {
     const root = await render();
 
-    expect([...root.querySelectorAll('[role=tab]')].map((tab) => text(tab))).toEqual(['Pending 2', 'Approved', 'Declined', 'Punch fixes 1', 'Home working 1', 'Comp off 1']);
+    expect([...root.querySelectorAll('[role=tab]')].map((tab) => text(tab))).toEqual(['Pending 2', 'Approved', 'Declined', 'Punch fixes 1', 'Home working 1', 'Comp off 1', 'Overtime 2']);
     expect(texts(root, 'leave-row').map((item) => item.split(' Decline')[0])).toEqual([
       'PN Priya Nair Annual leave · Submitted yesterday Also off then: Sneha Kulkarni (pending), Karan Mehta DATES 20 Dec to 24 December 2026 DURATION 3 days REASON Trip',
       'SK Sneha Kulkarni Annual leave · Submitted today Also off then: Priya Nair (pending) DATES 22 December 2026 DURATION 1 day REASON Trip',
@@ -133,13 +138,17 @@ describe('ApprovalsPage', () => {
   });
 
   it('says when each tab is empty', async () => {
-    const root = await render([], [], []);
+    const root = await render([], [], [], [], []);
 
     expect(text(root)).toContain('Nothing waiting for you.');
     click(root, 'tab-fixes');
     expect(text(root)).toContain('No punch fixes waiting for you.');
     click(root, 'tab-home');
     expect(text(root)).toContain('Nobody is waiting for a home working decision.');
+    click(root, 'tab-comp-off');
+    expect(text(root)).toContain('Nobody worked a day off that needs compensatory off.');
+    click(root, 'tab-overtime');
+    expect(text(root)).toContain('Nobody stayed past the shift long enough to count.');
   });
 
   it('gives compensatory off for a day off worked, or declines it with a reason', async () => {
@@ -157,6 +166,36 @@ describe('ApprovalsPage', () => {
     fill(root, 'decision-note', 'Nobody asked you to come in');
     click(root, 'confirm-reject');
     expect(http.expectOne('/api/team/comp-offs/CO-1/decision').request.body).toEqual({ decision: 'rejected', note: 'Nobody asked you to come in' });
+  });
+
+  it('approves overtime oldest first, and only while the punches still show it', async () => {
+    const root = await render();
+    click(root, 'tab-overtime');
+    expect(texts(root, 'pending-overtime')).toEqual([
+      expect.stringContaining('Arjun Reddy Stayed past the shift DATE Mon 9 Nov OVERTIME 1h 20m'),
+      expect.stringContaining('Rohit Verma Stayed past the shift DATE Tue 10 Nov OVERTIME Under 30 minutes now'),
+    ]);
+    const approve = [...root.querySelectorAll<HTMLButtonElement>('[data-testid=approve]')];
+    expect(approve.map(({ disabled }) => disabled)).toEqual([false, true]);
+
+    approve[0].click();
+    const approval = http.expectOne('/api/team/overtime/OT-1/decision');
+    expect(approval.request.body).toEqual({ decision: 'approved' });
+    approval.flush({});
+    await settle();
+    expect(http.match('/api/team/overtime?status=pending')).toHaveLength(1);
+  });
+
+  it('asks why before declining overtime', async () => {
+    const root = await render();
+    click(root, 'tab-overtime');
+
+    click(root, 'reject');
+    expect((root.querySelector('[data-testid=decision-note]') as HTMLTextAreaElement).placeholder).toBe('The delivery was moved to the next day, so staying late wasn’t needed.');
+    fill(root, 'decision-note', 'Not needed that day');
+    click(root, 'confirm-reject');
+
+    expect(http.expectOne('/api/team/overtime/OT-1/decision').request.body).toEqual({ decision: 'rejected', note: 'Not needed that day' });
   });
 
   it('approves a day worked from home in one click', async () => {
@@ -202,6 +241,7 @@ describe('ApprovalsPage', () => {
       '/api/company/corrections': FIXES,
       '/api/company/home-days?status=pending': HOME_DAYS,
       '/api/company/comp-offs?status=pending': COMP_OFFS,
+      '/api/company/overtime?status=pending': [],
       '/api/leave/types': [],
     });
     const root = fixture.nativeElement as HTMLElement;

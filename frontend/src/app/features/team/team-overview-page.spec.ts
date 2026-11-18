@@ -6,10 +6,10 @@ import { click, employee, fill, manager, NOW, respond, setupHttp, settle, text, 
 import { TeamOverviewPage } from './team-overview-page';
 
 const today = (status: AttendanceDay['status'], first?: string): AttendanceDay => ({
-  employeeId: 'x', date: TODAY, status, punches: first ? [{ at: `${TODAY}T${first}:00+05:00`, direction: 'in' }] : [], workedMinutes: 0,
+  employeeId: 'x', date: TODAY, status, punches: first ? [{ at: `${TODAY}T${first}:00+05:00`, direction: 'in' }] : [], workedMinutes: 0, overtimeMinutes: 0,
 });
 const record = (employeeId: string, date: string, status: AttendanceDay['status']): AttendanceDay => ({
-  employeeId, date, status, punches: status === 'present' || status === 'late' ? [{ at: `${date}T09:00:00+05:00`, direction: 'in' }] : [], workedMinutes: 0,
+  employeeId, date, status, punches: status === 'present' || status === 'late' ? [{ at: `${date}T09:00:00+05:00`, direction: 'in' }] : [], workedMinutes: 0, overtimeMinutes: 0,
 });
 
 const VISA = { workPermitNumber: 'W', visaNumber: 'V', passportLast4: '1', visaIssuedOn: '2024-11-03', visaExpiry: '2026-11-02', passportExpiry: '2026-12-01' };

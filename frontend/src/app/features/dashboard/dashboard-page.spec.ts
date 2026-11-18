@@ -6,7 +6,7 @@ import { employee, fail, NOW, respond, setupHttp, text, texts, TODAY } from '../
 import { DashboardPage, greetingFor } from './dashboard-page';
 
 const day = (date: string, status: AttendanceDay['status'], punches: AttendanceDay['punches'] = []): AttendanceDay => ({
-  employeeId: 'OPR-0018', date, status, punches, workedMinutes: punches.length ? 480 : 0,
+  employeeId: 'OPR-0018', date, status, punches, workedMinutes: punches.length ? 480 : 0, overtimeMinutes: 0,
 });
 const punch = (date: string, time: string, direction: 'in' | 'out') => ({ at: `${date}T${time}:00+05:00`, direction, device: 'Front desk' });
 

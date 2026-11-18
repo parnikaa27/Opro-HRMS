@@ -39,6 +39,28 @@ class DayCalculatorTest {
     }
 
     @Test
+    void overtimeIsTimeAfterTheShiftEndsOnceItReachesHalfAnHour() {
+        assertThat(work(List.of(at("08:55"), at("18:10"))).overtimeMinutes()).isEqualTo(70);
+        assertThat(work(List.of(at("08:55"), at("17:29"))).overtimeMinutes()).isZero();
+        assertThat(work(List.of(at("08:55"), at("12:30"), at("17:30"), at("19:00"))).overtimeMinutes()).isZero();
+    }
+
+    @Test
+    void comingInEarlyOrStayingLateToMakeUpALateStartIsNotOvertime() {
+        assertThat(work(List.of(at("07:00"), at("17:00"))).overtimeMinutes()).isZero();
+        assertThat(work(List.of(at("10:00"), at("18:00"))).overtimeMinutes()).isZero();
+        assertThat(work(List.of(at("09:30"), at("18:00"))).overtimeMinutes()).isEqualTo(30);
+    }
+
+    @Test
+    void daysOffAndUnfinishedDaysHaveNoOvertime() {
+        List<DayPunch> late = List.of(at("09:00"), at("19:00"));
+
+        assertThat(DayCalculator.work("OPR-0018", DAY, TODAY, late, RULES, OffDay.HOLIDAY, null).overtimeMinutes()).isZero();
+        assertThat(work(List.of(at("09:00"), at("18:00"), at("18:30"))).overtimeMinutes()).isZero();
+    }
+
+    @Test
     void theGracePeriodDecidesLate() {
         assertThat(work(List.of(at("09:15"), at("17:30"))).status()).isEqualTo("present");
         assertThat(work(List.of(at("09:16"), at("17:30"))).status()).isEqualTo("late");

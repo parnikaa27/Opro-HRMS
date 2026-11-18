@@ -73,3 +73,26 @@ test('a manager finds someone on the People page and from the top search', async
   await page.getByTestId('search-input').press('Enter');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Priya Nair');
 });
+
+test('a manager approves one late day as overtime and declines another with a reason', async ({ page }) => {
+  await signInAsManager(page);
+  await page.getByTestId('nav-leave').click();
+  await page.getByTestId('tab-overtime').click();
+
+  const overtimeRow = (name: string) => page.getByTestId('pending-overtime').filter({ hasText: name });
+  await expect(overtimeRow('Arjun Reddy')).toContainText('1h 20m');
+  await expect(overtimeRow('Rohit Verma')).toContainText('1h 5m');
+
+  await overtimeRow('Arjun Reddy').getByTestId('approve').click();
+  await expect(overtimeRow('Arjun Reddy')).toHaveCount(0);
+
+  await overtimeRow('Rohit Verma').getByTestId('reject').click();
+  await page.getByTestId('decision-note').fill('The delivery moved to the next day');
+  await page.getByTestId('confirm-reject').click();
+  await expect(page.getByTestId('pending-overtime')).toHaveCount(0);
+
+  await page.goto('/login');
+  await page.getByTestId('login-as-OPR-0018').click();
+  await page.getByTestId('notifications-button').click();
+  await expect(page.getByTestId('notifications-panel')).toContainText('Vikram Singh approved 1h 20m of overtime on Monday 9 November.');
+});

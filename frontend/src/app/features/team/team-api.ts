@@ -1,7 +1,7 @@
 import { HttpClient, httpResource, HttpResourceRequest } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { AttendanceDay, CompOffClaim, CorrectionRequest, HomeDay } from '../../models/attendance';
+import { AttendanceDay, CompOffClaim, CorrectionRequest, HomeDay, OvertimeClaim } from '../../models/attendance';
 import { Employee } from '../../models/employee';
 import { LeaveBalance, LeaveRequest } from '../../models/leave';
 
@@ -51,6 +51,7 @@ export class TeamApi {
     httpResource<CorrectionRequest[]>(listRequest('corrections', options), { defaultValue: [] });
   homeDays = (options: ListOptions = {}) => httpResource<HomeDay[]>(listRequest('home-days', options), { defaultValue: [] });
   compOffs = (options: ListOptions = {}) => httpResource<CompOffClaim[]>(listRequest('comp-offs', options), { defaultValue: [] });
+  overtime = (options: ListOptions = {}) => httpResource<OvertimeClaim[]>(listRequest('overtime', options), { defaultValue: [] });
 
   // An HOD decides for their reports. A super admin can step in for anyone but themselves.
   decideLeave = (id: string, decision: Decision, scope: ViewScope = 'team') =>
@@ -59,6 +60,8 @@ export class TeamApi {
     firstValueFrom(this.http.post<CorrectionRequest>(`/api/${scope}/corrections/${encodeURIComponent(id)}/decision`, decision));
   decideCompOff = (id: string, decision: Decision, scope: ViewScope = 'team') =>
     firstValueFrom(this.http.post<CompOffClaim>(`/api/${scope}/comp-offs/${encodeURIComponent(id)}/decision`, decision));
+  decideOvertime = (id: string, decision: Decision, scope: ViewScope = 'team') =>
+    firstValueFrom(this.http.post<OvertimeClaim>(`/api/${scope}/overtime/${encodeURIComponent(id)}/decision`, decision));
   decideHomeDay = (id: string, decision: Decision, scope: ViewScope = 'team') =>
     firstValueFrom(this.http.post<HomeDay>(`/api/${scope}/home-days/${encodeURIComponent(id)}/decision`, decision));
 }

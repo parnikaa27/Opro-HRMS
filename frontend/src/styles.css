@@ -901,13 +901,6 @@ td.row-actions {
   }
 }
 
-/* Overtime isn't tracked, so the summary has three cards, not the design's four. */
-@media (min-width: 621px) {
-  .summary-row {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
 /* Documents carry an upload link under their name, which the design doesn't show. */
 .document-list .text-link {
   margin-top: 4px;

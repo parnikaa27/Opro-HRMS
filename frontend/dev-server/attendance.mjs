@@ -46,6 +46,20 @@ export const maldivesNow = () => {
 const workedMinutes = (punchMinutes) =>
   punchMinutes.reduce((total, minute, index) => (index % 2 === 1 ? total + minute - punchMinutes[index - 1] : total), 0);
 
+const MIN_OVERTIME_MINUTES = 30;
+const isWeekend = (date) => WEEKEND.has(new Date(`${date}T00:00:00Z`).getUTCDay());
+
+// Spring's rule: time worked after the shift ends, never more than the day's hours were exceeded by, from half an hour.
+const overtimeMinutes = (punchMinutes, rules, date) => {
+  if (punchMinutes.length === 0 || punchMinutes.length % 2 === 1 || isWeekend(date)) {
+    return 0;
+  }
+  const shiftEnd = toMinutes(rules.shiftEnd);
+  const afterShift = punchMinutes.reduce((total, minute, index) => (index % 2 === 1 ? total + Math.max(0, minute - Math.max(punchMinutes[index - 1], shiftEnd)) : total), 0);
+  const overtime = Math.min(afterShift, workedMinutes(punchMinutes) - (shiftEnd - toMinutes(rules.shiftStart)));
+  return overtime >= MIN_OVERTIME_MINUTES ? overtime : 0;
+};
+
 const workday = (employeeId, date, isToday, nowMinutes, rules) => {
   const SHIFT_START = toMinutes(rules.shiftStart);
   const SHIFT_END = toMinutes(rules.shiftEnd);
@@ -85,6 +99,7 @@ const toRecord = ({ employeeId, date, status, punchMinutes, device, rules, workM
     ...(punchMinutes.length > 0 && { firstIn: toIso(date, punchMinutes[0]), expectedOut: toIso(date, punchMinutes[0] + shiftLength), scheduledMinutes: shiftLength }),
     ...(lastOut !== undefined && { lastOut: toIso(date, lastOut) }),
     workedMinutes: isComplete ? workedMinutes(punchMinutes) : 0,
+    overtimeMinutes: overtimeMinutes(punchMinutes, rules, date),
     ...(punchMinutes.length > 0 && workMode && { workMode }),
     ...(workMode === 'home' && homeStatus && { homeStatus }),
   };
@@ -125,7 +140,7 @@ export const punchNow = ({ record, workMode, place, homeStatus, schedules }) => 
 
 // Spring's answer to a manager declining a day worked from home: it counts as absent.
 export const decideHomeDay = (record, status) =>
-  status === 'rejected' ? { ...record, homeStatus: status, status: 'absent', workedMinutes: 0 } : { ...record, homeStatus: status };
+  status === 'rejected' ? { ...record, homeStatus: status, status: 'absent', workedMinutes: 0, overtimeMinutes: 0 } : { ...record, homeStatus: status };
 
 export const buildAttendance = ({ employees, holidays, leaveRequests, schedules }) => {
   const now = maldivesNow();
@@ -137,8 +152,7 @@ export const buildAttendance = ({ employees, holidays, leaveRequests, schedules 
 
   return employees.flatMap(({ id: employeeId, workLocation }) =>
     dates.map((date) => {
-      const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
-      const offDay = WEEKEND.has(weekday) ? 'weekend' : holidayDates.has(date) ? 'holiday' : isOnLeave(employeeId, date) ? 'on-leave' : undefined;
+      const offDay = isWeekend(date) ? 'weekend' : holidayDates.has(date) ? 'holiday' : isOnLeave(employeeId, date) ? 'on-leave' : undefined;
       const rules = rulesOn(schedules, date);
       const day = offDay ? { status: offDay, punchMinutes: [] } : workday(employeeId, date, date === now.date, now.minutes, rules);
       // About one working day in twelve is from home, the same roll Spring's dev seeder makes. Today's still waits for approval.

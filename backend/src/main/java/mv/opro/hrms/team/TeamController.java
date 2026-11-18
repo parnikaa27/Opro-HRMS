@@ -23,6 +23,8 @@ import mv.opro.hrms.attendance.Corrections;
 import mv.opro.hrms.attendance.HomeDay;
 import mv.opro.hrms.attendance.HomeDayResponse;
 import mv.opro.hrms.attendance.HomeDays;
+import mv.opro.hrms.attendance.OvertimeResponse;
+import mv.opro.hrms.attendance.Overtimes;
 import mv.opro.hrms.common.ApiException;
 import mv.opro.hrms.employee.Employee;
 import mv.opro.hrms.employee.EmployeeResponse;
@@ -44,7 +46,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 // The HOD's view of their direct reports (/api/team), and the super admin's view of everyone (/api/company),
 // where they can step in on any decision when an HOD is away. Every endpoint goes through TeamAccess first.
-@Tag(name = "Team and company", description = "/api/team for an HOD's direct reports, /api/company for a super admin's view of everyone, with the same shapes. Both decide leave, punch fixes, home days and comp off, never their own.")
+@Tag(name = "Team and company", description = "/api/team for an HOD's direct reports, /api/company for a super admin's view of everyone, with the same shapes. Both decide leave, punch fixes, home days, comp off and overtime, never their own.")
 @RestController
 class TeamController {
 
@@ -66,10 +68,11 @@ class TeamController {
     private final Corrections corrections;
     private final HomeDays homeDays;
     private final CompOffs compOffs;
+    private final Overtimes overtimes;
     private final Photos photos;
 
     TeamController(TeamAccess access, CurrentUser currentUser, People people, VisaRepository visas, AttendanceService attendance, LeaveService leave,
-            Corrections corrections, HomeDays homeDays, CompOffs compOffs, Photos photos) {
+            Corrections corrections, HomeDays homeDays, CompOffs compOffs, Overtimes overtimes, Photos photos) {
         this.access = access;
         this.currentUser = currentUser;
         this.people = people;
@@ -79,6 +82,7 @@ class TeamController {
         this.corrections = corrections;
         this.homeDays = homeDays;
         this.compOffs = compOffs;
+        this.overtimes = overtimes;
         this.photos = photos;
     }
 
@@ -177,6 +181,21 @@ class TeamController {
         CompOffs.Claim decided = compOffs.decide(me, id, Set.copyOf(names.keySet()), new Corrections.Decision(body.decision(), body.note()));
         names.put(me.getId(), me.getFullName());
         return CompOffResponse.of(decided, names);
+    }
+
+    @GetMapping("/api/{scope:team|company}/overtime")
+    List<OvertimeResponse> overtime(@PathVariable String scope, @RequestParam(required = false) String status) {
+        Map<String, String> names = namesOf(inScope(scope));
+        return overtimes.of(names.keySet(), status).stream().map(claim -> OvertimeResponse.of(claim, names)).toList();
+    }
+
+    @PostMapping("/api/{scope:team|company}/overtime/{id}/decision")
+    OvertimeResponse decideOvertime(@PathVariable String scope, @PathVariable String id, @Valid @RequestBody DecisionBody body) {
+        Employee me = currentUser.get();
+        Map<String, String> names = decidableIn(scope, me);
+        Overtimes.Claim decided = overtimes.decide(me, id, Set.copyOf(names.keySet()), new Corrections.Decision(body.decision(), body.note()));
+        names.put(me.getId(), me.getFullName());
+        return OvertimeResponse.of(decided, names);
     }
 
     private EmployeeResponse profile(Employee employee) {

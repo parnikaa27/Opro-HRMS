@@ -36,6 +36,8 @@ const db = {
   documentTypes: load('document-types'),
   records: load('records'),
   compOffs: [],
+  // The two late days in Spring's dev seed, with the minutes Spring works out from its fixed punches.
+  overtime: load('overtime'),
   receipts: new Map(),
   // Uploaded files live in memory like everything else, keyed by employee or request.
   photos: new Map(),
@@ -457,8 +459,12 @@ const decide = (collection, user, scope, id, { decision, note }) => {
   if (item.status !== 'pending' || !['approved', 'rejected'].includes(decision)) {
     throw new HttpError(409, 'This request has already been decided');
   }
+  if (collection === 'overtime' && decision === 'approved' && !overtimeView(item).minutes) {
+    throw new HttpError(409, 'Their punches that day no longer show half an hour past the shift. Decline it, or fix their punches.');
+  }
   if (collection === 'corrections' && decision === 'approved') {
     applyFix(item);
+    raiseOvertime(item.employeeId, item.date);
   }
   const decided = { ...item, status: decision, decidedBy: user.id, decidedOn: today(), ...(note && { decisionNote: String(note) }) };
   db[collection] = db[collection].map((entry) => (entry.id === id ? decided : entry));
@@ -474,6 +480,16 @@ const decide = (collection, user, scope, id, { decision, note }) => {
       ? `${user.fullName} approved ${sayDays(compOffView(decided).days)} of compensatory off for working on ${sayDate(item.date)}.`
       : `${user.fullName} didn't give compensatory off for working on ${sayDate(item.date)}: ${sentence(String(note ?? 'no reason given'))}`);
     return compOffView(db.compOffs.find((entry) => entry.id === id));
+  }
+  if (collection === 'overtime') {
+    const minutes = overtimeView(item).minutes;
+    if (decision === 'approved') {
+      db.overtime = db.overtime.map((entry) => (entry.id === id ? { ...entry, minutes } : entry));
+    }
+    notify(item.employeeId, 'overtime', decision === 'approved'
+      ? `${user.fullName} approved ${sayDuration(minutes)} of overtime on ${sayDate(item.date)}.`
+      : `${user.fullName} didn't approve overtime on ${sayDate(item.date)}: ${sentence(String(note ?? 'no reason given'))}`);
+    return overtimeView(db.overtime.find((entry) => entry.id === id));
   }
   if (collection === 'homeDays') {
     db.attendance = db.attendance.map((entry) => (entry.employeeId === item.employeeId && entry.date === item.date ? decideHomeDay(entry, decision) : entry));
@@ -523,6 +539,30 @@ const flightYearOf = (employeeId) => {
 const compOffView = (claim) => {
   const day = db.attendance.find((entry) => entry.employeeId === claim.employeeId && entry.date === claim.date);
   return { ...withName(claim), workedMinutes: day?.workedMinutes ?? 0, days: claim.days ?? (day?.status === 'half-day' ? 0.5 : 1) };
+};
+
+// Minutes past the shift: approved, or what the day's record shows now.
+const overtimeView = (claim) => {
+  const day = db.attendance.find((entry) => entry.employeeId === claim.employeeId && entry.date === claim.date);
+  return { ...withName(claim), minutes: claim.minutes ?? day?.overtimeMinutes ?? 0 };
+};
+
+const sayDuration = (minutes) => {
+  const hours = Math.floor(minutes / 60);
+  return hours === 0 ? `${minutes} minutes` : minutes % 60 === 0 ? `${hours}h` : `${hours}h ${minutes % 60}m`;
+};
+
+// A working day that shows overtime asks the HOD, once. Super admins have nobody to ask.
+const raiseOvertime = (employeeId, date) => {
+  const employee = db.employees.find(({ id }) => id === employeeId);
+  const day = db.attendance.find((entry) => entry.employeeId === employeeId && entry.date === date);
+  if (!employee || employee.roles.includes('SUPER_ADMIN') || !day?.overtimeMinutes || db.overtime.some((entry) => entry.employeeId === employeeId && entry.date === date)) {
+    return;
+  }
+  db.overtime = [{ id: `OT-${employeeId}-${date}`, employeeId, date, status: 'pending' }, ...db.overtime];
+  if (employee.managerId) {
+    notify(employee.managerId, 'approval', `${employee.fullName} worked ${sayDuration(day.overtimeMinutes)} past the shift on ${sayDate(date)}. Approve the overtime from Leave requests.`);
+  }
 };
 
 const MEGABYTE = 1024 * 1024;
@@ -628,6 +668,9 @@ const routes = [
     const homeStatus = body.mode === 'home' ? (db.homeDays.find((entry) => entry.employeeId === user.id && entry.date === today())?.status ?? 'pending') : undefined;
     const punched = punchNow({ record, workMode, place, homeStatus, schedules: db.schedules });
     db.attendance = db.attendance.map((entry) => (entry === record ? punched : entry));
+    if (punched.punches.length % 2 === 0) {
+      raiseOvertime(user.id, today());
+    }
     return punched;
   }],
   ['GET', /^\/api\/attendance\/corrections$/, ({ user }) => db.corrections.filter(({ employeeId }) => employeeId === user.id).map(withName)],
@@ -755,6 +798,11 @@ const routes = [
     return db.compOffs.filter((entry) => ids.has(entry.employeeId)).filter(byStatus(query.get('status'))).map(compOffView);
   }],
   ['POST', /^\/api\/(team|company)\/comp-offs\/([\w-]+)\/decision$/, ({ user, params: [scope, id], body }) => decide('compOffs', user, scope, id, body)],
+  ['GET', /^\/api\/(team|company)\/overtime$/, ({ user, params: [scope], query }) => {
+    const ids = idsIn(user, scope);
+    return db.overtime.filter((entry) => ids.has(entry.employeeId)).filter(byStatus(query.get('status'))).map(overtimeView);
+  }],
+  ['POST', /^\/api\/(team|company)\/overtime\/([\w-]+)\/decision$/, ({ user, params: [scope, id], body }) => decide('overtime', user, scope, id, body)],
   ['GET', /^\/api\/(team|company)\/home-days$/, ({ user, params: [scope], query }) => {
     const ids = idsIn(user, scope);
     return db.homeDays.filter((entry) => ids.has(entry.employeeId)).filter(byStatus(query.get('status'))).map(withName);
@@ -774,7 +822,7 @@ const routes = [
     db.employees = [...db.employees, employee];
     // Spring works out every day from the joining date. The mock only needs today, so a new starter can punch in.
     if (employee.joinedOn <= today()) {
-      db.attendance = [...db.attendance, { employeeId: employee.id, date: today(), status: 'not-in-yet', punches: [], workedMinutes: 0 }];
+      db.attendance = [...db.attendance, { employeeId: employee.id, date: today(), status: 'not-in-yet', punches: [], workedMinutes: 0, overtimeMinutes: 0 }];
     }
     // New starters get the yearly types in full. Maternity and paternity are granted when they apply.
     db.leaveBalances = {

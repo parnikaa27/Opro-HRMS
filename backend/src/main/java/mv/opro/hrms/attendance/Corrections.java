@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 // Punch fix requests: raised by the employee, decided by their manager. A super admin's are approved as they're raised.
+// A fixed day that now shows overtime asks the HOD about it.
 @Service
 @Transactional(readOnly = true)
 public class Corrections {
@@ -35,12 +36,14 @@ public class Corrections {
 
     private final CorrectionRequestRepository corrections;
     private final PunchRepository punches;
+    private final Overtimes overtimes;
     private final Notifications notifications;
     private final Clock clock;
 
-    Corrections(CorrectionRequestRepository corrections, PunchRepository punches, Notifications notifications, Clock clock) {
+    Corrections(CorrectionRequestRepository corrections, PunchRepository punches, Overtimes overtimes, Notifications notifications, Clock clock) {
         this.corrections = corrections;
         this.punches = punches;
+        this.overtimes = overtimes;
         this.notifications = notifications;
         this.clock = clock;
     }
@@ -119,6 +122,7 @@ public class Corrections {
         if (!punches.existsByEmployeeIdAndPunchedAt(request.getEmployeeId(), at)) {
             punches.save(Punch.fromApprovedFix(request.getEmployeeId(), at, request.getId()));
         }
+        overtimes.raise(request.getEmployeeId(), request.getPunchDate());
     }
 
     // Their first punch that day, if it came after the time they say they arrived.

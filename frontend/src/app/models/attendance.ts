@@ -25,6 +25,8 @@ export interface AttendanceDay {
   firstIn?: string;
   lastOut?: string;
   workedMinutes: number;
+  // Past the end of the shift on a working day, from half an hour. The HOD approves it separately.
+  overtimeMinutes: number;
   // Set by the backend from the schedule in force that day.
   expectedOut?: string;
   scheduledMinutes?: number;
@@ -49,6 +51,19 @@ export interface CompOffClaim {
   status: 'pending' | 'approved' | 'rejected';
   days: number;
   workedMinutes: number;
+  decidedByName?: string;
+  decidedOn?: string;
+  decisionNote?: string;
+}
+
+// A working day someone stayed past the shift. minutes is what was approved, or what the punches show now.
+export interface OvertimeClaim {
+  id: string;
+  employeeId: string;
+  employeeName?: string;
+  date: string;
+  status: 'pending' | 'approved' | 'rejected';
+  minutes: number;
   decidedByName?: string;
   decidedOn?: string;
   decisionNote?: string;
