@@ -11,7 +11,7 @@ const FACTS: Insights = {
     {
       id: 'OPR-0015', fullName: 'Priya Nair', department: 'Operations', designation: 'Officer', nationality: 'Indian', gender: 'female', dateOfBirth: '1992-11-20',
       joinedOn: '2022-11-14', employmentType: 'Permanent', visaExpiry: '2026-12-20', passportExpiry: '2031-06-30',
-      today: { employeeId: 'OPR-0015', date: '2026-11-12', status: 'present', punches: [{ at: '2026-11-12T08:55:00+05:00', direction: 'in' }], workedMinutes: 0 },
+      today: { employeeId: 'OPR-0015', date: '2026-11-12', status: 'present', punches: [{ at: '2026-11-12T08:55:00+05:00', direction: 'in' }], workedMinutes: 0, overtimeMinutes: 0 },
     },
     { id: 'OPR-0023', fullName: 'Karan Mehta', department: 'Service', designation: 'Lead', nationality: 'Maldivian', gender: 'male', joinedOn: '2026-02-01', employmentType: 'Contract', contractEndsOn: '2026-12-31' },
   ],

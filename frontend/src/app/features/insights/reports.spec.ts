@@ -21,9 +21,9 @@ const OPTIONS: ReportOptions = {
   month: '2026-11',
   mixBy: 'department',
   attendance: [
-    { employeeId: 'B', date: '2026-11-10', status: 'late', punches: [{ at: '2026-11-10T09:30:00+05:00', direction: 'in' }], workedMinutes: 450 },
-    { employeeId: 'B', date: '2026-11-11', status: 'absent', punches: [], workedMinutes: 0 },
-    { employeeId: 'B', date: '2026-11-20', status: 'present', punches: [], workedMinutes: 0 },
+    { employeeId: 'B', date: '2026-11-10', status: 'late', punches: [{ at: '2026-11-10T09:30:00+05:00', direction: 'in' }], workedMinutes: 450, overtimeMinutes: 0 },
+    { employeeId: 'B', date: '2026-11-11', status: 'absent', punches: [], workedMinutes: 0, overtimeMinutes: 0 },
+    { employeeId: 'B', date: '2026-11-20', status: 'present', punches: [], workedMinutes: 0, overtimeMinutes: 0 },
   ],
   typeName: (code) => ({ annual: 'Annual leave', sick: 'Sick leave' })[code] ?? code,
 };

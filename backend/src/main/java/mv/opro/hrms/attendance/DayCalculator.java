@@ -14,6 +14,9 @@ final class DayCalculator {
 
     enum OffDay { NONE, WEEKEND, HOLIDAY, ON_LEAVE }
 
+    // Less than this past the shift isn't overtime. Placeholder until HR confirms it.
+    static final int MIN_OVERTIME_MINUTES = 30;
+
     record Rules(LocalTime shiftStart, LocalTime shiftEnd, int graceMinutes, int halfDayMinutes) {
 
         long shiftMinutes() {
@@ -37,13 +40,13 @@ final class DayCalculator {
                 .toList();
 
         if (live.isEmpty()) {
-            return new AttendanceDay(employeeId, null, date, emptyStatus(date, today, offDay), views, null, null, 0, null, null, isCorrected, null, null);
+            return new AttendanceDay(employeeId, null, date, emptyStatus(date, today, offDay), views, null, null, 0, 0, null, null, isCorrected, null, null);
         }
         String workMode = live.stream().map(DayPunch::mode).filter(Objects::nonNull).findFirst().orElse(null);
         String home = "home".equals(workMode) ? homeStatus : null;
         // A declined home day counts as absent, whatever was punched.
         if ("rejected".equals(home)) {
-            return new AttendanceDay(employeeId, null, date, "absent", views, null, null, 0, null, null, isCorrected, workMode, home);
+            return new AttendanceDay(employeeId, null, date, "absent", views, null, null, 0, 0, null, null, isCorrected, workMode, home);
         }
 
         boolean isComplete = live.size() % 2 == 0;
@@ -61,7 +64,8 @@ final class DayCalculator {
         } else {
             status = isLate ? "late" : "present";
         }
-        return new AttendanceDay(employeeId, null, date, status, views, firstIn, lastOut, worked,
+        long overtime = isComplete && offDay == OffDay.NONE ? overtimeMinutes(live, rules, worked) : 0;
+        return new AttendanceDay(employeeId, null, date, status, views, firstIn, lastOut, worked, overtime,
                 firstIn.plusMinutes(rules.shiftMinutes()), rules.shiftMinutes(), isCorrected, workMode, home);
     }
 
@@ -72,6 +76,21 @@ final class DayCalculator {
             case ON_LEAVE -> "on-leave";
             case NONE -> date.equals(today) ? "not-in-yet" : "absent";
         };
+    }
+
+    // Time worked after the shift ends, but never more than the day's hours were exceeded by:
+    // staying late to make up for a late start isn't overtime, and neither is coming in early.
+    private static long overtimeMinutes(List<DayPunch> live, Rules rules, long worked) {
+        OffsetDateTime shiftEnd = live.getFirst().at().with(rules.shiftEnd());
+        long afterShift = IntStream.range(0, live.size() / 2)
+                .mapToLong(pair -> {
+                    OffsetDateTime from = live.get(pair * 2).at().isAfter(shiftEnd) ? live.get(pair * 2).at() : shiftEnd;
+                    OffsetDateTime to = live.get(pair * 2 + 1).at();
+                    return to.isAfter(from) ? Duration.between(from, to).toMinutes() : 0;
+                })
+                .sum();
+        long overtime = Math.min(afterShift, worked - rules.shiftMinutes());
+        return overtime >= MIN_OVERTIME_MINUTES ? overtime : 0;
     }
 
     private static long workedMinutes(List<DayPunch> live) {

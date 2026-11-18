@@ -9,11 +9,11 @@ import { CorrectionForm } from './correction-form';
 
 const punch = (date: string, time: string, direction: 'in' | 'out') => ({ at: `${date}T${time}:00+05:00`, direction });
 const day = (date: string, overrides: Partial<AttendanceDay> = {}): AttendanceDay => ({
-  employeeId: 'OPR-0018', date, status: 'present', punches: [punch(date, '08:55', 'in'), punch(date, '17:10', 'out')], workedMinutes: 480, ...overrides,
+  employeeId: 'OPR-0018', date, status: 'present', punches: [punch(date, '08:55', 'in'), punch(date, '17:10', 'out')], workedMinutes: 480, overtimeMinutes: 0, ...overrides,
 });
 
 const NOVEMBER = [
-  day('2026-11-08'),
+  day('2026-11-08', { overtimeMinutes: 70 }),
   day('2026-11-09', { status: 'late', punches: [punch('2026-11-09', '09:30', 'in'), punch('2026-11-09', '17:00', 'out')]}),
   day('2026-11-10', { status: 'absent', punches: [], workedMinutes: 0}),
   day('2026-11-11', { status: 'on-leave', punches: [], workedMinutes: 0}),
@@ -65,7 +65,7 @@ describe('AttendancePage', () => {
     expect(metric(root, 'present')).toBe('2 / 3');
     expect(metric(root, 'hours')).toBe('16h 0m');
     expect(metric(root, 'on-time')).toBe('50%');
-    expect(root.querySelector('[data-testid=metric-overtime]')).toBeNull();
+    expect(metric(root, 'overtime')).toBe('1h 10m');
     expect(texts(root, 'attendance-row').map((row) => row.split(' ')[0])).toEqual(['Yesterday', 'Tuesday', 'Monday', 'Sunday']);
     expect(text(root)).toContain('NOVEMBER 2026 Attendance log');
   });

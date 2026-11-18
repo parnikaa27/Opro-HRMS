@@ -44,6 +44,7 @@ public class PunchClock {
     private final PunchRepository punches;
     private final HomeDayRepository homeDays;
     private final CompOffClaimRepository compOffs;
+    private final Overtimes overtimes;
     private final Holidays holidays;
     private final EmployeeRepository employees;
     private final People people;
@@ -51,11 +52,12 @@ public class PunchClock {
     private final PunchSettings settings;
     private final Clock clock;
 
-    PunchClock(PunchRepository punches, HomeDayRepository homeDays, CompOffClaimRepository compOffs, Holidays holidays, EmployeeRepository employees,
-            People people, Notifications notifications, PunchSettings settings, Clock clock) {
+    PunchClock(PunchRepository punches, HomeDayRepository homeDays, CompOffClaimRepository compOffs, Overtimes overtimes, Holidays holidays,
+            EmployeeRepository employees, People people, Notifications notifications, PunchSettings settings, Clock clock) {
         this.punches = punches;
         this.homeDays = homeDays;
         this.compOffs = compOffs;
+        this.overtimes = overtimes;
         this.holidays = holidays;
         this.employees = employees;
         this.people = people;
@@ -95,6 +97,9 @@ public class PunchClock {
             punches.save(Punch.fromApp(employee.getId(), now, mode, nearest.office().name(), (int) Math.round(nearest.metres())));
         }
         claimCompOff(employee, today);
+        if ("out".equals(direction)) {
+            overtimes.raise(employee.getId(), today);
+        }
     }
 
     // Working a Friday or a public holiday asks the manager for compensatory off, once for the day.

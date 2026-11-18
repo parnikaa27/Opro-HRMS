@@ -2,7 +2,7 @@ import { AttendanceDay } from '../../models/attendance';
 import { statusToday } from './attendance-status';
 
 const day = (overrides: Partial<AttendanceDay>): AttendanceDay => ({
-  employeeId: 'E', date: '2026-11-12', status: 'present', punches: [], workedMinutes: 0, ...overrides,
+  employeeId: 'E', date: '2026-11-12', status: 'present', punches: [], workedMinutes: 0, overtimeMinutes: 0, ...overrides,
 });
 
 describe('statusToday', () => {

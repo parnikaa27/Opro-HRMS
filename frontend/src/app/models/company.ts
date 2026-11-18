@@ -58,7 +58,7 @@ export interface DocumentEntry {
 
 export interface AppNotification {
   id: string;
-  kind: 'approval' | 'leave' | 'visa' | 'correction' | 'holiday' | 'announcement' | 'record' | 'schedule' | 'home' | 'flight';
+  kind: 'approval' | 'leave' | 'visa' | 'correction' | 'holiday' | 'announcement' | 'record' | 'schedule' | 'home' | 'flight' | 'overtime';
   text: string;
   createdOn: string;
   isRead: boolean;

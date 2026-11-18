@@ -42,9 +42,9 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 | Role | Who | Can do |
 |---|---|---|
 | Employee | Everyone | Own attendance, leave, holidays, profile, ID card, visa, notifications |
-| HOD | People with direct reports (called `MANAGER` in code) | Everything an employee can, plus a **Team view** for their **direct reports only**, where they decide leave, punch fixes, home days and comp off. Not stored: anyone with an active report is an HOD, so a reporting line change moves the access with it |
+| HOD | People with direct reports (called `MANAGER` in code) | Everything an employee can, plus a **Team view** for their **direct reports only**, where they decide leave, punch fixes, home days, comp off and overtime. Not stored: anyone with an active report is an HOD, so a reporting line change moves the access with it |
 | HR | HR staff, who are also employees | Everything an employee can, plus an **HR view** for the whole company (see HR below). HR decides no leave or punch fixes |
-| Super admin | Seniors, set on the record (`is_super_admin`) by the backend team | Everything an employee can, plus a **company view**: where everyone is today, anyone's leave and attendance history, and **stepping in on any waiting decision** (leave, punch fixes, home days, comp off) when an HOD is away, at any time, never for themselves. Each decision shows who made it. Their own leave, punch fixes and home days are approved as they're sent, and they earn no comp off |
+| Super admin | Seniors, set on the record (`is_super_admin`) by the backend team | Everything an employee can, plus a **company view**: where everyone is today, anyone's leave and attendance history, and **stepping in on any waiting decision** (leave, punch fixes, home days, comp off, overtime) when an HOD is away, at any time, never for themselves. Each decision shows who made it. Their own leave, punch fixes and home days are approved as they're sent, and they earn no comp off or overtime |
 
 - **Everyone except a super admin has a reporting manager.** The server refuses to add or save anyone else without one.
 
@@ -69,7 +69,7 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 | `/login` | Mock user picker (dev only) |
 | `/` Overview | Welcome banner, today's attendance (time in, expected out, effective hours, punch in and out), leave balance, visa status, recent attendance table, dark staff card, next holiday and long weekend, latest leave request |
 | `/documents` | Every document on HR's list that applies to them, with its status (missing, waiting for HR, verified, sent back with HR's reason, expired) and download. Upload a copy of the ones employees send, with an expiry date where the type expires |
-| `/attendance` | My attendance: three summary cards (days present, work hours, on time), the attendance log for a chosen month, CSV export, punch fix requests and their status, and the punch button while today is on screen |
+| `/attendance` | My attendance: four summary cards (days present, work hours, on time, overtime), the attendance log for a chosen month, CSV export, punch fix requests and their status, and the punch button while today is on screen |
 | `/leave` | Leave and time off: balance rings, other leave types, request history with cancel (pending, or approved and not started), and the Request leave modal with a working day preview and a success screen |
 | `/calendar` | Company calendar: month grid with public holidays and company events, upcoming holidays, the holiday policy. Islamic holidays are marked **tentative** until confirmed after moon sighting. `/holidays` redirects here |
 | `/profile` | Virtual ID card (printable), personal and job details, emergency contact, visa and work permit details (with employment approval and the work permit medical), their record (bank details they enter for HR to verify, shown as the last 4 digits; insurance, education and experience HR keeps), request a change to personal details, and the flight allowance (used, waiting and left in USD, MVR or INR) with flight claims |
@@ -82,7 +82,7 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 |---|---|
 | `/team` | Manager overview: welcome banner, team members, pending requests, average attendance and out of office cards, waiting leave with one click approve, team today, a month attendance chart with CSV export, visa alerts |
 | `/team/people` | Card directory of direct reports with today's status and search |
-| `/team/approvals` | Leave requests in tabs (Pending, Approved, Declined, Punch fixes, Home working, Comp off). Approve in one click. Declining opens a modal that needs a reason, so the employee can plan around it. Waiting leave shows who else is off on those dates |
+| `/team/approvals` | Leave requests in tabs (Pending, Approved, Declined, Punch fixes, Home working, Comp off, Overtime). Approve in one click. Declining opens a modal that needs a reason, so the employee can plan around it. Waiting leave shows who else is off on those dates |
 | `/team/attendance` | Team summary cards and a table with one row per report (days present, late, missed, hours, today), month picker, CSV export |
 | `/team/calendar` | The company calendar plus who on the team is away (approved filled, pending dashed) |
 | `/team/:employeeId` | One report's leave balances, attendance log with a month picker, leave requests, staff card and visa. Read only |
@@ -128,8 +128,9 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 | Late | First punch after 09:15 (15 minute grace, set by HR) |
 | Half day | Less than 4 hours worked (set by HR) |
 | Absent | No punch, no approved leave, not a holiday or weekend |
+| Overtime | Time after the shift ends, from 30 minutes (placeholder) |
 
-- **Shift rules are dated versions.** HR sets shift start and end, grace and the half day threshold from a date after today. Days already worked keep the version they were worked under. A version that hasn't started can be cancelled. The work week is not editable. There are no Ramadan hours and no overtime: every day follows the one schedule in force.
+- **Shift rules are dated versions.** HR sets shift start and end, grace and the half day threshold from a date after today. Days already worked keep the version they were worked under. A version that hasn't started can be cancelled. The work week is not editable. There are no Ramadan hours: every day follows the one schedule in force.
 - The backend sends `expectedOut` and `scheduledMinutes` with each day, from the version in force. The frontend shows them and never works out a shift itself.
 - **Punch fix requests** have a type: **Working from resort**, **Forgot to punch**, **Late punch** or **Other**. A reason is required for Late punch and Other only. Approving one adds the punch they missed; approving a **late punch** voids their late punch in (logged, never deleted) and puts in the time they arrived, so lateness and hours are worked out again. A late punch can't move the punch in later.
 - **Punch fixes are the HOD's to decide.** HR doesn't add or void punches. An approved fix adds a `manual` punch linked to its request, and the backend works the day out again. Corrected days show "Corrected" to everyone who sees them. HR's old punch edits stay in `punch_edit` as history.
@@ -182,6 +183,13 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 - Punching on a Friday or a public holiday asks the manager for compensatory off (Comp off tab). Approved, it earns **1 day**, or **half a day** when the day was shorter than the half day threshold, worked out from the punches when they decide. It can't be approved while they're still punched in. Declining needs a reason.
 - It goes into that year's **Compensatory off** balance, logged with who approved it, and **lapses at the end of the leave year**.
 
+### Overtime
+
+- **What counts:** on a working day, time worked after the shift ends, but never more than the day's hours were exceeded by. Coming in early doesn't count, and neither does staying late to make up a late start. Under **30 minutes** (placeholder, `DayCalculator.MIN_OVERTIME_MINUTES`) is not overtime. Fridays and public holidays earn compensatory off instead, never both.
+- The backend works it out per day (`overtimeMinutes` on each attendance day). Once a day shows overtime, by punching out or through an approved punch fix, the HOD is asked once (Overtime tab). Super admins have nobody to ask, so they have none.
+- Approving keeps the minutes the punches show then, ready for payroll. It is refused if the punches no longer show 30 minutes. Declining needs a reason. Both tell the employee.
+- The attendance page's Overtime card shows the month's overtime from the punches, before the HOD decides.
+
 ### Flight allowance
 
 - HR sets each person's **yearly allowance in USD** from their page. It can't go below what's already claimed that year.
@@ -229,7 +237,7 @@ Logo, "People first, always.", "© year Opro Pvt Ltd · Malé, Republic of Maldi
 - **Holiday calendar:** add, edit and delete holidays per year. Mark an Islamic date confirmed after moon sighting, which notifies everyone. An empty year can start from the fixed civil holidays (New Year, Independence Day, Victory Day, Republic Day).
 - **Company events** on the calendar ("Office social", "Team review"), managed by HR.
 - **Leave policy:** leave types, yearly entitlements, who gets them and carry forward. See Leave rules.
-- **Work schedule**, see Attendance rules. Leave, punch fixes, home days and comp off are decided by the HOD alone; HR has no approve buttons and the server has no HR decision endpoints.
+- **Work schedule**, see Attendance rules. Leave, punch fixes, home days, comp off and overtime are decided by the HOD alone; HR has no approve buttons and the server has no HR decision endpoints.
 - **People:** add someone (ID, roles and full annual, sick and family balances come from the server) with gender (male or female), date of birth, employment type (Permanent, Contract, Casual or Intern), when probation and a contract end, and an expatriate's quota job category; edit details and reporting manager (required, except for a super admin) (never themselves or anyone below them), and mark someone as leaving. Nobody is ever deleted: after their last day they can't sign in and drop out of live lists, their records stay, and leave booked after that day is cancelled. Someone with active reports can't leave until those reports have a new manager.
 - **Photos:** HR uploads them from the person's page. The browser crops to 4:5 and re-encodes a small JPEG, which also strips location data. They show on the ID card, the staff card and avatars.
 - **Balance adjustments:** add or remove days for one person with a required reason. Every change is logged with who, when and why. Adjusting a type they don't hold yet (paternity, say) creates that balance.
@@ -395,8 +403,9 @@ The full, generated reference is Swagger UI at `http://localhost:8080/swagger-ui
 | POST | `/api/team/corrections/:id/decision` | Approve or reject. Approving adds the punch to the record, the same way an HR punch fix does |
 | GET | `/api/team/home-days?status=` | Reports' days worked from home |
 | GET / POST | `/api/team/comp-offs?status=`, `/api/team/comp-offs/:id/decision` | Reports' days off worked, with `workedMinutes` and the `days` they earn / decide one |
+| GET / POST | `/api/team/overtime?status=`, `/api/team/overtime/:id/decision` | Reports' overtime, with `minutes` (approved, or what the punches show now) / approve, or reject with a `note` |
 | POST | `/api/team/home-days/:id/decision` | Approve or reject. Rejecting needs a `note` and makes the day an absence |
-| GET / POST | `/api/company/...` | Super admins only. Every `/api/team` route (people, one person, attendance, leave requests, corrections, home days, comp offs and their decisions) with everyone in scope instead of direct reports. Spring serves both from one `/api/{scope:team|company}` mapping. Never decides their own |
+| GET / POST | `/api/company/...` | Super admins only. Every `/api/team` route (people, one person, attendance, leave requests, corrections, home days, comp offs, overtime and their decisions) with everyone in scope instead of direct reports. Spring serves both from one `/api/{scope:team|company}` mapping. Never decides their own |
 | GET | `/api/hr/employees` | Everyone, with today's attendance and visa. HR only, like every `/api/hr` route |
 | GET | `/api/hr/employees/:id` | One person's profile, visa, leave balances and balance adjustments |
 | PUT | `/api/hr/employees/:id/visa` | Add or update visa, work permit and passport (last 4 only) |

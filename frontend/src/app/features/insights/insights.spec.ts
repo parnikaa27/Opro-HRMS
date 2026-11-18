@@ -6,7 +6,7 @@ const person = (overrides: Partial<PersonFact>): PersonFact => ({
   id: 'P', fullName: 'Person', department: 'Operations', designation: 'Officer', nationality: 'Indian', joinedOn: '2020-01-01', employmentType: 'Permanent', ...overrides,
 });
 const day = (status: 'present' | 'late' | 'absent' | 'on-leave', workMode?: 'home' | 'resort') => ({
-  employeeId: 'P', date: TODAY, status, punches: status === 'present' || status === 'late' ? [{ at: `${TODAY}T09:00:00+05:00`, direction: 'in' as const }] : [], workedMinutes: 0, ...(workMode && { workMode }),
+  employeeId: 'P', date: TODAY, status, punches: status === 'present' || status === 'late' ? [{ at: `${TODAY}T09:00:00+05:00`, direction: 'in' as const }] : [], workedMinutes: 0, overtimeMinutes: 0, ...(workMode && { workMode }),
 });
 
 describe('insights', () => {
