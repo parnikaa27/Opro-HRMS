@@ -12,4 +12,6 @@ interface OvertimeClaimRepository extends JpaRepository<OvertimeClaim, String> {
     List<OvertimeClaim> findByEmployeeIdInOrderByWorkDateDesc(Collection<String> employeeIds);
 
     List<OvertimeClaim> findByEmployeeIdInAndStatusOrderByWorkDateDesc(Collection<String> employeeIds, String status);
+
+    List<OvertimeClaim> findByStatusAndHodApprovedByNotNullOrderByWorkDate(String status);
 }

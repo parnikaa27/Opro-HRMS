@@ -51,9 +51,11 @@ describe('LeaveRequests', () => {
     const { root } = await render([
       request({ id: 'LR-1', from: '2026-10-12', to: '2026-10-12', days: 1, status: 'rejected', decisionNote: 'Audit week', type: 'unknown' }),
       request({ id: 'LR-2', from: '2026-12-03', to: '2026-12-03', halfDay: 'second', days: 0.5, status: 'cancelled' }),
+      request({ id: 'LR-3', from: '2026-12-20', to: '2026-12-20', days: 1, hodApprovedOn: '2026-11-11' }),
     ]);
 
-    expect(texts(root, 'leave-request')).toEqual([
+    expect(texts(root, 'leave-request').map((row) => row.replace(' Cancel request', ''))).toEqual([
+      'Annual leave 20 December 2026 1 day Waiting for HR',
       'Annual leave 3 December 2026 afternoon only Cancelled',
       'unknown 12 October 2026 · “Audit week” 1 day Declined',
     ]);

@@ -74,6 +74,7 @@ HRMS/
       team/                The HOD's view (/api/team) and the super admin's company view (/api/company), one set of endpoints: TeamAccess limits an HOD to their own active direct reports and lets only super admins reach everyone
       files/               Stored files (in PostgreSQL for now), upload checks, and serving them safely
       document/            Document types HR keeps, everyone's copies, uploads and HR's checks (Documents service)
+      approval/            HR's step after the HOD: which requests need it, what waits for HR and deciding it (/api/hr/approvals)
       insight/             The facts behind the executive dashboard and reports, for HR and super admins (/api/insights)
       record/              Medical insurance, bank details (entered by the person, verified by HR), education and work experience (Records service)
       announcement/        Notes from HR on everyone's overview, and AnnouncementEditor for posting them

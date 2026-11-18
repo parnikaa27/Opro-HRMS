@@ -5,12 +5,13 @@ import { HrPolicyPage } from './hr-policy-page';
 
 const URL = '/api/leave/types';
 const TYPES = [
-  { code: 'annual', name: 'Annual leave', allowsHalfDay: true, defaultEntitlement: 30, isForEveryone: true, carriesForward: true, carryForwardCap: 15 },
+  { code: 'annual', name: 'Annual leave', allowsHalfDay: true, defaultEntitlement: 30, isForEveryone: true, carriesForward: true, carryForwardCap: 15, needsHrApproval: true },
   { code: 'paternity', name: 'Paternity leave', allowsHalfDay: false, defaultEntitlement: 1, isForEveryone: false },
   { code: 'unpaid', name: 'Unpaid leave', allowsHalfDay: false, isUnlimited: true, isForEveryone: true },
   { code: 'old', name: 'Old leave', allowsHalfDay: false, defaultEntitlement: 2, retiredOn: '2026-01-01' },
   { code: 'comp-off', name: 'Compensatory off', allowsHalfDay: true },
 ];
+const RULES = { punchFixes: false, homeDays: false, compOff: true, overtime: false };
 const RATES = { year: 2026, usedUsd: 0, pendingUsd: 0, ratesPerUsd: { MVR: 15.42, INR: 88 }, claims: [] };
 
 describe('HrPolicyPage', () => {
@@ -24,7 +25,7 @@ describe('HrPolicyPage', () => {
 
   const render = async () => {
     const fixture = TestBed.createComponent(HrPolicyPage);
-    await respond(http, { [URL]: TYPES, '/api/flights': RATES, '/api/hr/schedules': [] });
+    await respond(http, { [URL]: TYPES, '/api/flights': RATES, '/api/hr/schedules': [], '/api/hr/approval-rules': RULES });
     return fixture.nativeElement as HTMLElement;
   };
 
@@ -32,10 +33,10 @@ describe('HrPolicyPage', () => {
     const root = await render();
 
     expect(texts(root, 'policy-row')).toEqual([
-      'Annual leave 30 days Allowed Everyone Carries up to 15 days Edit Remove',
-      'Paternity leave 1 day Full days only People HR picks Lapses Edit Remove',
-      'Unpaid leave No limit Full days only Everyone Edit Remove',
-      'Compensatory off Earned Allowed Earned by working days off Lapses',
+      'Annual leave 30 days Allowed Everyone Carries up to 15 days HOD, then HR Edit Remove',
+      'Paternity leave 1 day Full days only People HR picks Lapses HOD Edit Remove',
+      'Unpaid leave No limit Full days only Everyone HOD Edit Remove',
+      'Compensatory off Earned Allowed Earned by working days off Lapses Set under Approvals',
     ]);
   });
 
@@ -89,5 +90,32 @@ describe('HrPolicyPage', () => {
     await fail(http, URL);
 
     expect(text(fixture.nativeElement)).toContain("The leave policy didn't load");
+  });
+
+  it('saves which requests HR approves after the HOD', async () => {
+    const root = await render();
+    expect((root.querySelector('[data-testid=step-comp-off]') as HTMLInputElement).checked).toBe(true);
+
+    click(root, 'step-overtime');
+    click(root, 'steps-submit');
+    await settle();
+    const request = http.expectOne((sent) => sent.method === 'PUT' && sent.url === '/api/hr/approval-rules');
+    expect(request.request.body).toEqual({ ...RULES, overtime: true });
+    request.flush({ ...RULES, overtime: true });
+    await settle();
+
+    expect(text(root.querySelector('[data-testid=steps-status]') as HTMLElement)).toBe('Saved. Requests the HOD approves from now on follow these.');
+  });
+
+  it('says when the approval steps fail to save', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const root = await render();
+
+    click(root, 'steps-submit');
+    await settle();
+    http.expectOne((sent) => sent.method === 'PUT' && sent.url === '/api/hr/approval-rules').flush('', { status: 500, statusText: 'Error' });
+    await settle();
+
+    expect(text(root.querySelector('[data-testid=steps-status]') as HTMLElement)).toBe("That didn't save. Try again in a moment.");
   });
 });

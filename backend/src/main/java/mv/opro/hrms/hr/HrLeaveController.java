@@ -62,11 +62,12 @@ class HrLeaveController {
             @Min(1) @Max(MAX_DAYS_WHOLE) Integer documentRequiredAfterDays,
             @NotNull Boolean isForEveryone,
             @NotNull Boolean carriesForward,
-            @DecimalMin("0") @DecimalMax(MAX_DAYS) BigDecimal carryForwardCap) {
+            @DecimalMin("0") @DecimalMax(MAX_DAYS) BigDecimal carryForwardCap,
+            @NotNull Boolean needsHrApproval) {
 
         LeaveType.Rules rules() {
             return new LeaveType.Rules(name, allowsHalfDay, isUnlimited, defaultEntitlement, documentRequiredAfterDays, isForEveryone, carriesForward,
-                    carryForwardCap);
+                    carryForwardCap, needsHrApproval);
         }
     }
 

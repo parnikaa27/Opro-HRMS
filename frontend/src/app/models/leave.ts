@@ -14,6 +14,8 @@ export interface LeaveType {
   carryForwardCap?: number;
   // No longer offered. Kept so past requests still have a name.
   retiredOn?: string;
+  // HR approves after the HOD.
+  needsHrApproval?: boolean;
 }
 
 // Compensatory off is earned for days off worked. The policy never gives it.
@@ -45,6 +47,9 @@ export interface LeaveRequest {
   decidedOn?: string;
   decisionNote?: string;
   hasCertificate?: boolean;
+  // Set while it waits for HR after the HOD approved.
+  hodApprovedByName?: string;
+  hodApprovedOn?: string;
 }
 
 export interface BalanceAdjustment {

@@ -62,6 +62,13 @@ const FAILED = "That didn't save. Try again in a moment.";
         </div>
         <app-field-error id="policy-cap-error" [errors]="policyForm.cap().errors()" [isTouched]="policyForm.cap().touched()" />
       }
+      <label>
+        Approved by
+        <select [formField]="policyForm.approval" data-testid="policy-approval">
+          <option value="hod">The HOD</option>
+          <option value="hr">The HOD, then HR</option>
+        </select>
+      </label>
       @if (failure()) {
         <p role="alert" data-testid="policy-error">{{ failure() }}</p>
       }
@@ -91,6 +98,7 @@ export class PolicyForm {
       givenTo: (type?.isForEveryone ?? true) ? 'everyone' : 'individual',
       yearEnd: type?.carriesForward ? 'carry' : 'lapse',
       cap: type?.carryForwardCap ?? 0,
+      approval: type?.needsHrApproval ? 'hr' : 'hod',
     };
   });
   protected readonly isUnlimited = computed(() => this.draft().limit === 'none');
@@ -109,7 +117,7 @@ export class PolicyForm {
     event.preventDefault();
     this.failure.set(undefined);
     return submit(this.policyForm, async () => {
-      const { name, days, halfDays, givenTo, yearEnd, cap } = this.draft();
+      const { name, days, halfDays, givenTo, yearEnd, cap, approval } = this.draft();
       const isUnlimited = this.isUnlimited();
       const carries = !isUnlimited && yearEnd === 'carry';
       try {
@@ -123,6 +131,7 @@ export class PolicyForm {
           isForEveryone: givenTo === 'everyone',
           carriesForward: carries,
           ...(carries && { carryForwardCap: cap }),
+          needsHrApproval: approval === 'hr',
         });
         this.saved.emit();
       } catch (error) {

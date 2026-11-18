@@ -15,6 +15,8 @@ interface LeaveRequestRepository extends JpaRepository<LeaveRequest, String> {
 
     List<LeaveRequest> findByEmployeeIdInAndStatusOrderByFromDateDesc(Collection<String> employeeIds, String status);
 
+    List<LeaveRequest> findByStatusAndHodApprovedByNotNullOrderByFromDate(String status);
+
     @Query("""
             select count(r) > 0 from LeaveRequest r
             where r.employeeId = :employeeId and r.status in ('pending', 'approved') and r.fromDate <= :to and r.toDate >= :from""")

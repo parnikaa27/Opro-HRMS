@@ -168,6 +168,19 @@ describe('ApprovalsPage', () => {
     expect(http.expectOne('/api/team/comp-offs/CO-1/decision').request.body).toEqual({ decision: 'rejected', note: 'Nobody asked you to come in' });
   });
 
+  it('shows what waits for HR without asking the HOD again, and leaves it out of the counts', async () => {
+    const root = await render(
+      [...LEAVE, leave({ id: 'LR-5', employeeId: 'V', employeeName: 'Karan Mehta', hodApprovedOn: '2026-11-11' })],
+      [...FIXES, fix({ id: 'AC-3', hodApprovedOn: '2026-11-11' })],
+    );
+
+    expect(text(root.querySelector('[data-testid=tab-pending]') as HTMLElement)).toBe('Pending 2');
+    expect(text(root.querySelector('[data-testid=tab-fixes]') as HTMLElement)).toBe('Punch fixes 1');
+    const waiting = row(root, 'Karan Mehta');
+    expect(text(waiting)).toContain('Waiting for HR');
+    expect(waiting.querySelector('[data-testid=approve]')).toBeNull();
+  });
+
   it('approves overtime oldest first, and only while the punches still show it', async () => {
     const root = await render();
     click(root, 'tab-overtime');

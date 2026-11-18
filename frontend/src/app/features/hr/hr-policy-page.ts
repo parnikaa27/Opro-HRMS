@@ -5,6 +5,7 @@ import { Dialog } from '../../shared/ui/dialog';
 import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { valueOr } from '../../shared/utils/resource';
 import { plural } from '../../shared/utils/text';
+import { ApprovalStepsCard } from './approval-steps-card';
 import { DocumentTypesCard } from './document-types-card';
 import { ExchangeRatesCard } from './exchange-rates-card';
 import { PolicyForm } from './forms/policy-form';
@@ -16,14 +17,14 @@ type Editing = LeaveType | 'new' | undefined;
 
 @Component({
   selector: 'app-hr-policy-page',
-  imports: [ConfirmButton, Dialog, DocumentTypesCard, ExchangeRatesCard, ListSkeleton, PolicyForm, WorkScheduleCard],
+  imports: [ApprovalStepsCard, ConfirmButton, Dialog, DocumentTypesCard, ExchangeRatesCard, ListSkeleton, PolicyForm, WorkScheduleCard],
   template: `
     <div class="page-view">
       <div class="page-title">
         <div>
           <span class="eyebrow">PEOPLE &amp; CULTURE</span>
           <h1>Policies</h1>
-          <p>Leave each person gets a year, the hours everyone works, the documents Opro keeps, and the rates for flight allowances. To change one person's leave, go to their page.</p>
+          <p>Leave each person gets a year, who approves what, the hours everyone works, the documents Opro keeps, and the rates for flight allowances. To change one person's leave, go to their page.</p>
         </div>
         <div class="title-actions">
           <button type="button" class="primary-button compact" (click)="editing.set('new')" data-testid="add-policy">Add leave type</button>
@@ -39,7 +40,7 @@ type Editing = LeaveType | 'new' | undefined;
             <table class="stacks">
               <thead>
                 <tr>
-                  <th scope="col">LEAVE TYPE</th><th scope="col">DAYS PER YEAR</th><th scope="col">HALF DAYS</th><th scope="col">GIVEN TO</th><th scope="col">AT YEAR END</th>
+                  <th scope="col">LEAVE TYPE</th><th scope="col">DAYS PER YEAR</th><th scope="col">HALF DAYS</th><th scope="col">GIVEN TO</th><th scope="col">AT YEAR END</th><th scope="col">APPROVED BY</th>
                   <th scope="col"><span class="sr-only">Actions</span></th>
                 </tr>
               </thead>
@@ -51,6 +52,7 @@ type Editing = LeaveType | 'new' | undefined;
                     <td data-label="HALF DAYS">{{ type.allowsHalfDay ? 'Allowed' : 'Full days only' }}</td>
                     <td data-label="GIVEN TO">{{ type.code === compOff ? 'Earned by working days off' : type.isForEveryone ? 'Everyone' : 'People HR picks' }}</td>
                     <td data-label="AT YEAR END">{{ type.isUnlimited ? '' : type.carriesForward ? 'Carries up to ' + plural(type.carryForwardCap ?? 0, 'day') : 'Lapses' }}</td>
+                    <td data-label="APPROVED BY">{{ type.code === compOff ? 'Set under Approvals' : type.needsHrApproval ? 'HOD, then HR' : 'HOD' }}</td>
                     <td class="row-actions">
                       @if (type.code !== compOff) {
                         <button type="button" class="text-link" (click)="editing.set(type)" data-testid="edit-policy">Edit</button>
@@ -68,6 +70,7 @@ type Editing = LeaveType | 'new' | undefined;
           }
         </section>
       }
+      <app-approval-steps-card />
       <app-work-schedule-card />
       <app-document-types-card />
       <app-exchange-rates-card />

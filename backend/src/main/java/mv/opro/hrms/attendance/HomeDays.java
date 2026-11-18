@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import mv.opro.hrms.approval.ApprovalSteps;
 import mv.opro.hrms.common.ApiException;
 import mv.opro.hrms.common.Wording;
 import mv.opro.hrms.employee.Employee;
@@ -21,11 +22,13 @@ public class HomeDays {
     private static final String APPROVED = "approved";
 
     private final HomeDayRepository days;
+    private final ApprovalSteps steps;
     private final Notifications notifications;
     private final Clock clock;
 
-    HomeDays(HomeDayRepository days, Notifications notifications, Clock clock) {
+    HomeDays(HomeDayRepository days, ApprovalSteps steps, Notifications notifications, Clock clock) {
         this.days = days;
+        this.steps = steps;
         this.notifications = notifications;
         this.clock = clock;
     }
@@ -42,6 +45,28 @@ public class HomeDays {
         if (!day.isPending()) {
             throw new ApiException(HttpStatus.CONFLICT, "This day has already been decided.");
         }
+        steps.checkHodStep(day.isWaitingForHr());
+        if (APPROVED.equals(decision.decision()) && steps.passesToHr(decider, steps.needsHr(ApprovalSteps.Kind.HOME_DAY))) {
+            day.approveForHod(decider.getId(), LocalDate.now(clock));
+            steps.passToHr(decider, day.getEmployeeId(), Notification.Kind.HOME, "day working from home on " + Wording.date(day.getWorkDate()));
+            return day;
+        }
+        return finish(decider, day, decision);
+    }
+
+    public List<HomeDay> waitingForHr() {
+        return days.findByStatusAndHodApprovedByNotNullOrderByWorkDate("pending");
+    }
+
+    // The HR step, after the HOD approved.
+    @Transactional
+    public HomeDay decideForHr(Employee hr, String id, Corrections.Decision decision) {
+        HomeDay day = days.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Day not found"));
+        steps.checkHrStep(hr, day.getEmployeeId(), day.isWaitingForHr());
+        return finish(hr, day, decision);
+    }
+
+    private HomeDay finish(Employee decider, HomeDay day, Corrections.Decision decision) {
         String note = decision.note() == null || decision.note().isBlank() ? null : decision.note().strip();
         boolean isApproved = APPROVED.equals(decision.decision());
         if (!isApproved && note == null) {

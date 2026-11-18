@@ -43,8 +43,8 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 |---|---|---|
 | Employee | Everyone | Own attendance, leave, holidays, profile, ID card, visa, notifications |
 | HOD | People with direct reports (called `MANAGER` in code) | Everything an employee can, plus a **Team view** for their **direct reports only**, where they decide leave, punch fixes, home days, comp off and overtime. Not stored: anyone with an active report is an HOD, so a reporting line change moves the access with it |
-| HR | HR staff, who are also employees | Everything an employee can, plus an **HR view** for the whole company (see HR below). HR decides no leave or punch fixes |
-| Super admin | Seniors, set on the record (`is_super_admin`) by the backend team | Everything an employee can, plus a **company view**: where everyone is today, anyone's leave and attendance history, and **stepping in on any waiting decision** (leave, punch fixes, home days, comp off, overtime) when an HOD is away, at any time, never for themselves. Each decision shows who made it. Their own leave, punch fixes and home days are approved as they're sent, and they earn no comp off or overtime |
+| HR | HR staff, who are also employees | Everything an employee can, plus an **HR view** for the whole company (see HR below). HR never decides at the HOD step; they approve after the HOD only where Policies ask for it (see Approvals) |
+| Super admin | Seniors, set on the record (`is_super_admin`) by the backend team | Everything an employee can, plus a **company view**: where everyone is today, anyone's leave and attendance history, and **stepping in on any waiting decision at the HOD step** (leave, punch fixes, home days, comp off, overtime), never HR's step, when an HOD is away, at any time, never for themselves. Each decision shows who made it. Their own leave, punch fixes and home days are approved as they're sent, and they earn no comp off or overtime |
 
 - **Everyone except a super admin has a reporting manager.** The server refuses to add or save anyone else without one.
 
@@ -112,11 +112,11 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 | `/hr/people/:employeeId` | One person's balances, this month's log, requests (with any medical certificate to open), balance change log, staff card, visa and their record (insurance, bank details to verify, education, experience). Set their days of a type or give or take away a type (Leave days), adjust a balance, update visa, set their flight allowance. A More menu holds edit details, change photo and mark as leaving |
 | `/hr/calendar` | Holidays and events per year: add, edit, delete, confirm a tentative date, add the civil holidays to an empty year |
 | `/hr/visas` | Every expatriate, people with no record first, then soonest visa or passport expiry, and the expatriate quota: approvals by job category with slots used, expiry, and any job category with no quota |
-| `/hr/inbox` | Profile change requests in tabs (Open, Done, Declined), and documents and bank details to check, oldest first: verify, or send back with a reason. Declining needs a reason |
+| `/hr/inbox` | Profile change requests in tabs (Open, Done, Declined), requests the HOD approved that HR approves too (approve, or decline with a reason), and documents and bank details to check, oldest first: verify, or send back with a reason. Declining needs a reason |
 | `/hr/announcements` | Post, edit and take down notes from HR. A new one notifies everyone |
 | `/hr/dashboard` | The executive dashboard: employees, joiners, leavers with attrition and retention, who's in today; locals and expatriates, gender, employment type, age, departments and nationalities; today's attendance and this month's; leave waiting, annual leave used, sick leave by month; papers expired or expiring within 60 days and quota use; birthdays and anniversaries this month, probation ending within 30 days, contracts within 60. Only what today's data supports: recruitment, payroll, performance, training and overtime appear when those modules exist |
 | `/hr/reports` | Headcount, joiners and leavers, workforce mix, leave balances, leave taken, attendance and visa and permit expiry, each shown as a table and saved as CSV, Excel or PDF |
-| `/hr/policy` | Policies: add, edit and remove leave types (yearly days, half days, given to everyone or people HR picks, lapse or carry forward up to a cap; a new entitlement applies from the next leave year), the work schedule as dated versions, the documents Opro keeps, and the exchange rates for flight allowances |
+| `/hr/policy` | Policies: add, edit and remove leave types (yearly days, half days, given to everyone or people HR picks, lapse or carry forward up to a cap; a new entitlement applies from the next leave year; approved by the HOD, or the HOD then HR), which other requests HR approves after the HOD, the work schedule as dated versions, the documents Opro keeps, and the exchange rates for flight allowances |
 
 ### Attendance rules (placeholders, confirm with HR)
 
@@ -170,7 +170,7 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 - Weekends and public holidays inside a leave range do not count.
 - The apply form only offers types the person has a balance for, plus types the policy marks `isUnlimited`. A missing balance never means "no cap".
 - Sick leave longer than `documentRequiredAfterDays` asks for a medical certificate: PDF, JPG or PNG up to 5 MB, attached when applying or later from the request history. It is health data: the employee and HR can open it, managers only see that one is attached. The server checks the file's first bytes, not just its type, and serves it with `nosniff` and a `sandbox` policy.
-- Single level approval by the direct manager. A manager decides only for their active direct reports, never their own leave (that goes to their own manager). Declining needs a reason, enforced on the server.
+- Approval by the direct manager, then HR for leave types set to need it (see Approvals). A manager decides only for their active direct reports, never their own leave (that goes to their own manager). Declining needs a reason, enforced on the server.
 - Decisions tell the employee in plain words, new requests and punch fixes tell the manager. An approved punch fix adds a manual punch linked to its request.
 - Statuses: `pending`, `approved`, `rejected`, `cancelled`.
 - The backend owns day counts and balances. The frontend may preview a count but the server's number wins: Spring ignores any `days` the client sends.
@@ -182,6 +182,14 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 
 - Punching on a Friday or a public holiday asks the manager for compensatory off (Comp off tab). Approved, it earns **1 day**, or **half a day** when the day was shorter than the half day threshold, worked out from the punches when they decide. It can't be approved while they're still punched in. Declining needs a reason.
 - It goes into that year's **Compensatory off** balance, logged with who approved it, and **lapses at the end of the leave year**.
+
+### Approvals
+
+- Every request is decided by the HOD first. HR can ask to **approve after the HOD**: per leave type (Policies, "Approved by"), and once each for punch fixes, home working, comp off and overtime (Policies, "HR after the HOD"). Nothing needs HR until they say so.
+- An HOD approval of such a request leaves it **pending, waiting for HR**, with who approved it and when (`hodApprovedByName`, `hodApprovedOn`). The employee and every HR person but them are told. Balances, punches, comp off and overtime only change on the final approval.
+- Any HR person decides it from the Inbox, never their own. Declining at either step ends it, with a reason. An HOD who is HR covers both steps in one click. Super admins step in at the HOD step only.
+- The rule is read when the HOD approves, so changing it doesn't move requests already waiting for HR.
+- Known limit: if the only HR person asks for something that needs HR, nobody can give the second approval.
 
 ### Overtime
 
@@ -237,7 +245,7 @@ Logo, "People first, always.", "© year Opro Pvt Ltd · Malé, Republic of Maldi
 - **Holiday calendar:** add, edit and delete holidays per year. Mark an Islamic date confirmed after moon sighting, which notifies everyone. An empty year can start from the fixed civil holidays (New Year, Independence Day, Victory Day, Republic Day).
 - **Company events** on the calendar ("Office social", "Team review"), managed by HR.
 - **Leave policy:** leave types, yearly entitlements, who gets them and carry forward. See Leave rules.
-- **Work schedule**, see Attendance rules. Leave, punch fixes, home days, comp off and overtime are decided by the HOD alone; HR has no approve buttons and the server has no HR decision endpoints.
+- **Work schedule**, see Attendance rules. Leave, punch fixes, home days, comp off and overtime are decided by the HOD. HR approves after the HOD only for what Policies say (see Approvals), from the Inbox.
 - **People:** add someone (ID, roles and full annual, sick and family balances come from the server) with gender (male or female), date of birth, employment type (Permanent, Contract, Casual or Intern), when probation and a contract end, and an expatriate's quota job category; edit details and reporting manager (required, except for a super admin) (never themselves or anyone below them), and mark someone as leaving. Nobody is ever deleted: after their last day they can't sign in and drop out of live lists, their records stay, and leave booked after that day is cancelled. Someone with active reports can't leave until those reports have a new manager.
 - **Photos:** HR uploads them from the person's page. The browser crops to 4:5 and re-encodes a small JPEG, which also strips location data. They show on the ID card, the staff card and avatars.
 - **Balance adjustments:** add or remove days for one person with a required reason. Every change is logged with who, when and why. Adjusting a type they don't hold yet (paternity, say) creates that balance.
@@ -412,7 +420,10 @@ The full, generated reference is Swagger UI at `http://localhost:8080/swagger-ui
 | GET | `/api/hr/attendance?employeeId=&month=YYYY-MM` | One person's daily records |
 | GET | `/api/hr/leave-requests?status=` | Every leave request, read only |
 | POST | `/api/hr/balance-adjustments` | Add or remove days with a reason (`employeeId`, `type`, `days`, `reason`) |
-| POST / PUT / DELETE | `/api/hr/leave-types`, `/api/hr/leave-types/:code` | Add a type / change its rules (`name`, `allowsHalfDay`, `isUnlimited`, `defaultEntitlement`, `isForEveryone`, `carriesForward`, `carryForwardCap`) / remove it (deleted if unused, otherwise retired) |
+| GET | `/api/hr/approvals` | What the HOD approved and HR approves too, by kind (`leave`, `corrections`, `homeDays`, `compOffs`, `overtime`), never the reader's own |
+| POST | `/api/hr/approvals/:kind/:id/decision` | HR's step (`kind` is `leave`, `corrections`, `home-days`, `comp-offs` or `overtime`): `approved`, or `rejected` with a `note` |
+| GET / PUT | `/api/hr/approval-rules` | Whether HR approves after the HOD (`punchFixes`, `homeDays`, `compOff`, `overtime`). Leave types carry `needsHrApproval` |
+| POST / PUT / DELETE | `/api/hr/leave-types`, `/api/hr/leave-types/:code` | Add a type / change its rules (`name`, `allowsHalfDay`, `isUnlimited`, `defaultEntitlement`, `isForEveryone`, `carriesForward`, `carryForwardCap`, `needsHrApproval`) / remove it (deleted if unused, otherwise retired) |
 | PUT | `/api/hr/employees/:id/leave/:code` | Set one person's days of a type this year (`days`, `reason`). Also gives a type to just them |
 | POST | `/api/hr/employees/:id/leave/:code/remove` | Take a type away from one person (`reason`) |
 | GET | `/api/flights` | Own flight allowance this year, used, waiting, HR's rates and every claim |

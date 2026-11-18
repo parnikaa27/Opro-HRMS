@@ -13,5 +13,5 @@ interface CompOffClaimRepository extends JpaRepository<CompOffClaim, String> {
 
     List<CompOffClaim> findByEmployeeIdInAndStatusOrderByWorkDateDesc(Collection<String> employeeIds, String status);
 
-
+    List<CompOffClaim> findByStatusAndHodApprovedByNotNullOrderByWorkDate(String status);
 }

@@ -16,5 +16,5 @@ interface HomeDayRepository extends JpaRepository<HomeDay, String> {
 
     List<HomeDay> findByEmployeeIdInAndStatusOrderByWorkDateDesc(Collection<String> employeeIds, String status);
 
-
+    List<HomeDay> findByStatusAndHodApprovedByNotNullOrderByWorkDate(String status);
 }

@@ -13,7 +13,7 @@ public class LeaveType {
 
     // What HR sets from Policies.
     public record Rules(String name, boolean allowsHalfDay, boolean isUnlimited, BigDecimal defaultEntitlement, Integer documentRequiredAfterDays,
-            boolean isForEveryone, boolean carriesForward, BigDecimal carryForwardCap) {}
+            boolean isForEveryone, boolean carriesForward, BigDecimal carryForwardCap, boolean needsHrApproval) {}
 
     @Id
     private String code;
@@ -28,6 +28,7 @@ public class LeaveType {
     private boolean carriesForward;
     private BigDecimal carryForwardCap;
     private LocalDate retiredOn;
+    private boolean needsHrApproval;
 
     protected LeaveType() {}
 
@@ -49,6 +50,7 @@ public class LeaveType {
         this.isForEveryone = rules.isForEveryone();
         this.carriesForward = !isUnlimited && rules.carriesForward();
         this.carryForwardCap = carriesForward ? rules.carryForwardCap() : null;
+        this.needsHrApproval = rules.needsHrApproval();
     }
 
     void retire(LocalDate on) {
@@ -97,6 +99,11 @@ public class LeaveType {
 
     public LocalDate getRetiredOn() {
         return retiredOn;
+    }
+
+    // HR approves after the HOD.
+    public boolean needsHrApproval() {
+        return needsHrApproval;
     }
 
     public boolean isRetired() {

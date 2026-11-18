@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { CorrectionRequest } from '../../models/attendance';
 import { Icon } from '../../shared/ui/icon';
 import { StatusPill, Tone } from '../../shared/ui/status-pill';
+import { isWaitingForHr } from '../../shared/utils/approval-step';
 import { formatShortDate } from '../../shared/utils/date-time';
 
 const STATUS: Record<CorrectionRequest['status'], { label: string; tone: Tone }> = {
@@ -31,7 +32,7 @@ import { fixCategoryLabel } from './fix-categories';
             <span>{{ formatShortDate(item.date) }} · {{ categoryLabel(item.category) }}@if (item.reason) { · {{ item.reason }}}@if (item.decisionNote) { · “{{ item.decisionNote }}”}</span>
           </div>
           <span></span>
-          <app-status-pill [tone]="status[item.status].tone">{{ status[item.status].label }}</app-status-pill>
+          <app-status-pill [tone]="status[item.status].tone">{{ isWaitingForHr(item) ? 'Waiting for HR' : status[item.status].label }}</app-status-pill>
         </div>
       } @empty {
         <p class="attendance-off">No fixes requested. If you miss a punch, ask for a fix and it shows up here.</p>
@@ -45,6 +46,7 @@ export class CorrectionList {
   readonly corrections = input.required<readonly CorrectionRequest[]>();
   protected readonly sorted = computed(() => [...this.corrections()].sort((first, second) => second.date.localeCompare(first.date)));
   protected readonly status = STATUS;
+  protected readonly isWaitingForHr = isWaitingForHr;
   protected readonly formatShortDate = formatShortDate;
   protected readonly categoryLabel = fixCategoryLabel;
 }

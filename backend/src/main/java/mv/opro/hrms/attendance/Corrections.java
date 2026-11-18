@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import mv.opro.hrms.approval.ApprovalSteps;
 import mv.opro.hrms.common.ApiException;
 import mv.opro.hrms.common.Ids;
 import mv.opro.hrms.common.Wording;
@@ -37,13 +38,16 @@ public class Corrections {
     private final CorrectionRequestRepository corrections;
     private final PunchRepository punches;
     private final Overtimes overtimes;
+    private final ApprovalSteps steps;
     private final Notifications notifications;
     private final Clock clock;
 
-    Corrections(CorrectionRequestRepository corrections, PunchRepository punches, Overtimes overtimes, Notifications notifications, Clock clock) {
+    Corrections(CorrectionRequestRepository corrections, PunchRepository punches, Overtimes overtimes, ApprovalSteps steps, Notifications notifications,
+            Clock clock) {
         this.corrections = corrections;
         this.punches = punches;
         this.overtimes = overtimes;
+        this.steps = steps;
         this.notifications = notifications;
         this.clock = clock;
     }
@@ -95,6 +99,28 @@ public class Corrections {
         if (!request.isPending()) {
             throw new ApiException(HttpStatus.CONFLICT, "This request has already been decided.");
         }
+        steps.checkHodStep(request.isWaitingForHr());
+        if (APPROVED.equals(decision.decision()) && steps.passesToHr(decider, steps.needsHr(ApprovalSteps.Kind.CORRECTION))) {
+            request.approveForHod(decider.getId(), LocalDate.now(clock));
+            steps.passToHr(decider, request.getEmployeeId(), Notification.Kind.CORRECTION, "punch fix for " + Wording.date(request.getPunchDate()));
+            return request;
+        }
+        return finish(decider, request, decision);
+    }
+
+    public List<CorrectionRequest> waitingForHr() {
+        return corrections.findByStatusAndHodApprovedByNotNullOrderByRaisedOn("pending");
+    }
+
+    // The HR step, after the HOD approved.
+    @Transactional
+    public CorrectionRequest decideForHr(Employee hr, String id, Decision decision) {
+        CorrectionRequest request = corrections.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Request not found"));
+        steps.checkHrStep(hr, request.getEmployeeId(), request.isWaitingForHr());
+        return finish(hr, request, decision);
+    }
+
+    private CorrectionRequest finish(Employee decider, CorrectionRequest request, Decision decision) {
         String note = decision.note() == null || decision.note().isBlank() ? null : decision.note().strip();
         boolean isApproved = APPROVED.equals(decision.decision());
         if (!isApproved && note == null) {

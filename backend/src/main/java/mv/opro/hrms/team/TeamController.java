@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import mv.opro.hrms.attendance.AttendanceDay;
 import mv.opro.hrms.attendance.AttendanceService;
 import mv.opro.hrms.attendance.CompOffResponse;
@@ -127,7 +128,8 @@ class TeamController {
     List<LeaveRequestResponse> leaveRequests(@PathVariable String scope, @RequestParam(required = false) String status) {
         Map<String, String> names = namesOf(inScope(scope));
         List<LeaveRequest> requests = leave.requestsOf(names.keySet(), status);
-        Map<String, String> deciders = people.namesOf(requests.stream().map(LeaveRequest::getDecidedBy).filter(Objects::nonNull).collect(Collectors.toSet()));
+        Map<String, String> deciders = people.namesOf(requests.stream()
+                .flatMap(request -> Stream.of(request.getDecidedBy(), request.getHodApprovedBy())).filter(Objects::nonNull).collect(Collectors.toSet()));
         return requests.stream().map(request -> LeaveRequestResponse.of(request, names.get(request.getEmployeeId()), deciders)).toList();
     }
 

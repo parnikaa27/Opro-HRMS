@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output, si
 import { LeaveRequest, LeaveStatus, LeaveType } from '../../models/leave';
 import { Icon } from '../../shared/ui/icon';
 import { StatusPill, Tone } from '../../shared/ui/status-pill';
+import { isWaitingForHr } from '../../shared/utils/approval-step';
 import { maldivesToday } from '../../shared/utils/date-time';
 import { CERTIFICATE_ACCEPT, certificateProblem, LeaveApi, needsCertificate } from './leave-api';
 import { describeDates, describeLength } from './leave-format';
@@ -61,7 +62,7 @@ const STATUS: Record<LeaveStatus, { label: string; tone: Tone }> = {
             }
           </div>
           <span>{{ length(request) }}</span>
-          <app-status-pill [tone]="status[request.status].tone">{{ status[request.status].label }}</app-status-pill>
+          <app-status-pill [tone]="status[request.status].tone">{{ isWaitingForHr(request) ? 'Waiting for HR' : status[request.status].label }}</app-status-pill>
         </div>
       } @empty {
         <p class="attendance-off">No requests yet. When you apply for leave, it shows up here with its status.</p>
@@ -88,6 +89,7 @@ export class LeaveRequests {
   protected readonly problem = signal('');
   protected readonly certificateAccept = CERTIFICATE_ACCEPT;
   protected readonly status = STATUS;
+  protected readonly isWaitingForHr = isWaitingForHr;
 
   protected readonly nameOf = (code: string) => this.types().find((type) => type.code === code)?.name ?? code;
   protected readonly isMissingCertificate = (request: LeaveRequest) =>
