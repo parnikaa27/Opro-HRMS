@@ -940,3 +940,128 @@ app-banks-to-check > .card {
 app-quota-card > .card {
   margin-top: 19px;
 }
+
+/* The executive dashboard and reports, which the design doesn't have. Cards in two even columns, one on narrow screens. */
+.insight-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 19px;
+  margin-top: 19px;
+
+  @media (max-width: 860px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.insight-label {
+  margin: 16px 0 8px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* A group, its bar, the count and the share. The numbers carry the meaning; the bar only helps the eye. */
+.breakdown {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 7px;
+
+  li {
+    display: grid;
+    grid-template-columns: minmax(84px, 1fr) minmax(60px, 2fr) auto 34px;
+    gap: 10px;
+    align-items: center;
+    font-size: 11px;
+  }
+
+  i {
+    height: 7px;
+    border-radius: 7px;
+    background: var(--aqua-light);
+    overflow: hidden;
+  }
+
+  b {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--aqua-dark);
+  }
+
+  strong {
+    font-variant-numeric: tabular-nums;
+  }
+
+  small {
+    color: var(--muted);
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.insight-figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 12px;
+
+  div {
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+
+  dt {
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  dd {
+    margin: 2px 0 0;
+    font: 700 18px "Manrope Variable";
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.insight-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-top: 1px solid var(--line);
+  color: inherit;
+  font-size: 11px;
+  text-decoration: none;
+
+  span {
+    margin-inline-end: auto;
+  }
+
+  small {
+    color: var(--muted);
+  }
+}
+
+a.insight-row:hover span {
+  color: var(--aqua-dark);
+}
+
+.report-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 12px 0 16px;
+}
+
+.report-exports {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-inline-start: auto;
+}

@@ -36,15 +36,15 @@ What's left before Opro HRMS can go live, and what's waiting on someone. Kept up
 What the document asks for, against what's built. "Done" means built and tested; "Partly" says what's missing.
 
 **Decided on 18 November**
-- Build order: **foundations first** (employee record, Maldives compliance, executive dashboard, reports, people alerts), then the other modules. The record, compliance and alerts are built; **the executive dashboard and reports (CSV, Excel and PDF, made in the browser with exceljs and jspdf) are next**.
+- Build order: **foundations first** (employee record, Maldives compliance, executive dashboard, reports, people alerts), then the other modules. The record, compliance and alerts are built, and so are the executive dashboard and reports (CSV, Excel and PDF) for HR and super admins. **Next: overtime, approval chains, then the modules (payroll first)**.
 - **Overtime comes back**: worked out from punches beyond the shift and approved by the HOD, ready for payroll.
 - **Biometric devices stay out** until there's a device make and model to integrate with. Punching stays in the portal.
 - **Approvals become chains HR can set** for each kind of request. Today's single HOD step is the default.
 - **Email is the first alert channel**, through Opro's Microsoft 365, so it's tied to Microsoft sign in. SMS and a native app come later.
 
 **1. Executive dashboard**
-- Partly: headcount, today's attendance, people on leave, visa and passport alerts (HR, HOD and super admin overviews).
-- Not yet: new joiners and leavers over time, nationality, department, gender and employment type breakdowns, local vs expat ratio, business travel, shift status, and the recruitment, payroll, performance, training and engagement dashboards (those modules don't exist yet).
+- Done: workforce (headcount, joiners, leavers, attrition, retention, locals and expatriates, gender, employment type, age, departments, nationalities), attendance today and this month, leave (waiting, annual used, sick trend), compliance (expired and expiring papers, quota use), birthdays, anniversaries, probation and contract endings. For HR and super admins.
+- Not yet: business travel, shift status, overtime, and the recruitment, payroll, performance, training and engagement sections (they arrive with their modules).
 
 **2. Employee information**
 - Done: profile with gender, date of birth and employment type, emergency contact, passport (last 4 digits), work permit and visa, medical insurance, bank details (entered by the person, verified by HR), education, work experience, documents repository with HR checks.
@@ -86,8 +86,8 @@ What the document asks for, against what's built. "Done" means built and tested;
 - Not yet: approve overtime (clash above), appraisals, recruitment requests, wider reports.
 
 **14. Reports**
-- Partly: attendance exports as CSV.
-- Not yet: headcount, attrition, turnover, recruitment, leave, payroll, nationality, department, gender, age, visa and permit expiry, training, performance, overtime, salary cost, budget vs actual. Excel and PDF as well as CSV.
+- Done: headcount, joiners and leavers (attrition and turnover), workforce mix by department, nationality, gender, age or employment type, leave balances, leave taken, attendance, visa and permit expiry. Each as CSV, Excel or PDF.
+- Not yet: recruitment, payroll, salary cost, budget vs actual, training, performance, overtime (with their modules).
 
 **15. Workflows**
 - Partly: leave, punch fixes, home days, comp off and document checks, all single level.
@@ -106,6 +106,7 @@ What the document asks for, against what's built. "Done" means built and tested;
 **19. Maldives compliance**
 - Done: Maldives public holidays with tentative Islamic dates, the Saturday to Thursday week, custom work schedules, visa lifecycle.
 - Done since: expatriate quota, employment approval tracking, medical and insurance reminders.
-- Not yet: local vs expat reporting, Employment Act compliance reports (both come with the dashboard and reports).
+- Done since: local vs expat reporting (dashboard and workforce mix report).
+- Not yet: Employment Act compliance reports, once HR says which ones the Ministry asks for.
 
-**20. Executive KPIs**: depends on the modules above. Workforce, attendance, leave and compliance KPIs can be built from today's data.
+**20. Executive KPIs**: workforce, attendance, leave, compliance, turnover and diversity are on the dashboard. Recruitment, payroll, performance and learning come with their modules.

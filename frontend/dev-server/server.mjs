@@ -134,6 +134,12 @@ const requireSuperAdmin = (user) => {
   }
 };
 
+const requireInsights = (user) => {
+  if (!user.roles.includes('HR') && !user.roles.includes('SUPER_ADMIN')) {
+    throw new HttpError(403, 'HR and super admins only');
+  }
+};
+
 // An HOD's direct reports, or everyone for a super admin, who can step in on any decision.
 const peopleIn = (user, scope) => {
   if (scope === 'company') {
@@ -1240,6 +1246,33 @@ const routes = [
     requireHr(user);
     db.records.quotas = db.records.quotas.filter((quota) => quota.id !== id);
     return undefined;
+  }],
+  // The dashboard's facts, for HR and super admins. The pages count and group them; the mock only gathers them.
+  ['GET', /^\/api\/insights$/, ({ user }) => {
+    requireInsights(user);
+    const since = Number(today().slice(0, 4)) - 1;
+    const insuranceOf = db.records.insurance;
+    return {
+      today: today(),
+      people: [...db.employees].sort((first, second) => first.fullName.localeCompare(second.fullName)).map((employee) => {
+        const visa = db.visas.find(({ employeeId }) => employeeId === employee.id);
+        const isActive = !employee.lastDay || employee.lastDay >= today();
+        return {
+          ...pick(employee, ['id', 'fullName', 'department', 'designation', 'nationality', 'gender', 'dateOfBirth', 'joinedOn', 'lastDay', 'employmentType', 'jobCategory', 'managerId', 'probationEndsOn', 'contractEndsOn']),
+          ...(isActive && { today: db.attendance.find((record) => record.employeeId === employee.id && record.date === today()) }),
+          ...(visa && pick(visa, ['visaExpiry', 'passportExpiry', 'employmentApprovalExpiry', 'medicalDueOn'])),
+          ...(insuranceOf[employee.id] && { insuranceExpiry: insuranceOf[employee.id].expiresOn }),
+        };
+      }),
+      leave: db.leaveRequests.filter(({ from }) => Number(from.slice(0, 4)) >= since).map((request) => pick(request, ['employeeId', 'type', 'from', 'to', 'days', 'status', 'appliedOn'])),
+      balances: activeEmployees().flatMap(({ id }) => balancesOf(id).map((balance) => ({ employeeId: id, ...pick(balance, ['type', 'entitled', 'taken', 'pending']) }))),
+      quotas: [...db.records.quotas].sort((first, second) => first.jobCategory.localeCompare(second.jobCategory)).map(quotaView),
+    };
+  }],
+  ['GET', /^\/api\/insights\/attendance$/, ({ user, query }) => {
+    requireInsights(user);
+    const ids = new Set(activeEmployees().map(({ id }) => id));
+    return db.attendance.filter((record) => ids.has(record.employeeId)).filter(inMonth(query.get('month'))).map(withName);
   }],
   ['GET', /^\/api\/hr\/schedules$/, ({ user }) => {
     requireHr(user);

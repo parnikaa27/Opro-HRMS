@@ -89,7 +89,7 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 
 **Super admin view (super admins only)**
 
-Sidebar: People, Attendance, Leave (count waiting across Opro), Calendar. Reuses the Team view's pages with `scope: 'company'` in route data. Route input binding sets a missing input to `undefined`, so every route that uses these pages sets `scope`, the team ones too.
+Sidebar: People, Dashboard, Attendance, Leave (count waiting across Opro), Calendar, Reports. Reuses the Team view's pages with `scope: 'company'` in route data. Route input binding sets a missing input to `undefined`, so every route that uses these pages sets `scope`, the team ones too.
 
 | Route | Contents |
 |---|---|
@@ -97,11 +97,12 @@ Sidebar: People, Attendance, Leave (count waiting across Opro), Calendar. Reuses
 | `/company/attendance` | Summary cards and one row per person, month picker, CSV export |
 | `/company/leave` | The leave requests page for every request at Opro: approve in one click, decline with a reason, to step in when an HOD is away |
 | `/company/calendar` | The company calendar plus who at Opro is away |
+| `/company/dashboard`, `/company/reports` | The executive dashboard and reports, the same as HR's (see below) |
 | `/company/:employeeId` | One person's balances, attendance log with a month picker, leave requests, staff card and visa |
 
 **HR view (HR role only)**
 
-Sidebar: Overview, People, Calendar, Visas, Inbox (count open), Announcements, Policies.
+Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Announcements, Policies, Reports.
 
 | Route | Contents |
 |---|---|
@@ -113,6 +114,8 @@ Sidebar: Overview, People, Calendar, Visas, Inbox (count open), Announcements, P
 | `/hr/visas` | Every expatriate, people with no record first, then soonest visa or passport expiry, and the expatriate quota: approvals by job category with slots used, expiry, and any job category with no quota |
 | `/hr/inbox` | Profile change requests in tabs (Open, Done, Declined), and documents and bank details to check, oldest first: verify, or send back with a reason. Declining needs a reason |
 | `/hr/announcements` | Post, edit and take down notes from HR. A new one notifies everyone |
+| `/hr/dashboard` | The executive dashboard: employees, joiners, leavers with attrition and retention, who's in today; locals and expatriates, gender, employment type, age, departments and nationalities; today's attendance and this month's; leave waiting, annual leave used, sick leave by month; papers expired or expiring within 60 days and quota use; birthdays and anniversaries this month, probation ending within 30 days, contracts within 60. Only what today's data supports: recruitment, payroll, performance, training and overtime appear when those modules exist |
+| `/hr/reports` | Headcount, joiners and leavers, workforce mix, leave balances, leave taken, attendance and visa and permit expiry, each shown as a table and saved as CSV, Excel or PDF |
 | `/hr/policy` | Policies: add, edit and remove leave types (yearly days, half days, given to everyone or people HR picks, lapse or carry forward up to a cap; a new entitlement applies from the next leave year), the work schedule as dated versions, the documents Opro keeps, and the exchange rates for flight allowances |
 
 ### Attendance rules (placeholders, confirm with HR)
@@ -238,6 +241,7 @@ Logo, "People first, always.", "© year Opro Pvt Ltd · Malé, Republic of Maldi
 
 ### Exports
 
+- Reports save as **CSV, Excel or PDF**, all built in the browser from the same rows shown on screen (`shared/utils/export.ts`). Excel and PDF use exceljs and jspdf with jspdf-autotable, loaded only when someone exports. Excel keeps every value as plain data, never a formula.
 - "Export report" downloads a CSV built in the browser. Every cell is quoted, and cells starting with `=`, `+`, `-` or `@` get a leading apostrophe so a spreadsheet never runs them as formulas.
 
 ### Non functional
@@ -413,6 +417,7 @@ The full, generated reference is Swagger UI at `http://localhost:8080/swagger-ui
 | POST | `/api/hr/holidays/start-year` | Add the fixed civil holidays to a year (`year`) |
 | POST / PUT / DELETE | `/api/hr/events`, `/api/hr/events/:id` | Manage company events |
 | GET | `/api/hr/change-requests` | Profile change requests |
+| GET | `/api/insights`, `/api/insights/attendance?month=` | HR and super admins only: everyone (past staff too) with today's attendance, papers and record dates, this and last year's leave, balances and quota use / everyone's days that month. The dashboard and reports count and group these in the browser |
 | GET / PUT | `/api/profile/record`, `/api/profile/bank-account` | Own record (bank shown as last 4) / enter bank details for HR to verify (`bankName`, `accountName`, `accountNumber`, `currency`) |
 | GET | `/api/hr/employees/:id/record` | One person's insurance, bank details (full number), education and experience |
 | PUT / DELETE | `/api/hr/employees/:id/insurance` | Set (`provider`, `policyNumber`, `expiresOn`) or remove someone's medical insurance |

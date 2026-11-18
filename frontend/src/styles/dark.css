@@ -678,6 +678,9 @@
 :root[data-theme='dark'] .currency-switch button[aria-pressed='true'] {
   color: #deedf8;
 }
+:root[data-theme='dark'] a.insight-row:hover span {
+  color: #5ac6ba;
+}
 @media (max-width: 860px) {
 :root[data-theme='dark'] .mobile-menu {
   color: #deedf8;
@@ -1362,6 +1365,9 @@
 }
 :root:not([data-theme='light']) .currency-switch button[aria-pressed='true'] {
   color: #deedf8;
+}
+:root:not([data-theme='light']) a.insight-row:hover span {
+  color: #5ac6ba;
 }
 @media (max-width: 860px) {
 :root:not([data-theme='light']) .mobile-menu {
