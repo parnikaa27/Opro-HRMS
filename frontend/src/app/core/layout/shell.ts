@@ -59,9 +59,10 @@ export class Shell {
   private readonly pendingCompOffs = this.team.compOffs({ status: 'pending', isEnabled: this.countsWaiting, scope: this.scope });
   private readonly changeRequests = this.hr.changeRequests({ isEnabled: () => this.view() === 'hr' && this.session.isHr() });
   private readonly waitingDocuments = this.hr.waitingDocuments({ isEnabled: () => this.view() === 'hr' && this.session.isHr() });
+  private readonly waitingBanks = this.hr.waitingBanks({ isEnabled: () => this.view() === 'hr' && this.session.isHr() });
   protected readonly badges = computed<Partial<Record<BadgeKey, number>>>(() => ({
     approvals: [valueOr(this.pendingLeave, []), valueOr(this.pendingFixes, []), valueOr(this.pendingHomeDays, []), valueOr(this.pendingCompOffs, [])].reduce((total, list) => total + list.length, 0),
-    inbox: valueOr(this.changeRequests, []).filter(({ status }) => status === 'open').length + valueOr(this.waitingDocuments, []).length,
+    inbox: valueOr(this.changeRequests, []).filter(({ status }) => status === 'open').length + valueOr(this.waitingDocuments, []).length + valueOr(this.waitingBanks, []).length,
   }));
 
   constructor() {
@@ -69,7 +70,7 @@ export class Shell {
     const seen = saves();
     effect(() => {
       if (saves() !== seen) {
-        untracked(() => [this.pendingLeave, this.pendingFixes, this.pendingHomeDays, this.pendingCompOffs, this.changeRequests, this.waitingDocuments].forEach((counts) => counts.reload()));
+        untracked(() => [this.pendingLeave, this.pendingFixes, this.pendingHomeDays, this.pendingCompOffs, this.changeRequests, this.waitingDocuments, this.waitingBanks].forEach((counts) => counts.reload()));
       }
     });
   }

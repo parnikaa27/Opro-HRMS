@@ -54,7 +54,7 @@ HRMS/
     dev-server/            Mock API that stands in for Spring
       server.mjs           Routes, sessions, XSRF check. Node built ins only
       attendance.mjs       Generates the last 62 days of punches relative to today, and works a day out again after an approved punch fix, using the schedule in force
-      data/                JSON fixtures: employees, visas, leave, flight allowances and claims, exchange rates, holidays, events, corrections, announcements, notifications, change requests, balance adjustments, work schedules, document types. Uploaded files stay in memory until restart
+      data/                JSON fixtures: employees, visas, leave, flight allowances and claims, exchange rates, holidays, events, corrections, announcements, notifications, change requests, balance adjustments, work schedules, document types, records (insurance, bank details, education, experience, expatriate quota). Uploaded files stay in memory until restart
     proxy.conf.mjs         Sends /api to the mock or to Spring
     scripts/
       build-dark-theme.mjs Writes src/styles/dark.css from portal.css and styles.css (see theme:dark)
@@ -74,6 +74,7 @@ HRMS/
       team/                The HOD's view (/api/team) and the super admin's company view (/api/company), one set of endpoints: TeamAccess limits an HOD to their own active direct reports and lets only super admins reach everyone
       files/               Stored files (in PostgreSQL for now), upload checks, and serving them safely
       document/            Document types HR keeps, everyone's copies, uploads and HR's checks (Documents service)
+      record/              Medical insurance, bank details (entered by the person, verified by HR), education and work experience (Records service)
       announcement/        Notes from HR on everyone's overview, and AnnouncementEditor for posting them
       profile/             Change requests people send to HR from their profile, and HR's inbox of them
       hr/                  HR only endpoints, behind HrAccess: people, leave balances and policy, calendar, schedules, inbox, announcements, photos, flight allowances, documents
@@ -203,12 +204,12 @@ Everyone has an Indian name. Sneha and Karan are Maldivian nationals, so they se
 | Ananya Iyer (OPR-0002) | HR | HR view: everyone, holidays, visas, inbox, announcements, leave policy |
 | Vikram Singh (OPR-0004) | HOD | Team view, approvals, visa alerts for the team |
 | Rajesh Sharma (OPR-0001) | Super admin and HOD | The company view, stepping in on anyone's request, approving Vikram's and Ananya's leave, his own leave approved as he sends it |
-| Arjun Reddy (OPR-0018) | Employee | Visa expiring soon, a $1,200 flight allowance with one flight approved |
+| Arjun Reddy (OPR-0018) | Employee | Visa expiring soon, a $1,200 flight allowance with one flight approved, a contract ending in January, a full record (verified bank, insurance, education, a past job) |
 | Rohit Verma (OPR-0021) | Employee | Visa already expired, pending correction |
-| Kavya Menon (OPR-0027) | Employee | Passport expiring soon, rejected leave |
+| Kavya Menon (OPR-0027) | Employee | Passport expiring soon, rejected leave, probation ending in December |
 | Sneha Kulkarni (OPR-0011) | Employee | Maldivian, no visa section, no flight allowance |
 | Karan Mehta (OPR-0023) | Employee | Maldivian, no visa section |
-| Priya Nair (OPR-0015) | Employee | A flight claim, counted against her allowance |
+| Priya Nair (OPR-0015) | Employee | A flight claim, counted against her allowance, and bank details waiting for HR |
 
 ## Environment variables
 

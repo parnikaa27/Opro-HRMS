@@ -1,0 +1,102 @@
+{
+  "insurance": {
+    "OPR-0015": {
+      "provider": "Allied Insurance",
+      "policyNumber": "AIM-552190",
+      "expiresOn": "2027-06-30"
+    },
+    "OPR-0018": {
+      "provider": "Allied Insurance",
+      "policyNumber": "AIM-602388",
+      "expiresOn": "2027-04-30"
+    },
+    "OPR-0021": {
+      "provider": "Allied Insurance",
+      "policyNumber": "AIM-489150",
+      "expiresOn": "2027-05-31"
+    },
+    "OPR-0027": {
+      "provider": "Allied Insurance",
+      "policyNumber": "AIM-640071",
+      "expiresOn": "2027-03-31"
+    }
+  },
+  "bankAccounts": {
+    "OPR-0018": {
+      "bankName": "Bank of Maldives",
+      "accountName": "Arjun Reddy",
+      "accountNumber": "7730000123456",
+      "currency": "MVR",
+      "status": "verified",
+      "submittedOn": "2026-01-10"
+    },
+    "OPR-0015": {
+      "bankName": "Maldives Islamic Bank",
+      "accountName": "Priya Nair",
+      "accountNumber": "9001234567",
+      "currency": "USD",
+      "status": "pending",
+      "submittedOn": "2026-11-10"
+    }
+  },
+  "education": [
+    {
+      "id": "ED-1",
+      "employeeId": "OPR-0018",
+      "qualification": "BTech, Civil Engineering",
+      "institution": "Osmania University",
+      "completedYear": 2016
+    },
+    {
+      "id": "ED-2",
+      "employeeId": "OPR-0027",
+      "qualification": "BCom",
+      "institution": "University of Kerala",
+      "completedYear": 2019
+    }
+  ],
+  "experience": [
+    {
+      "id": "EX-1",
+      "employeeId": "OPR-0018",
+      "employer": "L&T Construction",
+      "role": "Site Engineer",
+      "from": "2016-07-01",
+      "to": "2023-11-30"
+    }
+  ],
+  "quotas": [
+    {
+      "id": "QA-1",
+      "jobCategory": "Engineering",
+      "slots": 2,
+      "approvalNumber": "QT-2025-0412",
+      "approvedOn": "2025-12-01",
+      "expiresOn": "2026-12-31"
+    },
+    {
+      "id": "QA-2",
+      "jobCategory": "Administration",
+      "slots": 2,
+      "approvalNumber": "QT-2025-0413",
+      "approvedOn": "2025-12-01",
+      "expiresOn": "2027-06-30"
+    },
+    {
+      "id": "QA-3",
+      "jobCategory": "Management",
+      "slots": 3,
+      "approvalNumber": "QT-2024-0098",
+      "approvedOn": "2024-06-01",
+      "expiresOn": "2027-05-31"
+    },
+    {
+      "id": "QA-4",
+      "jobCategory": "Logistics",
+      "slots": 1,
+      "approvalNumber": "QT-2025-0414",
+      "approvedOn": "2025-12-01",
+      "expiresOn": "2027-06-30"
+    }
+  ]
+}

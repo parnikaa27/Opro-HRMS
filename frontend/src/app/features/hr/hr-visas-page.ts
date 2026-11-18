@@ -10,6 +10,7 @@ import { expiryStatus, ExpiryStatus } from '../../shared/utils/expiry';
 import { valueOr } from '../../shared/utils/resource';
 import { VisaForm } from './forms/visa-form';
 import { HrApi, HrEmployee } from './hr-api';
+import { QuotaCard } from './quota-card';
 
 const EXPIRY: Record<ExpiryStatus, { label: string; tone: Tone }> = {
   valid: { label: 'Valid', tone: 'ok' },
@@ -20,14 +21,14 @@ const NO_RECORD = Number.MIN_SAFE_INTEGER;
 
 @Component({
   selector: 'app-hr-visas-page',
-  imports: [Avatar, Dialog, ListSkeleton, RouterLink, StatusPill, SuccessState, VisaForm],
+  imports: [Avatar, Dialog, ListSkeleton, QuotaCard, RouterLink, StatusPill, SuccessState, VisaForm],
   template: `
     <div class="page-view">
       <div class="page-title">
         <div>
           <span class="eyebrow">COMPLIANCE</span>
           <h1>Visas</h1>
-          <p>Everyone who needs a work visa, soonest expiry first. Maldivian nationals aren't listed.</p>
+          <p>Everyone who needs a work visa, soonest expiry first, and the quota their slots come from. Maldivian nationals aren't listed.</p>
         </div>
       </div>
       @if (everyone.error()) {
@@ -62,6 +63,7 @@ const NO_RECORD = Number.MIN_SAFE_INTEGER;
           </div>
         </section>
       }
+      <app-quota-card [categories]="categories()" />
     </div>
 
     <app-dialog heading="Update visa" [isOpen]="editing() !== undefined" (isOpenChange)="$event || close()">
@@ -88,6 +90,8 @@ export class HrVisasPage {
       .sort((first, second) => first.soonest - second.soonest)
       .map(({ person }) => person),
   );
+
+  protected readonly categories = computed(() => [...new Set(this.rows().flatMap(({ jobCategory }) => (jobCategory ? [jobCategory] : [])))].sort());
 
   protected readonly pill = (expiry: string) => EXPIRY[expiryStatus(expiry, this.today)];
   protected readonly formatCompactDate = formatCompactDate;

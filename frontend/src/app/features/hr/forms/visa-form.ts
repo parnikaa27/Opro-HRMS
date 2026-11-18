@@ -31,6 +31,12 @@ const LAST_FOUR = /^[A-Za-z0-9]{4}$/;
       </div>
       <app-field-error id="visa-passport-error" [errors]="visaForm.passportLast4().errors()" [isTouched]="visaForm.passportLast4().touched()" />
       <p class="modal-intro">Only the last 4 passport characters are stored. Keep the full copy in the employee's file.</p>
+      <div class="form-row">
+        <label>Employment approval number <input [formField]="visaForm.employmentApprovalNumber" data-testid="visa-approval" aria-describedby="visa-approval-error" /></label>
+        <label>Approval expires <input type="date" [formField]="visaForm.employmentApprovalExpiry" data-testid="visa-approval-expiry" /></label>
+      </div>
+      <app-field-error id="visa-approval-error" [errors]="visaForm.employmentApprovalNumber().errors()" [isTouched]="visaForm.employmentApprovalNumber().touched()" />
+      <label>Work permit medical due <input type="date" [formField]="visaForm.medicalDueOn" data-testid="visa-medical" /></label>
       @if (failed()) {
         <p role="alert">That didn't save. Try again in a moment.</p>
       }
@@ -62,6 +68,9 @@ export class VisaForm {
       visaExpiry: visa?.visaExpiry ?? '',
       passportLast4: visa?.passportLast4 ?? '',
       passportExpiry: visa?.passportExpiry ?? '',
+      employmentApprovalNumber: visa?.employmentApprovalNumber ?? '',
+      employmentApprovalExpiry: visa?.employmentApprovalExpiry ?? '',
+      medicalDueOn: visa?.medicalDueOn ?? '',
     };
   });
   protected readonly visaForm = form(this.draft, (path) => {
@@ -72,6 +81,9 @@ export class VisaForm {
     required(path.passportExpiry);
     required(path.passportLast4, { message: 'Enter the last 4 passport characters.' });
     pattern(path.passportLast4, LAST_FOUR, { message: 'Exactly 4 letters or numbers.' });
+    validate(path.employmentApprovalNumber, ({ value, valueOf }) =>
+      Boolean(value().trim()) !== Boolean(valueOf(path.employmentApprovalExpiry)) ? { kind: 'pair', message: 'Give the approval number and its expiry together.' } : undefined,
+    );
     validate(path.visaExpiry, ({ value, valueOf }) =>
       value() && valueOf(path.visaIssuedOn) && value() <= valueOf(path.visaIssuedOn) ? { kind: 'order', message: 'Expiry must come after the issue date.' } : undefined,
     );
@@ -79,7 +91,14 @@ export class VisaForm {
 
   protected save(event: Event) {
     return submitForm(event, this.visaForm, this.failed, async () => {
-      await this.api.saveVisa(this.employeeId(), { ...this.draft(), passportLast4: this.draft().passportLast4.toUpperCase() });
+      const { employmentApprovalNumber, employmentApprovalExpiry, medicalDueOn, ...papers } = this.draft();
+      // Empty optional fields are left out rather than sent blank.
+      await this.api.saveVisa(this.employeeId(), {
+        ...papers,
+        passportLast4: papers.passportLast4.toUpperCase(),
+        ...(employmentApprovalNumber.trim() && { employmentApprovalNumber: employmentApprovalNumber.trim(), employmentApprovalExpiry }),
+        ...(medicalDueOn && { medicalDueOn }),
+      });
       this.saved.emit();
     });
   }

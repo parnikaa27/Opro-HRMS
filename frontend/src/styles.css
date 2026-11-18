@@ -917,7 +917,26 @@ td.row-actions {
   font-size: 10px;
 }
 
-/* The inbox's documents to check sit under its detail changes, with the design's 19px gap between cards. */
-app-documents-to-check > .card {
+/* The inbox's documents and bank details to check sit under its detail changes, with the design's 19px gap between cards. */
+app-documents-to-check > .card,
+app-banks-to-check > .card {
+  margin-top: 19px;
+}
+
+/* Adding a qualification or past job sits under HR's record rows. */
+.record-adds {
+  display: flex;
+  gap: 18px;
+  padding: 14px 0 4px;
+
+  .text-link {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+  }
+}
+
+/* The quota sits under the visa table on the Visas page, with the design's gap between cards. */
+app-quota-card > .card {
   margin-top: 19px;
 }

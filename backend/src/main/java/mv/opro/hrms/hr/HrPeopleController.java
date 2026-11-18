@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
@@ -24,7 +25,6 @@ import mv.opro.hrms.employee.VisaRepository;
 import mv.opro.hrms.leave.BalanceAdjustment;
 import mv.opro.hrms.leave.LeaveService;
 import mv.opro.hrms.session.CurrentUser;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -56,14 +56,20 @@ class HrPeopleController {
             @NotNull @Pattern(regexp = "A\\+|A-|B\\+|B-|AB\\+|AB-|O\\+|O-") String bloodGroup,
             @NotBlank @Size(max = MAX_TEXT) String nationality,
             @NotBlank @Size(max = MAX_TEXT) String workLocation,
-            @NotBlank @Size(max = MAX_TEXT) String employmentType,
+            @NotNull @Pattern(regexp = "Permanent|Contract|Casual|Intern") String employmentType,
             String managerId,
-            @NotNull @Valid ContactBody emergencyContact) {
+            @NotNull @Valid ContactBody emergencyContact,
+            @NotNull @Pattern(regexp = "male|female") String gender,
+            @NotNull @Past LocalDate dateOfBirth,
+            LocalDate probationEndsOn,
+            LocalDate contractEndsOn,
+            @Size(max = 80) String jobCategory) {
 
         Employee.Details details() {
             return new Employee.Details(fullName.strip(), designation.strip(), department.strip(), email.strip(), phone.strip(), joinedOn, bloodGroup,
-                    nationality.strip(), workLocation.strip(), employmentType.strip(), managerId == null || managerId.isBlank() ? null : managerId,
-                    new EmergencyContact(emergencyContact.name().strip(), emergencyContact.relation().strip(), emergencyContact.phone().strip()));
+                    nationality.strip(), workLocation.strip(), employmentType, blankToNull(managerId),
+                    new EmergencyContact(emergencyContact.name().strip(), emergencyContact.relation().strip(), emergencyContact.phone().strip()),
+                    gender, dateOfBirth, probationEndsOn, contractEndsOn, blankToNull(jobCategory));
         }
     }
 
@@ -75,16 +81,22 @@ class HrPeopleController {
             @NotNull @Pattern(regexp = "[A-Za-z0-9]{4}", message = "must be exactly 4 letters or numbers") String passportLast4,
             @NotNull LocalDate passportExpiry,
             @NotNull LocalDate visaIssuedOn,
-            @NotNull LocalDate visaExpiry) {}
+            @NotNull LocalDate visaExpiry,
+            @Size(max = 40) String employmentApprovalNumber,
+            LocalDate employmentApprovalExpiry,
+            LocalDate medicalDueOn) {
+
+        Visa.Papers papers() {
+            return new Visa.Papers(workPermitNumber.strip(), visaNumber.strip(), passportLast4.toUpperCase(), passportExpiry, visaIssuedOn, visaExpiry,
+                    blankToNull(employmentApprovalNumber), employmentApprovalExpiry, medicalDueOn);
+        }
+    }
 
     record HrEmployee(@JsonUnwrapped EmployeeResponse employee, AttendanceDay today) {}
 
     record AdjustmentResponse(String id, String employeeId, String type, BigDecimal days, String reason, String by, String byName, LocalDate on) {}
 
     record HrEmployeeDetail(@JsonUnwrapped EmployeeResponse employee, List<LeaveService.Balance> leaveBalances, List<AdjustmentResponse> adjustments) {}
-
-    record VisaResponse(String workPermitNumber, String visaNumber, String passportLast4, LocalDate passportExpiry, LocalDate visaIssuedOn,
-            LocalDate visaExpiry) {}
 
     private final HrAccess hr;
     private final CurrentUser currentUser;
@@ -152,12 +164,13 @@ class HrPeopleController {
     }
 
     @PutMapping("/api/hr/employees/{id}/visa")
-    ResponseEntity<VisaResponse> visa(@PathVariable String id, @Valid @RequestBody VisaBody body) {
+    EmployeeResponse.VisaResponse visa(@PathVariable String id, @Valid @RequestBody VisaBody body) {
         hr.require(currentUser.get());
-        Visa visa = hrPeople.saveVisa(id, new HrPeople.VisaDetails(body.workPermitNumber(), body.visaNumber(), body.passportLast4(),
-                body.passportExpiry(), body.visaIssuedOn(), body.visaExpiry()));
-        return ResponseEntity.ok(new VisaResponse(visa.getWorkPermitNumber(), visa.getVisaNumber(), visa.getPassportLast4(), visa.getPassportExpiry(),
-                visa.getVisaIssuedOn(), visa.getVisaExpiry()));
+        return EmployeeResponse.VisaResponse.of(hrPeople.saveVisa(id, body.papers()));
+    }
+
+    private static String blankToNull(String text) {
+        return text == null || text.isBlank() ? null : text.strip();
     }
 
     private EmployeeResponse profile(Employee employee) {

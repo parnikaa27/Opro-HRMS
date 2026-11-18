@@ -19,7 +19,7 @@ const addStarter = async (page: Page, fullName: string, email: string) => {
         headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': xsrf },
         body: JSON.stringify({
           fullName, email, designation: 'Accountant', department: 'Finance', phone: '+960 777 1030', joinedOn: today, bloodGroup: 'B+',
-          nationality: 'Maldivian', workLocation: 'Malé office', employmentType: 'Full-time', managerId: 'OPR-0001',
+          nationality: 'Maldivian', workLocation: 'Malé office', employmentType: 'Permanent', managerId: 'OPR-0001', gender: 'female', dateOfBirth: '1995-03-14',
           emergencyContact: { name: 'Sameer Kapoor', relation: 'Brother', phone: '+960 777 1031' },
         }),
       });

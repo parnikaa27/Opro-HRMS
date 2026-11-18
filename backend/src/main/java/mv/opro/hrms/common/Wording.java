@@ -11,6 +11,7 @@ public final class Wording {
 
     private static final DateTimeFormatter LONG_DATE = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.UK);
     private static final DateTimeFormatter SHORT_DATE = DateTimeFormatter.ofPattern("d MMMM", Locale.UK);
+    private static final DateTimeFormatter OTHER_YEAR = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.UK);
     private static final DateTimeFormatter CLOCK = DateTimeFormatter.ofPattern("h:mm a", Locale.US);
     private static final BigDecimal HALF = new BigDecimal("0.5");
 
@@ -19,6 +20,11 @@ public final class Wording {
     // "Tuesday 10 November"
     public static String date(LocalDate day) {
         return day.format(LONG_DATE);
+    }
+
+    // "Tuesday 10 November" this year, "10 January 2027" in any other, so a date far off is never mistaken for a near one.
+    public static String date(LocalDate day, LocalDate today) {
+        return day.getYear() == today.getYear() ? date(day) : day.format(OTHER_YEAR);
     }
 
     // "Tuesday 10 November", or "Sunday 6 December to Thursday 10 December"

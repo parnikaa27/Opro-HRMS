@@ -22,6 +22,8 @@ export const employee = (overrides: Partial<Employee> = {}): Employee => ({
   managerId: 'OPR-0004',
   roles: ['EMPLOYEE'],
   emergencyContact: { name: 'Lakshmi Reddy', relation: 'Spouse', phone: '+94 77 120 1018' },
+  gender: 'male',
+  dateOfBirth: '1996-02-29',
   ...overrides,
 });
 

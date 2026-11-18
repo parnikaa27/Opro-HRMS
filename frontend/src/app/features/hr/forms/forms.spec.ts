@@ -114,6 +114,20 @@ describe('HR forms', () => {
       expect(saved).toHaveBeenCalled();
     });
 
+    it('needs the employment approval number and expiry together, and sends the medical date', async () => {
+      const { root } = await render(VisaForm, { employeeId: 'OPR-0021', name: 'Rohit Verma', visa });
+      fill(root, 'visa-approval', 'EA-1');
+      await submit(root);
+      expect(errors(root)).toEqual(['Give the approval number and its expiry together.']);
+
+      fill(root, 'visa-approval-expiry', '2027-11-01');
+      fill(root, 'visa-medical', '2027-03-01');
+      await submit(root);
+      expect(http.expectOne('/api/hr/employees/OPR-0021/visa').request.body).toEqual({
+        ...visa, employmentApprovalNumber: 'EA-1', employmentApprovalExpiry: '2027-11-01', medicalDueOn: '2027-03-01',
+      });
+    });
+
     it('starts empty for someone with no record', async () => {
       const { root } = await render(VisaForm, { employeeId: 'OPR-0021', name: 'Rohit Verma' });
       await submit(root);
@@ -367,6 +381,7 @@ describe('HR forms', () => {
       'employee-name': 'Divya Pillai', 'employee-designation': 'Accounts Officer', 'employee-department': 'Finance', 'employee-email': 'nazra@opro.mv',
       'employee-joined': '2026-11-15', 'employee-phone': '+960 777 1030', 'employee-nationality': 'Maldivian', 'employee-manager': 'OPR-0001',
       'employee-contact-name': 'Mohan Pillai', 'employee-contact-relation': 'Father', 'employee-contact-phone': '+960 777 2030',
+      'employee-gender': 'female', 'employee-birth': '1994-05-02', 'employee-probation': '2027-02-15',
     };
 
     it('names every missing field and needs a manager for a new person', async () => {
@@ -375,7 +390,8 @@ describe('HR forms', () => {
 
       expect(errors(root)).toEqual([
         'Enter their full name.', 'Enter their job title.', 'Enter their department.', 'Pick their reporting manager.', 'Enter their work email.', 'Pick the day they start.',
-        'Enter their phone number.', 'Enter their nationality.', 'Enter who to call in an emergency.', 'Say how they’re related.', 'Enter a number to call.',
+        'Enter their phone number.', 'Enter their nationality.', 'Pick their gender.', 'Enter their date of birth.', 'Enter who to call in an emergency.', 'Say how they’re related.',
+        'Enter a number to call.',
       ]);
       expect([...root.querySelectorAll('#departments option')].map((option) => option.getAttribute('value'))).toEqual(['Operations', 'Site']);
     });
@@ -393,9 +409,9 @@ describe('HR forms', () => {
       await submit(root);
       const request = http.expectOne('/api/hr/employees');
       expect(request.request.body).toEqual({
-        fullName: 'Divya Pillai', designation: 'Accounts Officer', department: 'Finance', workLocation: 'Malé office', employmentType: 'Full-time', email: 'nazra@opro.mv',
+        fullName: 'Divya Pillai', designation: 'Accounts Officer', department: 'Finance', workLocation: 'Malé office', employmentType: 'Permanent', email: 'nazra@opro.mv',
         joinedOn: '2026-11-15', phone: '+960 777 1030', nationality: 'Maldivian', bloodGroup: 'A+', managerId: 'OPR-0001',
-        emergencyContact: { name: 'Mohan Pillai', relation: 'Father', phone: '+960 777 2030' },
+        emergencyContact: { name: 'Mohan Pillai', relation: 'Father', phone: '+960 777 2030' }, gender: 'female', dateOfBirth: '1994-05-02', probationEndsOn: '2027-02-15',
       });
       request.flush({ id: 'OPR-0028' });
       await settle();
@@ -422,6 +438,19 @@ describe('HR forms', () => {
       request.flush('', { status: 500, statusText: 'Server Error' });
       await settle();
       expect(text(root.querySelector('[role=alert]') as HTMLElement)).toBe("That didn't save. Try again in a moment.");
+    });
+
+    it('asks for a contract end only on contracts, and checks both end dates come after joining', async () => {
+      const { root } = await render(EmployeeForm, { people: PEOPLE, employee: { ...PEOPLE[2], employmentType: 'Permanent' } });
+      expect(root.querySelector('[data-testid=employee-contract-end]')).toBeNull();
+
+      fill(root, 'employee-type', 'Contract');
+      fill(root, 'employee-contract-end', '2023-01-01');
+      fill(root, 'employee-probation', '2023-06-01');
+      fill(root, 'employee-birth', '2030-01-01');
+      await submit(root);
+
+      expect(errors(root)).toEqual(['Probation ends after they join.', 'The contract ends after they join.', 'That date hasn’t happened yet.']);
     });
 
     it('needs a manager for anyone else who has none yet', async () => {
