@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { FormField, form, maxLength, required, validate } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 import { Employee } from '../../../models/employee';
@@ -53,6 +53,8 @@ export class LeavingForm {
   readonly name = input.required<string>();
   readonly joinedOn = input.required<string>();
   readonly reports = input.required<readonly Employee[]>();
+  readonly exitOn = input<string>();
+  readonly resignationReason = input<string>();
   readonly saved = output();
   readonly cancelled = output();
 
@@ -63,7 +65,8 @@ export class LeavingForm {
   });
   protected readonly failed = signal(false);
   protected readonly problem = signal<string | undefined>(undefined);
-  protected readonly draft = signal({ lastDay: '', reason: '' });
+  // Someone who resigned starts with their exit date and why they went.
+  protected readonly draft = linkedSignal(() => ({ lastDay: this.exitOn() ?? '', reason: this.resignationReason() ? `Resigned: ${this.resignationReason()}` : '' }));
   protected readonly leavingForm = form(this.draft, (path) => {
     required(path.lastDay, { message: 'Pick their last working day.' });
     validate(path.lastDay, ({ value }) => (value() && value() < this.joinedOn() ? { kind: 'early', message: 'That’s before they joined.' } : undefined));

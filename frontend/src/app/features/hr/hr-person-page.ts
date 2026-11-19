@@ -20,6 +20,9 @@ import { TeamApi } from '../team/team-api';
 import { AdjustBalanceForm } from './forms/adjust-balance-form';
 import { LeaveDaysForm } from './forms/leave-days-form';
 import { LeavingForm } from './forms/leaving-form';
+import { ExitCard } from '../exit/exit-card';
+import { ExitApi } from '../exit/exit-api';
+import { stillOut } from '../exit/exit-status';
 import { PhotoForm } from './forms/photo-form';
 import { VisaForm } from './forms/visa-form';
 import { HrApi } from './hr-api';
@@ -39,7 +42,7 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
 
 @Component({
   selector: 'app-hr-person-page',
-  imports: [AdjustBalanceForm, AttendanceTable, ConfirmButton, Dialog, EmployeeCard, HrDocumentsCard, HrFlightCard, HrRecordCard, Icon, LeaveBalances, LeaveDaysForm, LeaveRequests, LeavingForm, ListSkeleton, PersonMenu, PhotoForm, RouterLink, SuccessState, VisaCard, VisaForm],
+  imports: [AdjustBalanceForm, AttendanceTable, ConfirmButton, Dialog, EmployeeCard, ExitCard, HrDocumentsCard, HrFlightCard, HrRecordCard, Icon, LeaveBalances, LeaveDaysForm, LeaveRequests, LeavingForm, ListSkeleton, PersonMenu, PhotoForm, RouterLink, SuccessState, VisaCard, VisaForm],
   template: `
     <div class="page-view">
       <a routerLink="/hr/people" class="text-link back-link"><app-icon name="chevronLeft" [size]="15" /> People</a>
@@ -63,7 +66,7 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
             <button type="button" class="secondary-button" [disabled]="isTypesLoading()" (click)="action.set('days')" data-testid="open-days">Leave days</button>
             <button type="button" class="secondary-button" [disabled]="isTypesLoading()" (click)="action.set('adjust')" data-testid="open-adjust">Adjust balance</button>
             <button type="button" class="secondary-button" (click)="action.set('visa')" data-testid="open-visa">Update visa</button>
-            <app-person-menu [employeeId]="employee.id" [isLeaving]="employee.lastDay !== undefined" (leaving)="action.set('leaving')" (photo)="isChangingPhoto.set(true)" />
+            <app-person-menu [employeeId]="employee.id" [isLeaving]="employee.lastDay !== undefined" [stillOut]="stillOut()" (leaving)="action.set('leaving')" (photo)="isChangingPhoto.set(true)" />
           </div>
         </div>
         @if (employee.lastDay; as lastDay) {
@@ -105,6 +108,9 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
               }
             </section>
             <app-hr-record-card [employeeId]="employee.id" [name]="employee.fullName" [isOwn]="employee.id === myId()" />
+            @if (resignation(); as resigned) {
+              <app-exit-card [employeeId]="employee.id" [resignation]="resigned" [isOwn]="employee.id === myId()" (changed)="exit.reload()" />
+            }
             <app-hr-documents-card [employeeId]="employee.id" [name]="employee.fullName" [isOwn]="employee.id === myId()" />
           </div>
           <div class="side-column">
@@ -135,7 +141,7 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
                 <app-visa-form [employeeId]="employee.id" [name]="employee.fullName" [visa]="employee.visa" (saved)="finish('visa')" (cancelled)="close()" />
               }
               @case ('leaving') {
-                <app-leaving-form [employeeId]="employee.id" [name]="employee.fullName" [joinedOn]="employee.joinedOn" [reports]="reports()" (saved)="finish('leaving')" (cancelled)="close()" />
+                <app-leaving-form [employeeId]="employee.id" [name]="employee.fullName" [joinedOn]="employee.joinedOn" [reports]="reports()" [exitOn]="resignation()?.exitOn" [resignationReason]="resignation()?.reason" (saved)="finish('leaving')" (cancelled)="close()" />
               }
             }
           }
@@ -166,6 +172,10 @@ export class HrPersonPage {
   protected readonly success = SUCCESS;
 
   protected readonly employee = computed(() => valueOr(this.person, undefined));
+  // Their accepted resignation, with the checklist. Nothing when they haven't resigned.
+  protected readonly exit = inject(ExitApi).exitOf(this.employeeId);
+  protected readonly resignation = computed(() => valueOr(this.exit, undefined) ?? undefined);
+  protected readonly stillOut = computed(() => stillOut(this.resignation()));
   protected readonly isNotFound = computed(() => {
     const error = this.person.error()?.cause ?? this.person.error();
     return error instanceof HttpErrorResponse && error.status === HttpStatusCode.NotFound;

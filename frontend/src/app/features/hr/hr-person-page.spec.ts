@@ -110,6 +110,20 @@ describe('HrPersonPage', () => {
     expect(root.querySelector('[data-testid=edit-person]')?.getAttribute('href')).toBe('/hr/people/OPR-0021/edit');
   });
 
+  it('shows the exit checklist of someone who resigned, and keeps leaving locked until it is done', async () => {
+    const root = await render();
+    http.expectOne(`${PERSON}/exit`).flush({
+      id: 'RS-1', employeeId: 'OPR-0021', submittedOn: '2026-11-10', reason: 'Moving back home', releaseOn: '2026-12-31', status: 'approved', exitOn: '2026-12-31',
+      checklist: [{ itemId: 'EI-1', name: 'Laptop', outcome: 'returned' }, { itemId: 'EI-2', name: 'ID card' }],
+    });
+    await settle();
+
+    expect(texts(root, 'exit-item')).toEqual(['Laptop Returned Undo', 'ID card Still with them Returned Never given']);
+    click(root, 'person-menu');
+    expect((root.querySelector('[data-testid=mark-leaving]') as HTMLButtonElement).disabled).toBe(true);
+    expect(text(root.querySelector('#still-out') as HTMLElement)).toBe('Tick off first: id card');
+  });
+
   it('opens the photo dialog from the menu', async () => {
     const root = await render();
 

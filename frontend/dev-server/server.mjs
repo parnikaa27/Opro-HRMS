@@ -100,6 +100,9 @@ const seedDocuments = (employees, visas) => employees.flatMap((employee) => {
 db.documents = seedDocuments(db.employees, db.visas);
 // Types not for everyone reach only the people HR asks.
 db.askedFor = [{ type: 'marriage-certificate', employeeId: 'OPR-0015' }];
+// What HR collects back before someone leaves, and resignations with what's been ticked off.
+db.exitItems = [{ id: 'EI-1', name: 'Laptop' }, { id: 'EI-2', name: 'ID card' }, { id: 'EI-3', name: 'Bus travel card' }, { id: 'EI-4', name: 'Accommodation keys' }];
+db.resignations = [];
 
 class HttpError extends Error {
   constructor(status, message) {
@@ -299,6 +302,61 @@ const sendDocument = (res, employee, code, fileId) => {
   res.end(samplePdf(`${type.name} for ${employee.fullName}`));
   return SENT;
 };
+// A resignation as the portal shows it: names filled in, and the checklist once it's approved.
+const resignationView = (resignation) => ({
+  ...resignation,
+  employeeName: nameOf(resignation.employeeId),
+  ...(resignation.hodApprovedBy && { hodApprovedByName: nameOf(resignation.hodApprovedBy) }),
+  ...(resignation.decidedBy && { decidedByName: nameOf(resignation.decidedBy) }),
+  checklist: resignation.status === 'approved'
+    ? db.exitItems.map(({ id, name }) => ({ itemId: id, name, ...(resignation.ticks?.[id] && { outcome: resignation.ticks[id].outcome, tickedOn: resignation.ticks[id].tickedOn }) }))
+    : [],
+});
+// Ticks an item off (returned or not-given), or unticks it. HR never on their own.
+const tickExitItem = (user, employeeId, itemId, outcome) => {
+  requireHr(user);
+  if (employeeId === user.id) {
+    throw new HttpError(403, 'Another HR person handles your own exit.');
+  }
+  const resignation = approvedResignationOf(employeeId);
+  if (!resignation) {
+    throw new HttpError(404, "They haven't resigned.");
+  }
+  if (!db.exitItems.some(({ id }) => id === itemId) || (outcome !== undefined && !['returned', 'not-given'].includes(outcome))) {
+    throw new HttpError(404, 'Item not found');
+  }
+  const { [itemId]: _dropped, ...kept } = resignation.ticks ?? {};
+  return replaceResignation({ ...resignation, ticks: outcome ? { ...kept, [itemId]: { outcome, tickedOn: today() } } : kept });
+};
+const approvedResignationOf = (employeeId) => db.resignations.find((entry) => entry.employeeId === employeeId && entry.status === 'approved');
+const stillOutFor = (employeeId) => {
+  const resignation = approvedResignationOf(employeeId);
+  return resignation ? resignationView(resignation).checklist.filter(({ outcome }) => !outcome).map(({ name }) => name) : [];
+};
+const hrBut = (employeeId) => activeEmployees().filter((employee) => employee.roles.includes('HR') && employee.id !== employeeId);
+const replaceResignation = (changed) => {
+  db.resignations = db.resignations.map((entry) => (entry.id === changed.id ? changed : entry));
+  return resignationView(changed);
+};
+const rejectResignation = (user, resignation, note) => {
+  const clean = String(note ?? '').trim();
+  if (!clean) {
+    throw new HttpError(400, 'Give a short reason so they know where they stand.');
+  }
+  notify(resignation.employeeId, 'record', `${user.fullName} didn't accept your resignation: ${sentence(clean)} Talk to them about what happens next.`);
+  return replaceResignation({ ...resignation, status: 'rejected', decidedBy: user.id, decidedOn: today(), decisionNote: clean });
+};
+// They hear the exit date and what to bring back; their HOD hears the date.
+const approveResignation = (user, resignation, exitOn) => {
+  const bring = db.exitItems.map(({ name }) => name.toLowerCase()).join(', ');
+  notify(resignation.employeeId, 'record', `Your resignation was accepted. Your exit date is ${sayDate(exitOn)}.${bring ? ` Before you go, return your ${bring} to HR.` : ''}`);
+  const managerId = db.employees.find(({ id }) => id === resignation.employeeId)?.managerId;
+  if (managerId && managerId !== user.id) {
+    notify(managerId, 'record', `${nameOf(resignation.employeeId)}'s exit date is ${sayDate(exitOn)}.`);
+  }
+  return replaceResignation({ ...resignation, status: 'approved', decidedBy: user.id, decidedOn: today(), exitOn });
+};
+
 // HR never handles their own documents.
 const someoneElseForDocuments = (user, id) => {
   if (id === user.id) {
@@ -879,6 +937,43 @@ const routes = [
   ['GET', /^\/api\/holidays$/, ({ query }) => db.holidays.filter(({ date }) => date.startsWith(query.get('year') ?? today().slice(0, 4)))],
   ['GET', /^\/api\/announcements$/, () => db.announcements],
   ['GET', /^\/api\/events$/, ({ query }) => db.events.filter(({ date }) => date.startsWith(query.get('year') ?? today().slice(0, 4)))],
+  ['GET', /^\/api\/resignation$/, ({ user }) =>
+    db.resignations.filter(({ employeeId }) => employeeId === user.id).sort((first, second) => second.submittedOn.localeCompare(first.submittedOn)).map(resignationView)],
+  // Their HOD hears. Someone with no HOD goes straight to HR.
+  ['POST', /^\/api\/resignation$/, ({ user, body }) => {
+    if (user.lastDay) {
+      throw new HttpError(409, 'HR has already set your last day.');
+    }
+    if (db.resignations.some((entry) => entry.employeeId === user.id && ['pending', 'approved'].includes(entry.status))) {
+      throw new HttpError(409, "You've already resigned. Withdraw that one first if the dates have changed.");
+    }
+    const reason = String(body.reason ?? '').trim();
+    if (!DATE.test(String(body.releaseOn)) || body.releaseOn <= today() || !reason) {
+      throw new HttpError(400, 'Pick a last day after today.');
+    }
+    const asked = `${user.fullName} resigned, asking for ${sayDate(body.releaseOn)} as their last day.`;
+    const resignation = {
+      id: `RS-${randomUUID().slice(0, 6)}`, employeeId: user.id, submittedOn: today(), reason, releaseOn: body.releaseOn, status: 'pending',
+      ...(!user.managerId && { hodApprovedOn: today() }),
+    };
+    db.resignations = [resignation, ...db.resignations];
+    if (user.managerId) {
+      notify(user.managerId, 'approval', `${asked} Decide it from Leave requests.`);
+    } else {
+      hrBut(user.id).forEach((hr) => notify(hr.id, 'approval', `${asked} Decide it from Inbox.`));
+    }
+    return resignationView(resignation);
+  }],
+  ['POST', /^\/api\/resignation\/([\w-]+)\/withdraw$/, ({ user, params: [id] }) => {
+    const resignation = db.resignations.find((entry) => entry.id === id && entry.employeeId === user.id);
+    if (!resignation) {
+      throw new HttpError(404, 'Resignation not found');
+    }
+    if (resignation.status !== 'pending') {
+      throw new HttpError(409, "It's been decided, so talk to HR about it.");
+    }
+    return replaceResignation({ ...resignation, status: 'withdrawn', decidedOn: today() });
+  }],
   ['GET', /^\/api\/documents$/, ({ user }) => documentEntries(user)],
   ['PUT', /^\/api\/documents\/([\w-]+)\/file$/, ({ user, params: [code], query, body }) =>
     uploadDocument({ by: user, owner: user, code, file: body, issuedOn: query.get('issuedOn'), expiresOn: query.get('expiresOn') }), { upload: CERTIFICATE_UPLOAD }],
@@ -967,6 +1062,33 @@ const routes = [
     return db.overtime.filter((entry) => ids.has(entry.employeeId)).filter(byStatus(query.get('status'))).map(overtimeView);
   }],
   ['POST', /^\/api\/(team|company)\/overtime\/([\w-]+)\/decision$/, ({ user, params: [scope, id], body }) => decide('overtime', user, scope, id, body)],
+  ['GET', /^\/api\/(team|company)\/resignations$/, ({ user, params: [scope], query }) => {
+    const ids = idsIn(user, scope);
+    return db.resignations.filter((entry) => ids.has(entry.employeeId)).filter(byStatus(query.get('status'))).map(resignationView);
+  }],
+  // The HOD step. Approving passes it to HR, unless the HOD is HR.
+  ['POST', /^\/api\/(team|company)\/resignations\/([\w-]+)\/decision$/, ({ user, params: [scope, id], body }) => {
+    const ids = idsIn(user, scope);
+    const resignation = db.resignations.find((entry) => entry.id === id && entry.employeeId !== user.id && ids.has(entry.employeeId));
+    if (!resignation) {
+      throw new HttpError(404, 'Resignation not found');
+    }
+    if (resignation.status !== 'pending') {
+      throw new HttpError(409, 'This resignation has already been decided.');
+    }
+    if (resignation.hodApprovedOn) {
+      throw new HttpError(409, 'Their HOD approved this. It now waits for HR.');
+    }
+    if (body.decision !== 'approved') {
+      return rejectResignation(user, resignation, body.note);
+    }
+    if (user.roles.includes('HR')) {
+      return approveResignation(user, resignation, resignation.releaseOn);
+    }
+    notify(resignation.employeeId, 'record', `${user.fullName} approved your resignation. It now waits for HR.`);
+    hrBut(resignation.employeeId).forEach((hr) => notify(hr.id, 'approval', `${user.fullName} approved ${nameOf(resignation.employeeId)}'s resignation. It needs HR too. Decide it from Inbox.`));
+    return replaceResignation({ ...resignation, hodApprovedBy: user.id, hodApprovedOn: today() });
+  }],
   ['GET', /^\/api\/(team|company)\/home-days$/, ({ user, params: [scope], query }) => {
     const ids = idsIn(user, scope);
     return db.homeDays.filter((entry) => ids.has(entry.employeeId)).filter(byStatus(query.get('status'))).map(withName);
@@ -1008,6 +1130,62 @@ const routes = [
     }
     return withRoles(replaceIn('employees', { ...rest, ...details }));
   }],
+  ['GET', /^\/api\/hr\/resignations$/, ({ user }) => {
+    requireHr(user);
+    return db.resignations.filter(({ status, hodApprovedOn, employeeId }) => status === 'pending' && hodApprovedOn && employeeId !== user.id)
+      .sort((first, second) => first.submittedOn.localeCompare(second.submittedOn)).map(resignationView);
+  }],
+  // HR's step sets the exit date: the day they asked for, unless HR gives another.
+  ['POST', /^\/api\/hr\/resignations\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => {
+    requireHr(user);
+    const resignation = db.resignations.find((entry) => entry.id === id && entry.status === 'pending' && entry.hodApprovedOn);
+    if (!resignation) {
+      throw new HttpError(404, 'Nothing waiting for HR with that id');
+    }
+    if (resignation.employeeId === user.id) {
+      throw new HttpError(403, 'Your own requests go to another HR person.');
+    }
+    if (body.decision !== 'approved') {
+      return rejectResignation(user, resignation, body.note);
+    }
+    const exitOn = body.exitOn ?? resignation.releaseOn;
+    if (!DATE.test(String(exitOn)) || exitOn < today()) {
+      throw new HttpError(400, 'Pick an exit date from today on.');
+    }
+    return approveResignation(user, resignation, exitOn);
+  }],
+  ['GET', /^\/api\/hr\/employees\/([\w-]+)\/exit$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    const resignation = approvedResignationOf(id);
+    return resignation ? resignationView(resignation) : undefined;
+  }],
+  ['PUT', /^\/api\/hr\/employees\/([\w-]+)\/exit\/items\/([\w-]+)$/, ({ user, params: [id, itemId], body }) => tickExitItem(user, id, itemId, body.outcome)],
+  ['DELETE', /^\/api\/hr\/employees\/([\w-]+)\/exit\/items\/([\w-]+)$/, ({ user, params: [id, itemId] }) => tickExitItem(user, id, itemId, undefined)],
+  ['GET', /^\/api\/hr\/exit-items$/, ({ user }) => {
+    requireHr(user);
+    return db.exitItems;
+  }],
+  ['POST', /^\/api\/hr\/exit-items$/, ({ user, body }) => {
+    requireHr(user);
+    const name = String(body.name ?? '').trim();
+    if (!name) {
+      throw new HttpError(400, 'Name what comes back.');
+    }
+    if (db.exitItems.some((item) => item.name.toLowerCase() === name.toLowerCase())) {
+      throw new HttpError(409, "That's already on the list.");
+    }
+    const item = { id: `EI-${randomUUID().slice(0, 6)}`, name };
+    db.exitItems = [...db.exitItems, item];
+    return item;
+  }],
+  ['DELETE', /^\/api\/hr\/exit-items\/([\w-]+)$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    if (!db.exitItems.some((item) => item.id === id)) {
+      throw new HttpError(404, 'Item not found');
+    }
+    db.exitItems = db.exitItems.filter((item) => item.id !== id);
+    return undefined;
+  }],
   ['POST', /^\/api\/hr\/employees\/([\w-]+)\/leaving$/, ({ user, params: [id], body }) => {
     requireHr(user);
     const employee = findOr404('employees', id, 'Employee');
@@ -1018,6 +1196,10 @@ const routes = [
     const reports = reportsOf(employee);
     if (reports.length) {
       throw new HttpError(409, `Move their ${reports.length} reports to another manager first`);
+    }
+    const stillOut = stillOutFor(id);
+    if (stillOut.length) {
+      throw new HttpError(409, `Tick off what they still have first: ${stillOut.join(', ').toLowerCase()}.`);
     }
     // Leave after the last day can't be taken, so it's cancelled with them.
     db.leaveRequests = db.leaveRequests.map((leave) =>

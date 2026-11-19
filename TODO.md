@@ -42,8 +42,7 @@ Walked through by hand as Arjun (expatriate employee), Vikram (HOD), Ananya (HR)
 
 ## From the meeting with Madhu (19 November)
 
-Being built in batches, one PR each. Leave and documents are done (see Leave below, and Documents in CLAUDE.md). Still to come:
-- [ ] **Exit:** the employee resigns (date put in, reason, release date), the HOD then HR approve, the exit date is set, then HR ticks back each item on a return checklist HR keeps (laptop, ID card, bus card, accommodation keys). "Mark as leaving" stays locked until every item is back.
+Being built in batches, one PR each. Leave, documents and exit are done (see Leave below, and Documents and Leaving Opro in CLAUDE.md). Still to come:
 - [ ] **Performance:** the employee writes their goals and KPIs, the HOD then HR approve them; the employee adds accomplishments, strengths, learning and development and a plan for certifications, which the HOD comments on; the employee must accept the rating.
 - [ ] **Allowances:** monthly allowances HR sets per person, and one-off grants an HOD makes that HR approves.
 - [ ] **Onboarding:** a proper process. Needs a conversation first: what's on the checklist and who ticks it.
@@ -66,6 +65,7 @@ Being built in batches, one PR each. Leave and documents are done (see Leave bel
 - [ ] **Performance:** the 1 to 5 scale and its words, and whether appraisals should include a self assessment or company competencies.
 - [ ] **Leave notice:** the paper form asks a month ahead for scheduled leave. Set "Asked for (days ahead)" on annual leave in Policies, and on any other type that needs it. Nothing has notice until then.
 - [ ] **Flight entitlement and salary advance ticks on leave requests:** today they're shown to the HOD and HR only. Should ticking the flight box start a flight claim, and who acts on a salary advance before payroll exists?
+- [ ] **Leaving without resigning** (a contract ending, a dismissal): today the return checklist only applies to someone who resigned. Should HR tick items off for everyone who leaves? And is there a minimum notice period between resigning and the last day?
 - [ ] **Comp off for super admins:** today they earn none for working a Friday or a holiday, because nobody is above them to approve it.
 
 ## Later, if needed

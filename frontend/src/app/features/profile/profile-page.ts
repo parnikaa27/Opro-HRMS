@@ -9,10 +9,11 @@ import { EmployeeCard } from './employee-card';
 import { IdCard } from './id-card';
 import { RecordCard } from './record-card';
 import { VisaDetails } from './visa-details';
+import { ResignationCard } from '../exit/resignation-card';
 
 @Component({
   selector: 'app-profile-page',
-  imports: [ChangeRequestForm, Dialog, EmployeeCard, FlightCard, Icon, IdCard, RecordCard, SuccessState, VisaDetails],
+  imports: [ChangeRequestForm, Dialog, EmployeeCard, FlightCard, Icon, IdCard, RecordCard, ResignationCard, SuccessState, VisaDetails],
   template: `
     @if (session.user(); as user) {
       <div class="page-view">
@@ -60,6 +61,7 @@ import { VisaDetails } from './visa-details';
               <p class="card-text">If your phone number, emergency contact or anything else on your card is out of date, HR can fix it.</p>
               <button type="button" class="secondary-button" (click)="isRequesting.set(true)" data-testid="request-change">Ask HR to change it</button>
             </section>
+            <app-resignation-card />
           </div>
         </div>
       </div>

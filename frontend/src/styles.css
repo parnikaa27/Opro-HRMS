@@ -1212,3 +1212,42 @@ label.check-label {
 .to-collect {
   margin-top: 19px;
 }
+
+/* Exit checklist rows: the item, where it stands, and HR's buttons. */
+.exit-checklist {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+}
+
+.history-row.exit-row {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+/* Why a menu action is waiting, under the disabled button. */
+.menu-note {
+  display: block;
+  padding: 0 12px 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* A one line add form under a list, like HR's exit items. */
+.inline-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+
+  label {
+    flex: 1;
+  }
+}

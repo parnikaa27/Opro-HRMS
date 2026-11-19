@@ -11,6 +11,7 @@ import mv.opro.hrms.employee.EmployeeRepository;
 import mv.opro.hrms.employee.People;
 import mv.opro.hrms.employee.Visa;
 import mv.opro.hrms.employee.VisaRepository;
+import mv.opro.hrms.exit.Exits;
 import mv.opro.hrms.leave.LeaveService;
 import mv.opro.hrms.notification.Notification;
 import mv.opro.hrms.notification.Notifications;
@@ -31,13 +32,15 @@ class HrPeople {
     private final People people;
     private final LeaveService leave;
     private final Notifications notifications;
+    private final Exits exits;
 
-    HrPeople(EmployeeRepository employees, VisaRepository visas, People people, LeaveService leave, Notifications notifications) {
+    HrPeople(EmployeeRepository employees, VisaRepository visas, People people, LeaveService leave, Notifications notifications, Exits exits) {
         this.employees = employees;
         this.visas = visas;
         this.people = people;
         this.leave = leave;
         this.notifications = notifications;
+        this.exits = exits;
     }
 
     // Active people by default. Former staff only when HR asks for them.
@@ -77,7 +80,8 @@ class HrPeople {
         return employee;
     }
 
-    // A last day, with leave booked after it cancelled. Someone who still manages people has to hand them over first.
+    // A last day, with leave booked after it cancelled. Someone who still manages people has to hand them over first, and
+    // someone who resigned has to hand back everything on HR's checklist.
     @Transactional
     Employee markLeaving(String id, LocalDate lastDay, String reason) {
         Employee employee = find(id);
@@ -87,6 +91,10 @@ class HrPeople {
         int reports = people.reportsOf(id).size();
         if (reports > 0) {
             throw new ApiException(HttpStatus.CONFLICT, "Move their " + reports + (reports == 1 ? " report" : " reports") + " to another manager first.");
+        }
+        List<String> stillOut = exits.stillOut(id);
+        if (!stillOut.isEmpty()) {
+            throw new ApiException(HttpStatus.CONFLICT, "Tick off what they still have first: " + String.join(", ", stillOut).toLowerCase() + ".");
         }
         leave.cancelAfter(id, lastDay);
         employee.leave(lastDay, reason.strip());

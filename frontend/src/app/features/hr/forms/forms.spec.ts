@@ -468,6 +468,13 @@ describe('HR forms', () => {
   describe('LeavingForm', () => {
     const inputs = { employeeId: 'OPR-0021', name: 'Rohit Verma', joinedOn: '2024-04-01', reports: [] };
 
+    it('starts with the exit date and reason of someone who resigned', async () => {
+      const { root } = await render(LeavingForm, { ...inputs, exitOn: '2027-01-07', resignationReason: 'Moving back home' });
+
+      expect((root.querySelector('[data-testid=leaving-date]') as HTMLInputElement).value).toBe('2027-01-07');
+      expect((root.querySelector('[data-testid=leaving-reason]') as HTMLTextAreaElement).value).toBe('Resigned: Moving back home');
+    });
+
     it('needs a last day after they joined and a reason', async () => {
       const { root } = await render(LeavingForm, inputs);
       fill(root, 'leaving-date', '2024-01-01');
