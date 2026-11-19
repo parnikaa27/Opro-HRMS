@@ -62,13 +62,18 @@ const FAILED = "That didn't save. Try again in a moment.";
         </div>
         <app-field-error id="policy-cap-error" [errors]="policyForm.cap().errors()" [isTouched]="policyForm.cap().touched()" />
       }
-      <label>
-        Approved by
-        <select [formField]="policyForm.approval" data-testid="policy-approval">
-          <option value="hod">The HOD</option>
-          <option value="hr">The HOD, then HR</option>
-        </select>
-      </label>
+      <div class="form-row">
+        <label>
+          Approved by
+          <select [formField]="policyForm.approval" data-testid="policy-approval">
+            <option value="hod">The HOD</option>
+            <option value="hr">The HOD, then HR</option>
+          </select>
+        </label>
+        <label>Asked for (days ahead) <input type="number" step="1" [formField]="policyForm.notice" data-testid="policy-notice" aria-describedby="policy-notice-error policy-notice-note" /></label>
+      </div>
+      <app-field-error id="policy-notice-error" [errors]="policyForm.notice().errors()" [isTouched]="policyForm.notice().touched()" />
+      <p class="card-note" id="policy-notice-note">0 means it can be asked for any time, like sick leave. The paper form asks a month ahead for annual leave.</p>
       @if (failure()) {
         <p role="alert" data-testid="policy-error">{{ failure() }}</p>
       }
@@ -99,6 +104,7 @@ export class PolicyForm {
       yearEnd: type?.carriesForward ? 'carry' : 'lapse',
       cap: type?.carryForwardCap ?? 0,
       approval: type?.needsHrApproval ? 'hr' : 'hod',
+      notice: type?.noticeDays ?? 0,
     };
   });
   protected readonly isUnlimited = computed(() => this.draft().limit === 'none');
@@ -111,13 +117,15 @@ export class PolicyForm {
     max(path.days, MAX_DAYS, { message: `That's more than a year.` });
     min(path.cap, 0, { message: 'Days can’t be negative.' });
     max(path.cap, MAX_DAYS, { message: `That's more than a year.` });
+    min(path.notice, 0, { message: 'Days can’t be negative.' });
+    max(path.notice, MAX_DAYS, { message: `That's more than a year.` });
   });
 
   protected save(event: Event) {
     event.preventDefault();
     this.failure.set(undefined);
     return submit(this.policyForm, async () => {
-      const { name, days, halfDays, givenTo, yearEnd, cap, approval } = this.draft();
+      const { name, days, halfDays, givenTo, yearEnd, cap, approval, notice } = this.draft();
       const isUnlimited = this.isUnlimited();
       const carries = !isUnlimited && yearEnd === 'carry';
       try {
@@ -132,6 +140,7 @@ export class PolicyForm {
           carriesForward: carries,
           ...(carries && { carryForwardCap: cap }),
           needsHrApproval: approval === 'hr',
+          ...(notice > 0 && { noticeDays: Math.round(notice) }),
         });
         this.saved.emit();
       } catch (error) {

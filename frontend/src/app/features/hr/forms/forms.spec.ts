@@ -303,11 +303,13 @@ describe('HR forms', () => {
       fill(root, 'policy-year-end', 'carry');
       fill(root, 'policy-cap', '2');
       fill(root, 'policy-approval', 'hr');
+      fill(root, 'policy-notice', '30');
       await submit(root);
 
       const request = http.expectOne((sent) => sent.method === 'POST' && sent.url === '/api/hr/leave-types');
       expect(request.request.body).toEqual({
         name: 'Marriage leave', allowsHalfDay: true, isUnlimited: false, defaultEntitlement: 5, isForEveryone: false, carriesForward: true, carryForwardCap: 2, needsHrApproval: true,
+        noticeDays: 30,
       });
       request.flush({});
       await settle();

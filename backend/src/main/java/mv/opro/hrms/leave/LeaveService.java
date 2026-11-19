@@ -7,10 +7,13 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Stream;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import mv.opro.hrms.approval.ApprovalSteps;
+import mv.opro.hrms.attendance.CompOffGrants;
 import mv.opro.hrms.common.ApiException;
 import mv.opro.hrms.common.Ids;
 import mv.opro.hrms.common.Wording;
@@ -30,16 +33,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class LeaveService {
 
-    // entitled includes anything carried forward from last year, which carriedOver shows on its own.
-    public record Balance(String type, BigDecimal entitled, BigDecimal taken, BigDecimal pending, BigDecimal carriedOver) {}
+    // entitled includes anything carried forward from last year, which carriedOver shows on its own. taken counts approved
+    // days in the leave year, takenToDate only those up to today. expiresOn is when the soonest compensatory off runs out.
+    public record Balance(String type, BigDecimal entitled, BigDecimal taken, BigDecimal pending, BigDecimal carriedOver, BigDecimal takenToDate,
+            LocalDate expiresOn) {}
 
-    public record Application(String type, LocalDate from, LocalDate to, String halfDay, String reason) {}
+    // kind is initial, amended or extended. The last two name the request they change in relatedId.
+    public record Application(String type, LocalDate from, LocalDate to, String halfDay, String reason, String kind, String relatedId,
+            boolean usesFlightEntitlement, boolean wantsSalaryAdvance) {}
 
     public record Decision(String decision, String note) {}
 
     // How far back carry forward is followed. Older years can't change what's carried by now.
     private static final int CARRY_YEARS_BACK = 5;
     private static final int MAX_CODE_LENGTH = 20;
+    private static final List<String> OPEN = List.of(LeaveRequest.PENDING, LeaveRequest.APPROVED);
 
     private final LeaveTypeRepository types;
     private final LeaveEntitlementRepository entitlements;
@@ -50,11 +58,12 @@ public class LeaveService {
     private final Notifications notifications;
     private final Files files;
     private final ApprovalSteps steps;
+    private final CompOffGrants compOffGrants;
     private final Clock clock;
 
     LeaveService(LeaveTypeRepository types, LeaveEntitlementRepository entitlements, LeaveRequestRepository requests,
             BalanceAdjustmentRepository adjustments, EmployeeRepository employees, Holidays holidays, Notifications notifications, Files files,
-            ApprovalSteps steps, Clock clock) {
+            ApprovalSteps steps, CompOffGrants compOffGrants, Clock clock) {
         this.types = types;
         this.entitlements = entitlements;
         this.requests = requests;
@@ -64,6 +73,7 @@ public class LeaveService {
         this.notifications = notifications;
         this.files = files;
         this.steps = steps;
+        this.compOffGrants = compOffGrants;
         this.clock = clock;
     }
 
@@ -121,39 +131,55 @@ public class LeaveService {
             throw refused(HttpStatus.BAD_REQUEST, "Give a short reason so they know what to do next.");
         }
         request.decide(decision.decision(), decider.getId(), today(), note);
+        if (isApproved) {
+            replaceAmended(request);
+        }
         String what = "Your " + typeName(request.getType()) + " for " + Wording.dates(request.getFromDate(), request.getToDate());
         notifications.tell(request.getEmployeeId(), Notification.Kind.LEAVE,
                 isApproved ? what + " was approved." : what + " was declined: " + Wording.sentence(note));
         return request;
     }
 
-    // This leave year's balances, in the policy's order. Unlimited, retired and removed types have none.
+    // This leave year's balances, in the policy's order. Unlimited, retired and removed types have none, and
+    // compensatory off shows only when there's some.
     @Transactional
     public List<Balance> balancesOf(String employeeId) {
-        int year = today().getYear();
-        openYear(employeeId, year);
-        Map<String, LeaveEntitlement> byType = entitlements.findByEmployeeIdAndLeaveYear(employeeId, year).stream()
+        LeaveYear year = yearOf(employeeId, today());
+        openYear(employeeId, year.number());
+        Map<String, LeaveEntitlement> byType = entitlements.findByEmployeeIdAndLeaveYear(employeeId, year.number()).stream()
                 .filter(entitlement -> !entitlement.isRemoved())
                 .collect(Collectors.toMap(LeaveEntitlement::getType, Function.identity()));
         return types().stream()
-                .filter(type -> !type.isRetired() && byType.containsKey(type.getCode()))
-                .map(type -> balance(employeeId, type, byType.get(type.getCode()), year))
+                .filter(type -> !type.isRetired())
+                .flatMap(type -> LeaveType.COMP_OFF.equals(type.getCode())
+                        ? Stream.of(compOffBalance(employeeId, year)).filter(balance -> balance.entitled().signum() > 0)
+                        : Optional.ofNullable(byType.get(type.getCode())).map(entitlement -> balance(employeeId, type, entitlement, year)).stream())
                 .toList();
+    }
+
+    // The leave year a day falls in for someone, from their joining date.
+    public LeaveYear yearOf(String employeeId, LocalDate day) {
+        return LeaveYear.containing(employees.findById(employeeId).orElseThrow().getJoinedOn(), day);
     }
 
     // Super admins need nobody's approval, so theirs is approved as it's saved.
     @Transactional
     public LeaveRequest apply(Employee employee, Application application) {
         Checked checked = check(employee, application);
-        LeaveRequest request = LeaveRequest.apply(Ids.next("LR"), employee.getId(), checked.type().getCode(), application.from(), application.to(),
-                application.halfDay(), checked.days(), application.reason().strip(), today());
+        LeaveRequest request = requests.save(LeaveRequest.apply(Ids.next("LR"), employee.getId(), application, checked.days(), today()));
         if (employee.isSuperAdmin()) {
             request.decide(LeaveRequest.APPROVED, employee.getId(), today(), null);
+            replaceAmended(request);
         } else if (employee.getManagerId() != null) {
-            notifications.tell(employee.getManagerId(), Notification.Kind.APPROVAL, employee.getFullName() + " asked for " + Wording.days(checked.days())
+            String asked = switch (application.kind()) {
+                case LeaveRequest.AMENDED -> " asked to change their leave to ";
+                case LeaveRequest.EXTENDED -> " asked to extend their leave by ";
+                default -> " asked for ";
+            };
+            notifications.tell(employee.getManagerId(), Notification.Kind.APPROVAL, employee.getFullName() + asked + Wording.days(checked.days())
                     + " of " + checked.type().getName().toLowerCase() + " " + Wording.when(application.from(), application.to()));
         }
-        return requests.save(request);
+        return request;
     }
 
     // Everyone's requests, for HR. No status means all of them.
@@ -166,14 +192,14 @@ public class LeaveService {
     public BalanceAdjustment adjust(Employee hr, String employeeId, String typeCode, BigDecimal days, String reason) {
         employees.lockById(employeeId);
         LeaveType type = bookableType(typeCode);
-        int year = today().getYear();
-        LeaveEntitlement entitlement = heldOrOpened(employeeId, type, year);
+        LeaveYear year = yearOf(employeeId, today());
+        LeaveEntitlement entitlement = heldOrOpened(employeeId, type, year.number());
         Balance before = balance(employeeId, type, entitlement, year);
         if (before.entitled().add(days).compareTo(before.taken().add(before.pending())) < 0) {
             throw refused(HttpStatus.CONFLICT, "That would leave less than they've already taken or booked.");
         }
         entitlement.adjust(days);
-        BalanceAdjustment adjustment = adjustments.save(new BalanceAdjustment(Ids.next("BA"), employeeId, type.getCode(), year, days, reason.strip(),
+        BalanceAdjustment adjustment = adjustments.save(new BalanceAdjustment(Ids.next("BA"), employeeId, type.getCode(), year.number(), days, reason.strip(),
                 hr.getId(), today()));
         String change = days.signum() > 0 ? "added " + Wording.days(days) + " to" : "removed " + Wording.days(days.negate()) + " from";
         notifications.tell(employeeId, Notification.Kind.LEAVE, "HR " + change + " your " + type.getName().toLowerCase() + ". " + Wording.sentence(reason));
@@ -227,9 +253,9 @@ public class LeaveService {
     public void setDays(Employee hr, String employeeId, String typeCode, BigDecimal days, String reason) {
         employees.lockById(employeeId);
         LeaveType type = bookableType(typeCode);
-        int year = today().getYear();
-        LeaveEntitlement entitlement = entitlements.findByEmployeeIdAndTypeAndLeaveYear(employeeId, type.getCode(), year)
-                .orElseGet(() -> entitlements.save(LeaveEntitlement.fresh(employeeId, type.getCode(), year, BigDecimal.ZERO)));
+        LeaveYear year = yearOf(employeeId, today());
+        LeaveEntitlement entitlement = entitlements.findByEmployeeIdAndTypeAndLeaveYear(employeeId, type.getCode(), year.number())
+                .orElseGet(() -> entitlements.save(LeaveEntitlement.fresh(employeeId, type.getCode(), year.number(), BigDecimal.ZERO)));
         boolean wasRemoved = entitlement.isRemoved();
         BigDecimal change = days.subtract(entitlement.getEntitled());
         if (change.signum() == 0 && !wasRemoved) {
@@ -243,7 +269,7 @@ public class LeaveService {
         entitlement.restore();
         entitlement.adjust(change);
         if (change.signum() != 0) {
-            adjustments.save(new BalanceAdjustment(Ids.next("BA"), employeeId, type.getCode(), year, change, reason.strip(), hr.getId(), today()));
+            adjustments.save(new BalanceAdjustment(Ids.next("BA"), employeeId, type.getCode(), year.number(), change, reason.strip(), hr.getId(), today()));
         }
         notifications.tell(employeeId, Notification.Kind.LEAVE, "HR set your " + type.getName().toLowerCase() + " to " + plural(days) + " this year. "
                 + Wording.sentence(reason));
@@ -253,34 +279,30 @@ public class LeaveService {
     @Transactional
     public void removeFrom(String employeeId, String typeCode, String reason) {
         employees.lockById(employeeId);
-        int year = today().getYear();
-        LeaveType type = types.findById(typeCode).orElseThrow(() -> refused(HttpStatus.NOT_FOUND, "Leave type not found"));
-        LeaveEntitlement entitlement = entitlements.findByEmployeeIdAndTypeAndLeaveYear(employeeId, typeCode, year)
+        LeaveYear year = yearOf(employeeId, today());
+        LeaveType type = bookableType(typeCode);
+        LeaveEntitlement entitlement = entitlements.findByEmployeeIdAndTypeAndLeaveYear(employeeId, typeCode, year.number())
                 .filter(found -> !found.isRemoved())
                 .orElseThrow(() -> refused(HttpStatus.NOT_FOUND, "They don't have " + type.getName().toLowerCase() + "."));
-        if (requests.daysIn(employeeId, typeCode, LeaveRequest.PENDING, LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31)).signum() > 0) {
+        if (requests.daysIn(employeeId, typeCode, LeaveRequest.PENDING, year.start(), year.end()).signum() > 0) {
             throw refused(HttpStatus.CONFLICT, "Decide their waiting " + type.getName().toLowerCase() + " request first.");
         }
         entitlement.remove(today());
         notifications.tell(employeeId, Notification.Kind.LEAVE, "HR removed " + type.getName().toLowerCase() + " from your leave. " + Wording.sentence(reason));
     }
 
-    // Approved compensatory off goes into the year the day was worked, logged with who approved it.
+    // Approved compensatory off, logged with who approved it. The days come from the approved claim itself.
     @Transactional
     public void earnCompOff(Employee approver, String employeeId, LocalDate worked, BigDecimal days) {
-        int year = worked.getYear();
-        entitlements.open(employeeId, LeaveType.COMP_OFF, year, BigDecimal.ZERO);
-        LeaveEntitlement entitlement = entitlements.findByEmployeeIdAndTypeAndLeaveYear(employeeId, LeaveType.COMP_OFF, year).orElseThrow();
-        entitlement.restore();
-        entitlement.adjust(days);
-        adjustments.save(new BalanceAdjustment(Ids.next("BA"), employeeId, LeaveType.COMP_OFF, year, days,
-                "Worked on " + Wording.date(worked), approver.getId(), today()));
+        adjustments.save(new BalanceAdjustment(Ids.next("BA"), employeeId, LeaveType.COMP_OFF, yearOf(employeeId, worked).number(), days,
+                "Worked on " + Wording.date(worked) + ", to use by " + Wording.date(worked.plusDays(LeaveType.COMP_OFF_VALID_DAYS)), approver.getId(), today()));
     }
 
-    // A new starter gets this year's leave in full. Types given one by one, like maternity, are added by HR.
+    // A new starter's leave year starts the day they join, with every type for everyone. Types given one by one,
+    // like maternity, are added by HR.
     @Transactional
     public void openYearFor(String employeeId) {
-        openYear(employeeId, today().getYear());
+        openYear(employeeId, yearOf(employeeId, today()).number());
     }
 
     // Everyone holds every type that's for everyone, from the policy's default. Runs whenever balances are read,
@@ -312,8 +334,16 @@ public class LeaveService {
         if (to.isBefore(from)) {
             throw refused(HttpStatus.BAD_REQUEST, "The last day can't be before the first.");
         }
-        if (from.getYear() != to.getYear()) {
-            throw refused(HttpStatus.BAD_REQUEST, "Leave can't run past New Year. Split it into two requests, one for each year.");
+        LeaveYear year = LeaveYear.containing(employee.getJoinedOn(), from);
+        if (to.isAfter(year.end())) {
+            throw refused(HttpStatus.BAD_REQUEST, "Your leave year ends on " + Wording.date(year.end(), today())
+                    + ". Split this into two requests, one each side of it.");
+        }
+        LeaveRequest related = related(employee, application);
+        Integer notice = type.getNoticeDays();
+        if (related == null && notice != null && from.isBefore(today().plusDays(notice))) {
+            throw refused(HttpStatus.BAD_REQUEST, type.getName() + " is asked for " + notice + " days ahead. The earliest it can start is "
+                    + Wording.date(today().plusDays(notice), today()) + ".");
         }
         boolean isHalfDay = application.halfDay() != null;
         if (isHalfDay && !from.equals(to)) {
@@ -326,19 +356,65 @@ public class LeaveService {
         if (days.signum() == 0) {
             throw refused(HttpStatus.BAD_REQUEST, "Those dates are all Fridays or public holidays. Nothing to take.");
         }
-        if (requests.overlaps(employee.getId(), from, to)) {
+        boolean isAmendment = related != null && LeaveRequest.AMENDED.equals(application.kind());
+        if (requests.overlaps(employee.getId(), from, to, isAmendment ? related.getId() : "")) {
             throw refused(HttpStatus.CONFLICT, "You already have leave on some of those days.");
         }
-        if (!type.isUnlimited()) {
-            openYear(employee.getId(), today().getYear());
-            Balance balance = balance(employee.getId(), type, entitlementFor(employee.getId(), type, from.getYear()), from.getYear());
-            BigDecimal available = balance.entitled().subtract(balance.taken()).subtract(balance.pending());
+        if (LeaveType.COMP_OFF.equals(type.getCode())) {
+            List<LeaveRequest> others = requests.findByEmployeeIdAndTypeAndStatusIn(employee.getId(), type.getCode(), OPEN).stream()
+                    .filter(request -> !isAmendment || !request.getId().equals(related.getId())).toList();
+            if (!compOffDays(employee.getId(), others).take(new CompOffDays.Use(from, to, days))) {
+                throw refused(HttpStatus.CONFLICT, "You don't have enough compensatory off for those dates. It's taken within "
+                        + LeaveType.COMP_OFF_VALID_DAYS + " days of the day worked.");
+            }
+        } else if (!type.isUnlimited()) {
+            openYear(employee.getId(), yearOf(employee.getId(), today()).number());
+            Balance balance = balance(employee.getId(), type, entitlementFor(employee.getId(), type, year), year);
+            boolean givesBack = isAmendment && related.getType().equals(type.getCode()) && year.contains(related.getFromDate());
+            BigDecimal available = balance.entitled().subtract(balance.taken()).subtract(balance.pending())
+                    .add(givesBack ? related.getDays() : BigDecimal.ZERO);
             if (days.compareTo(available) > 0) {
                 String left = plural(available) + " of " + type.getName().toLowerCase() + " left.";
                 throw refused(HttpStatus.CONFLICT, "You only have " + left);
             }
         }
         return new Checked(type, days);
+    }
+
+    // The request an amendment or extension changes: their own, still pending or approved. An amendment can't change
+    // leave that's over; an extension follows straight on from the leave it extends, with no working day between.
+    private LeaveRequest related(Employee employee, Application application) {
+        if (LeaveRequest.INITIAL.equals(application.kind())) {
+            return null;
+        }
+        boolean isAmendment = LeaveRequest.AMENDED.equals(application.kind());
+        String doing = isAmendment ? "amending" : "extending";
+        if (application.relatedId() == null) {
+            throw refused(HttpStatus.BAD_REQUEST, "Pick the request you're " + doing + ".");
+        }
+        LeaveRequest original = ownRequest(employee, application.relatedId());
+        if (!original.isPending() && !original.isApproved()) {
+            throw refused(HttpStatus.CONFLICT, "That request was declined or cancelled, so there's nothing to change. Make a new request instead.");
+        }
+        if (isAmendment && original.getToDate().isBefore(today())) {
+            throw refused(HttpStatus.CONFLICT, "That leave is over, so it can't be amended.");
+        }
+        LocalDate ends = original.getToDate();
+        boolean followsOn = application.from().isAfter(ends)
+                && WorkingDays.count(ends.plusDays(1), application.from().minusDays(1), false, holidays.datesBetween(ends, application.from())).signum() == 0;
+        if (!isAmendment && !followsOn) {
+            throw refused(HttpStatus.BAD_REQUEST, "An extension starts straight after the leave it extends, which ends on "
+                    + Wording.date(ends, today()) + ". With a gap, it's a new request.");
+        }
+        return original;
+    }
+
+    // An approved amendment replaces the request it amends.
+    private void replaceAmended(LeaveRequest request) {
+        if (LeaveRequest.AMENDED.equals(request.getKind())) {
+            requests.findById(request.getRelatedRequestId()).filter(original -> original.isPending() || original.isApproved())
+                    .ifPresent(LeaveRequest::cancel);
+        }
     }
 
     // A medical certificate on one's own sick leave. A new one replaces the old.
@@ -390,15 +466,16 @@ public class LeaveService {
 
     // The year's entitlement. Next year's is opened from the policy the first time someone books into it,
     // as long as they hold that type this year.
-    private LeaveEntitlement entitlementFor(String employeeId, LeaveType type, int year) {
+    private LeaveEntitlement entitlementFor(String employeeId, LeaveType type, LeaveYear year) {
         Supplier<ApiException> none = () -> refused(HttpStatus.BAD_REQUEST, "You don't have " + type.getName().toLowerCase() + " to take.");
-        LeaveEntitlement held = entitlements.findByEmployeeIdAndTypeAndLeaveYear(employeeId, type.getCode(), year).orElseGet(() -> {
-            boolean holdsItNow = entitlements.findByEmployeeIdAndTypeAndLeaveYear(employeeId, type.getCode(), today().getYear())
+        int current = yearOf(employeeId, today()).number();
+        LeaveEntitlement held = entitlements.findByEmployeeIdAndTypeAndLeaveYear(employeeId, type.getCode(), year.number()).orElseGet(() -> {
+            boolean holdsItNow = entitlements.findByEmployeeIdAndTypeAndLeaveYear(employeeId, type.getCode(), current)
                     .filter(entitlement -> !entitlement.isRemoved()).isPresent();
-            if (year <= today().getYear() || !holdsItNow || type.getDefaultEntitlement() == null) {
+            if (year.number() <= current || !holdsItNow || type.getDefaultEntitlement() == null) {
                 throw none.get();
             }
-            return entitlements.save(LeaveEntitlement.fresh(employeeId, type.getCode(), year, type.getDefaultEntitlement()));
+            return entitlements.save(LeaveEntitlement.fresh(employeeId, type.getCode(), year.number(), type.getDefaultEntitlement()));
         });
         if (held.isRemoved()) {
             throw none.get();
@@ -406,8 +483,11 @@ public class LeaveService {
         return held;
     }
 
-    // A type with a balance that isn't retired. HR adjusts and sets days on these.
+    // A type with a balance that isn't retired. HR adjusts and sets days on these. Compensatory off only comes from days worked.
     private LeaveType bookableType(String code) {
+        if (LeaveType.COMP_OFF.equals(code)) {
+            throw refused(HttpStatus.BAD_REQUEST, "Compensatory off comes from Fridays and holidays worked, approved by the HOD.");
+        }
         return types.findById(code).filter(type -> !type.isUnlimited() && !type.isRetired())
                 .orElseThrow(() -> refused(HttpStatus.BAD_REQUEST, "Pick a type of leave that has a balance."));
     }
@@ -420,25 +500,59 @@ public class LeaveService {
         return entitlement;
     }
 
-    private Balance balance(String employeeId, LeaveType type, LeaveEntitlement entitlement, int year) {
+    private Balance balance(String employeeId, LeaveType type, LeaveEntitlement entitlement, LeaveYear year) {
         BigDecimal carried = carriedInto(employeeId, type, year, CARRY_YEARS_BACK);
-        BigDecimal pending = requests.daysIn(employeeId, type.getCode(), LeaveRequest.PENDING, LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31));
-        return new Balance(type.getCode(), entitlement.getEntitled().add(carried), taken(employeeId, entitlement, year), pending, carried);
+        BigDecimal pending = requests.daysIn(employeeId, type.getCode(), LeaveRequest.PENDING, year.start(), year.end());
+        List<LeaveRequest> approved = requests.findByEmployeeIdAndTypeAndStatusAndFromDateBetween(employeeId, type.getCode(), LeaveRequest.APPROVED,
+                year.start(), year.end());
+        return new Balance(type.getCode(), entitlement.getEntitled().add(carried), taken(employeeId, entitlement, year), pending, carried,
+                entitlement.getTakenBefore().add(daysToDate(approved)), null);
     }
 
-    private BigDecimal taken(String employeeId, LeaveEntitlement entitlement, int year) {
-        return entitlement.getTakenBefore()
-                .add(requests.daysIn(employeeId, entitlement.getType(), LeaveRequest.APPROVED, LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31)));
+    // Days still usable now, plus what this leave year's requests have used, so entitled minus taken and pending is what's left.
+    private Balance compOffBalance(String employeeId, LeaveYear year) {
+        List<LeaveRequest> open = requests.findByEmployeeIdAndTypeAndStatusIn(employeeId, LeaveType.COMP_OFF, OPEN);
+        CompOffDays days = compOffDays(employeeId, open);
+        List<LeaveRequest> approved = open.stream().filter(request -> request.isApproved() && year.contains(request.getFromDate())).toList();
+        BigDecimal taken = sum(approved);
+        BigDecimal pending = sum(open.stream().filter(request -> request.isPending() && year.contains(request.getFromDate())).toList());
+        return new Balance(LeaveType.COMP_OFF, days.usableFrom(today()).add(taken).add(pending), taken, pending, BigDecimal.ZERO,
+                daysToDate(approved), days.nextUseBy(today()));
+    }
+
+    private CompOffDays compOffDays(String employeeId, List<LeaveRequest> uses) {
+        return new CompOffDays(compOffGrants.of(employeeId).stream().map(grant -> new CompOffDays.Earned(grant.workedOn(), grant.days())).toList(),
+                uses.stream().map(request -> new CompOffDays.Use(request.getFromDate(), request.getToDate(), request.getDays())).toList());
+    }
+
+    // Approved days on or before today. Leave that's under way counts the working days so far.
+    private BigDecimal daysToDate(List<LeaveRequest> approved) {
+        LocalDate today = today();
+        return approved.stream()
+                .filter(request -> !request.getFromDate().isAfter(today))
+                .map(request -> request.getToDate().isAfter(today)
+                        ? WorkingDays.count(request.getFromDate(), today, request.getHalfDay() != null, holidays.datesBetween(request.getFromDate(), today))
+                        : request.getDays())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private static BigDecimal sum(List<LeaveRequest> requests) {
+        return requests.stream().map(LeaveRequest::getDays).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal taken(String employeeId, LeaveEntitlement entitlement, LeaveYear year) {
+        return entitlement.getTakenBefore().add(requests.daysIn(employeeId, entitlement.getType(), LeaveRequest.APPROVED, year.start(), year.end()));
     }
 
     // What's left of last year, up to the type's cap. Worked out every time, so a late change to last year still counts.
-    private BigDecimal carriedInto(String employeeId, LeaveType type, int year, int yearsBack) {
+    private BigDecimal carriedInto(String employeeId, LeaveType type, LeaveYear year, int yearsBack) {
         if (!type.carriesForward() || yearsBack == 0) {
             return BigDecimal.ZERO;
         }
-        return entitlements.findByEmployeeIdAndTypeAndLeaveYear(employeeId, type.getCode(), year - 1)
+        LeaveYear last = year.previous();
+        return entitlements.findByEmployeeIdAndTypeAndLeaveYear(employeeId, type.getCode(), last.number())
                 .filter(previous -> !previous.isRemoved())
-                .map(previous -> previous.getEntitled().add(carriedInto(employeeId, type, year - 1, yearsBack - 1)).subtract(taken(employeeId, previous, year - 1)))
+                .map(previous -> previous.getEntitled().add(carriedInto(employeeId, type, last, yearsBack - 1)).subtract(taken(employeeId, previous, last)))
                 .map(left -> left.max(BigDecimal.ZERO).min(type.getCarryForwardCap()))
                 .orElse(BigDecimal.ZERO);
     }
@@ -452,7 +566,8 @@ public class LeaveService {
             throw refused(HttpStatus.BAD_REQUEST, "Say how many days can carry forward.");
         }
         return new LeaveType.Rules(rules.name().strip(), rules.allowsHalfDay(), rules.isUnlimited(), rules.defaultEntitlement(),
-                rules.documentRequiredAfterDays(), rules.isForEveryone(), rules.carriesForward(), rules.carryForwardCap(), rules.needsHrApproval());
+                rules.documentRequiredAfterDays(), rules.isForEveryone(), rules.carriesForward(), rules.carryForwardCap(), rules.needsHrApproval(),
+                rules.noticeDays());
     }
 
     private void checkName(String name, String code) {

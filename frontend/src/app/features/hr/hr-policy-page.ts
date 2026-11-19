@@ -51,7 +51,7 @@ type Editing = LeaveType | 'new' | undefined;
                     <td data-label="DAYS PER YEAR">{{ daysLabel(type) }}</td>
                     <td data-label="HALF DAYS">{{ type.allowsHalfDay ? 'Allowed' : 'Full days only' }}</td>
                     <td data-label="GIVEN TO">{{ type.code === compOff ? 'Earned by working days off' : type.isForEveryone ? 'Everyone' : 'People HR picks' }}</td>
-                    <td data-label="AT YEAR END">{{ type.isUnlimited ? '' : type.carriesForward ? 'Carries up to ' + plural(type.carryForwardCap ?? 0, 'day') : 'Lapses' }}</td>
+                    <td data-label="AT YEAR END">{{ type.code === compOff ? 'Taken within 14 days of the day worked' : type.isUnlimited ? 'Nothing to carry' : type.carriesForward ? 'Carries up to ' + plural(type.carryForwardCap ?? 0, 'day') : 'Lapses' }}</td>
                     <td data-label="APPROVED BY">{{ type.code === compOff ? 'Set under Approvals' : type.needsHrApproval ? 'HOD, then HR' : 'HOD' }}</td>
                     <td class="row-actions">
                       @if (type.code !== compOff) {

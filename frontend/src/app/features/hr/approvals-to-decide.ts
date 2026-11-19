@@ -8,7 +8,7 @@ import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { formatDayShort, formatDuration } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { plural } from '../../shared/utils/text';
-import { describeDates, describeLength } from '../leave/leave-format';
+import { describeDates, describeExtras, describeLength } from '../leave/leave-format';
 import { DecisionState } from '../team/decision-state';
 import { DeclineForm } from '../team/decline-form';
 import { ApprovalKind, HrApi, NOTHING_WAITING } from './hr-api';
@@ -108,7 +108,7 @@ const row = (kind: ApprovalKind, { id, employeeId, employeeName, hodApprovedByNa
 // One list across the five kinds, oldest first, with what each one is in plain words.
 const toRows = (waiting: ApprovalsWaiting, typeName: (code: string) => string): Row[] =>
   [
-    ...waiting.leave.map((request) => row('leave', request, typeName(request.type), `${describeDates(request)}, ${describeLength(request)}`, request.from)),
+    ...waiting.leave.map((request) => row('leave', request, typeName(request.type), [`${describeDates(request)}, ${describeLength(request)}`, describeExtras(request)].filter(Boolean).join(' · '), request.from)),
     ...waiting.corrections.map((fix) => row('corrections', fix, 'Punch fix', `${formatDayShort(fix.date)}, punch ${fix.kind === 'missed-in' ? 'in' : 'out'} at ${fix.requestedTime}`, fix.date)),
     ...waiting.homeDays.map((day) => row('home-days', day, 'Worked from home', formatDayShort(day.date), day.date)),
     ...waiting.compOffs.map((claim) => row('comp-offs', claim, 'Comp off', `${formatDayShort(claim.date)}, earns ${claim.days === HALF_DAY ? 'half a day' : plural(claim.days, 'day')}`, claim.date)),

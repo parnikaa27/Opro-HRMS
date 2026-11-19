@@ -880,8 +880,8 @@ td.row-actions {
   }
 }
 
-/* Below about 1100px, three balance cards in a row are too narrow for their rings. Two fit; phones already stack them. */
-@media (min-width: 621px) and (max-width: 1100px) {
+/* Two balance rings, then every type in the balance table below, so the design's third card has nothing left to show. Phones already stack them. */
+@media (min-width: 621px) {
   .leave-balance-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1127,4 +1127,50 @@ label.check-label {
   flex-wrap: wrap;
   gap: 12px 24px;
   margin-bottom: 14px;
+}
+
+/* A line under a table cell's main value, like when compensatory off runs out. */
+.cell-note {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* The leave form's day by day strip, like the grid on the paper leave form. */
+.day-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 10px 0 6px;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    justify-items: center;
+    min-width: 38px;
+    padding: 5px 4px;
+    border-radius: 8px;
+    background: #e3f6f3;
+    color: var(--aqua-dark);
+    font-variant-numeric: tabular-nums;
+  }
+
+  li.off {
+    background: #f1f4f5;
+    color: var(--muted);
+  }
+
+  small {
+    font-size: 9px;
+  }
+
+  strong {
+    font-size: 13px;
+  }
+
+  span {
+    font-size: 10px;
+    font-weight: 700;
+  }
 }

@@ -71,7 +71,7 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 | `/performance` | Their goals in the open appraisal cycle, their appraisals with each goal rated (acknowledge once read), and any probation review. Never the HOD's recommendations |
 | `/documents` | Every document on HR's list that applies to them, with its status (missing, waiting for HR, verified, sent back with HR's reason, expired) and download. Upload a copy of the ones employees send, with an expiry date where the type expires |
 | `/attendance` | My attendance: four summary cards (days present, work hours, on time, overtime), the attendance log for a chosen month, CSV export, punch fix requests and their status, and the punch button while today is on screen |
-| `/leave` | Leave and time off: balance rings, other leave types, request history with cancel (pending, or approved and not started), and the Request leave modal with a working day preview and a success screen |
+| `/leave` | Leave and time off: two balance rings, then a balance table for their leave year (type, this year, carried forward, approved, taken so far, waiting, left; comp off says when it runs out), request history with cancel (pending, or approved and not started), and the Request leave modal laid out like the paper form (new, amended or extended application, flight entitlement and salary advance ticks, the days marked AL, PH or OFF and the day they're back) with a success screen |
 | `/calendar` | Company calendar: month grid with public holidays and company events, upcoming holidays, the holiday policy. Islamic holidays are marked **tentative** until confirmed after moon sighting. `/holidays` redirects here |
 | `/profile` | Virtual ID card (printable), personal and job details, emergency contact, visa and work permit details (with employment approval and the work permit medical), their record (bank details they enter for HR to verify, shown as the last 4 digits; insurance, education and experience HR keeps), request a change to personal details, and the flight allowance (used, waiting and left in USD, MVR or INR) with flight claims |
 | Notifications | Header panel, not a page: leave, punch fix, home working, compensatory off, overtime and flight claim decisions, goals set, an appraisal or probation review done, a cycle opened (HODs), visa reminders, announcements, every change HR makes to your record (punches, leave recorded for you, balance adjustments, visa, details, photo, a detail change request) changes to working hours, and on the day, birthdays and work anniversaries (theirs, and their reports' for HODs and HR). Each says what changed and why, in plain words. Marking someone as leaving sends nothing: HR tells people in person |
@@ -164,12 +164,15 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 | Unpaid | No limit |
 | Compensatory off | Earned, see below |
 
-- Leave year follows the calendar year, which is also the Maldives financial year.
+- **Each person's leave year runs from their joining anniversary** to the day before the next (someone who joined on 29 February starts on the 28th in other years). `leave_year` is the calendar year it starts in (`LeaveYear`). The frontend works out the same dates for display only (`leaveYearOf`).
 - **Leave types are HR's.** HR adds, edits and removes them in Policies. A type is given to **everyone** each year, or to **people HR picks** (maternity, paternity, marriage). Removing a type nobody used deletes it; a used one is **retired**: nobody can book it, history keeps its name. No types exist outside the dev seed until HR adds them, except compensatory off.
 - **Carry forward** is set per type: unused days **lapse**, or **carry forward up to a cap** HR sets. What carries is worked out from last year every time, never stored, so a late change to last year still counts. Placeholder: every type lapses until HR confirms.
 - **A year opens by itself.** Whenever someone's balances are read, any type for everyone they don't hold yet that year is opened from the policy's default. A new type for everyone reaches everyone straight away.
 - **One person's leave:** HR sets how many days of a type someone gets this year (fewer for a late joiner, a type only they get), or takes a type away. Every change needs a reason, is logged and notifies them. A type with a waiting request can't be taken away. HR never changes their own.
 - Half days allowed (first half or second half).
+- **Notice:** HR can set how many days ahead a type is asked for (`noticeDays`, the paper form asks a month for annual leave). Only a new request needs it, not an amendment or extension. None is set until HR does.
+- **Amended and extended requests**, as on the paper form. An amendment names a waiting or approved request that isn't over; its days are given back while checking the balance, and approving it cancels the one it replaces. An extension starts straight after the request it extends, with no working day between. Both are decided like any request.
+- **Flight entitlement and salary advance** are ticks on the request, shown to the HOD and HR. Nothing else happens yet: flight claims stay on the profile and there's no payroll.
 - Weekends and public holidays inside a leave range do not count.
 - The apply form only offers types the person has a balance for, plus types the policy marks `isUnlimited`. A missing balance never means "no cap".
 - Sick leave longer than `documentRequiredAfterDays` asks for a medical certificate: PDF, JPG or PNG up to 5 MB, attached when applying or later from the request history. It is health data: the employee and HR can open it, managers only see that one is attached. The server checks the file's first bytes, not just its type, and serves it with `nosniff` and a `sandbox` policy.
@@ -178,13 +181,13 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 - Statuses: `pending`, `approved`, `rejected`, `cancelled`.
 - The backend owns day counts and balances. The frontend may preview a count but the server's number wins: Spring ignores any `days` the client sends.
 - Balances are never stored as totals. Taken is leave used before Opro HRMS (`taken_before`) plus approved requests in the year; pending is pending requests. Applying locks the person's record, so two requests sent at once can't spend the same days.
-- A request stays inside one leave year. Leave across New Year is two requests. Booking into next year opens that year's balance from the policy's default, plus anything carried forward, for types the person holds now.
+- A request stays inside one leave year. Leave across the end of someone's leave year is two requests. Booking into next year opens that year's balance from the policy's default, plus anything carried forward, for types the person holds now.
 - Overlapping pending or approved requests are refused. Cancelling works for pending requests, and approved ones that haven't started.
 
 ### Compensatory off
 
 - Punching on a Friday or a public holiday asks the manager for compensatory off (Comp off tab). Approved, it earns **1 day**, or **half a day** when the day was shorter than the half day threshold, worked out from the punches when they decide. It can't be approved while they're still punched in. Declining needs a reason.
-- It goes into that year's **Compensatory off** balance, logged with who approved it, and **lapses at the end of the leave year**.
+- It's logged with who approved it and **taken within 14 days of the day worked**, or it's gone (`LeaveType.COMP_OFF_VALID_DAYS`). The balance is worked out from approved claims every time: each comp off request uses the days that run out soonest and cover its dates (`CompOffDays`). HR can't adjust it by hand.
 
 ### Approvals
 
@@ -401,9 +404,9 @@ The full, generated reference is Swagger UI at `http://localhost:8080/swagger-ui
 | GET | `/api/attendance?month=YYYY-MM` | Own daily records. Each punch carries where it was made in `device` (an office, "Home", or an old device's name). Days punched from the portal carry `workMode`, and home days `homeStatus` |
 | POST | `/api/attendance/punch` | Punch now: `mode` (`office`, `resort` or `home`), plus `latitude`, `longitude` and `accuracy` for an office or resort. Returns today |
 | GET / POST | `/api/attendance/corrections` | Own correction requests / raise one (`date`, `kind`, `category`: resort, forgot, late or other, `requestedTime`, `reason` for late and other) |
-| GET | `/api/leave/types` | Leave types from the policy, retired ones included with `retiredOn`. `isUnlimited` marks types with no balance, like unpaid. Balances carry `carriedOver` |
-| GET | `/api/leave/balances` | Own balances |
-| GET / POST | `/api/leave/requests` | Own requests / apply |
+| GET | `/api/leave/types` | Leave types from the policy, retired ones included with `retiredOn`. `isUnlimited` marks types with no balance, like unpaid. `noticeDays` is how far ahead a new request is made |
+| GET | `/api/leave/balances` | Own balances for their current leave year, with `carriedOver`, `takenToDate` (approved days up to today) and, for comp off, `expiresOn` |
+| GET / POST | `/api/leave/requests` | Own requests / apply (`type`, `from`, `to`, `halfDay`, `reason`, `kind`: initial, amended or extended with `relatedRequestId`, `usesFlightEntitlement`, `wantsSalaryAdvance`) |
 | POST | `/api/leave/requests/:id/cancel` | Cancel own request |
 | GET | `/api/holidays?year=YYYY` | Public holidays |
 | POST | `/api/profile/change-requests` | Ask HR to change personal details |

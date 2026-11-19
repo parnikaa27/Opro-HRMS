@@ -25,7 +25,6 @@ Walked through by hand as Arjun (expatriate employee), Vikram (HOD), Ananya (HR)
 - [ ] Leave can be booked for past days, even days the person worked. Decide which types may be backdated (sick leave after the fact, say) and how far.
 - [ ] Sick leave over 2 days can be approved without its medical certificate, and the HOD isn't told one is missing.
 - [ ] No minimum working age: HR can add someone born in 2020.
-- [ ] Someone joining late in the year gets the full year's leave (30 annual days for a 1 December start). HR has to reduce it by hand.
 - [ ] People who haven't started yet count in today's headcount (11, "+22%") while New joiners says 0, show as "not in" on attendance, can sign in, and are in the appraisal cycle.
 - [ ] Waiting requests never expire or escalate. A leave day already past (Rohit, 18 November) still waits, and the HOD gets no reminder.
 - [ ] No cover when an HOD is away: only a super admin can step in. Consider an acting HOD for a date range.
@@ -43,6 +42,16 @@ Walked through by hand as Arjun (expatriate employee), Vikram (HOD), Ananya (HR)
 **Missing for go live**
 - [ ] Importing people in bulk, with leave already used this year, visas and bank details, from HR's current spreadsheets. Adding everyone one at a time isn't realistic.
 
+## From the meeting with Madhu (19 November)
+
+Being built in batches, one PR each. Leave is done (see Leave below). Still to come:
+- [ ] **Documents:** several files per type, each removable; a start and end date on every document; document types HR adds for one person; reminder days HR sets per type (default 30), super admins told at 7 days or less and on the day; HR's view of which document is missing from whom.
+- [ ] **Exit:** the employee resigns (date put in, reason, release date), the HOD then HR approve, the exit date is set, then HR ticks back each item on a return checklist HR keeps (laptop, ID card, bus card, accommodation keys). "Mark as leaving" stays locked until every item is back.
+- [ ] **Performance:** the employee writes their goals and KPIs, the HOD then HR approve them; the employee adds accomplishments, strengths, learning and development and a plan for certifications, which the HOD comments on; the employee must accept the rating.
+- [ ] **Allowances:** monthly allowances HR sets per person, and one-off grants an HOD makes that HR approves.
+- [ ] **Onboarding:** a proper process. Needs a conversation first: what's on the checklist and who ticks it.
+- [ ] **Recruitment:** needs its own conversation first.
+
 ## Demo
 
 - [ ] **Publish the Netlify demo**: connect the repository on Netlify (steps in `HOW-TO-RUN.md`). It needs your Netlify account, so it's yours to do. Add the site password if the link shouldn't be open.
@@ -57,6 +66,8 @@ Walked through by hand as Arjun (expatriate employee), Vikram (HOD), Ananya (HR)
 - [ ] **Footer:** legal name, address, HR email, and the Privacy and HR policy links in `frontend/src/app/core/config.ts`.
 - [ ] **Overtime:** 30 minutes past the shift is the placeholder minimum, and whether overtime is paid (at what rate) or taken as time off. Payroll needs the rate.
 - [ ] **Performance:** the 1 to 5 scale and its words, and whether appraisals should include a self assessment or company competencies.
+- [ ] **Leave notice:** the paper form asks a month ahead for scheduled leave. Set "Asked for (days ahead)" on annual leave in Policies, and on any other type that needs it. Nothing has notice until then.
+- [ ] **Flight entitlement and salary advance ticks on leave requests:** today they're shown to the HOD and HR only. Should ticking the flight box start a flight claim, and who acts on a salary advance before payroll exists?
 - [ ] **Comp off for super admins:** today they earn none for working a Friday or a holiday, because nobody is above them to approve it.
 
 ## Later, if needed
@@ -97,6 +108,7 @@ What the document asks for, against what's built. "Done" means built and tested;
 
 **6. Leave**
 - Done: all the listed types (HR adds any type, emergency leave included), approval by the HOD, calendar, balances.
+- Done on 19 November, from the meeting with Madhu: leave years from each person's joining date, compensatory off valid for 14 days, a balance table (this year, carried forward, approved, taken so far, waiting, left), and the paper form's fields (new, amended or extended application, flight entitlement and salary advance ticks, notice per type, the days marked and the return date).
 - Done since: HR can approve after the HOD.
 
 **7. Payroll**: not started (salary structure in USD and MVR, allowances, overtime, deductions, advances, loans, final settlement, payslips, bank transfer files, reports). Needs the Maldives pension and income tax rules and each bank's file format confirmed.

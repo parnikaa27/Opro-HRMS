@@ -28,7 +28,7 @@ test('HR adds a leave type for people they pick, and gives it to one person', as
 
   await signInAs(page, 'OPR-0023');
   await page.getByTestId('nav-leave').click();
-  await expect(page.getByTestId('leave-balance').filter({ hasText: 'Marriage leave' })).toContainText('5 days available');
+  await expect(page.getByTestId('balance-row').filter({ hasText: 'Marriage leave' }).locator('td').last()).toHaveText('5');
 });
 
 test('HR sets a flight allowance, and a claim counts straight away with nobody to approve it', async ({ page }) => {

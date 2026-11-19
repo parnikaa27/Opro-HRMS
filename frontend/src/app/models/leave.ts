@@ -16,6 +16,8 @@ export interface LeaveType {
   retiredOn?: string;
   // HR approves after the HOD.
   needsHrApproval?: boolean;
+  // A first request is made at least this many days ahead.
+  noticeDays?: number;
 }
 
 // Compensatory off is earned for days off worked. The policy never gives it.
@@ -28,7 +30,14 @@ export interface LeaveBalance {
   taken: number;
   pending: number;
   carriedOver?: number;
+  // Approved days up to today. taken also counts approved days still to come.
+  takenToDate?: number;
+  // Compensatory off only: when the soonest unused days run out.
+  expiresOn?: string;
 }
+
+// An amendment replaces the request it names once approved. An extension follows straight on from it.
+export type LeaveKind = 'initial' | 'amended' | 'extended';
 
 export interface LeaveRequest {
   id: string;
@@ -50,6 +59,10 @@ export interface LeaveRequest {
   // Set while it waits for HR after the HOD approved.
   hodApprovedByName?: string;
   hodApprovedOn?: string;
+  kind?: LeaveKind;
+  relatedRequestId?: string;
+  usesFlightEntitlement?: boolean;
+  wantsSalaryAdvance?: boolean;
 }
 
 export interface BalanceAdjustment {

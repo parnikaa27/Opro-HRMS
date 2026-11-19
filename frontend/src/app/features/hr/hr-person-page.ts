@@ -79,7 +79,7 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
           </p>
         }
 
-        <app-leave-balances [balances]="employee.leaveBalances" [types]="typeList()" />
+        <app-leave-balances [balances]="employee.leaveBalances" [types]="typeList()" [joinedOn]="employee.joinedOn" />
 
         <div class="employee-grid">
           <div class="main-column">

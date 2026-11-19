@@ -3,10 +3,12 @@ import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
-import { buildAttendance, clockNow, decideHomeDay, maldivesNow, punchNow, rebuildDay, toMinutes } from './attendance.mjs';
+import { addDays, buildAttendance, clockNow, decideHomeDay, maldivesNow, punchNow, rebuildDay, toMinutes } from './attendance.mjs';
 
 const PORT = Number(process.env.MOCK_PORT ?? 4300);
 const MAX_BODY_BYTES = 10_000;
+// Compensatory off is taken within this many days of the day worked.
+const COMP_OFF_VALID_DAYS = 14;
 const SESSION_COOKIE = 'opro_session';
 const XSRF_COOKIE = 'XSRF-TOKEN';
 // The Netlify demo runs this file as a function that can restart at any time, losing every session in memory.
@@ -523,16 +525,19 @@ const finishDecision = (collection, user, item, { decision, note }) => {
   }
   const decided = { ...item, status: decision, decidedBy: user.id, decidedOn: today(), ...(note && { decisionNote: String(note) }) };
   db[collection] = db[collection].map((entry) => (entry.id === id ? decided : entry));
+  if (collection === 'leaveRequests' && decision === 'approved') {
+    replaceAmended(item);
+  }
   if (collection === 'compOffs') {
     if (decision === 'approved') {
       const earned = compOffView(item).days;
       const held = (db.leaveBalances[item.employeeId] ?? []).find(({ type }) => type === 'comp-off');
-      setEntitled(item.employeeId, 'comp-off', (held?.entitled ?? 0) + earned);
+      setEntitled(item.employeeId, 'comp-off', (held?.entitled ?? 0) + earned, addDays(item.date, COMP_OFF_VALID_DAYS));
       logAdjustment(item.employeeId, 'comp-off', earned, `Worked on ${sayDate(item.date)}`, user.id);
       db.compOffs = db.compOffs.map((entry) => (entry.id === id ? { ...entry, days: earned } : entry));
     }
     notify(item.employeeId, 'leave', decision === 'approved'
-      ? `${user.fullName} approved ${sayDays(compOffView(decided).days)} of compensatory off for working on ${sayDate(item.date)}.`
+      ? `${user.fullName} approved ${sayDays(compOffView(decided).days)} of compensatory off for working on ${sayDate(item.date)}. Take it by ${sayDate(addDays(item.date, COMP_OFF_VALID_DAYS))}, or it's gone.`
       : `${user.fullName} didn't give compensatory off for working on ${sayDate(item.date)}: ${sentence(String(note ?? 'no reason given'))}`);
     return compOffView(db.compOffs.find((entry) => entry.id === id));
   }
@@ -555,17 +560,30 @@ const finishDecision = (collection, user, item, { decision, note }) => {
   return withName(decided);
 };
 
+// An approved amendment replaces the request it amends.
+const replaceAmended = ({ kind, relatedRequestId }) => {
+  if (kind === 'amended') {
+    db.leaveRequests = db.leaveRequests.map((entry) => (entry.id === relatedRequestId && ['pending', 'approved'].includes(entry.status) ? { ...entry, status: 'cancelled' } : entry));
+  }
+};
+
+// Approved days still to come aren't taken yet.
+const takenToDate = (employeeId, { type, taken }) =>
+  taken - db.leaveRequests.filter((entry) => entry.employeeId === employeeId && entry.type === type && entry.status === 'approved' && entry.from > today()).reduce((sum, { days }) => sum + days, 0);
+
 // Retired types drop out of everyone's balances. Their history stays.
 const balancesOf = (employeeId) =>
-  (db.leaveBalances[employeeId] ?? []).filter(({ type }) => !db.leaveTypes.find((entry) => entry.code === type)?.retiredOn).map((balance) => ({ carriedOver: 0, ...balance }));
+  (db.leaveBalances[employeeId] ?? [])
+    .filter(({ type }) => !db.leaveTypes.find((entry) => entry.code === type)?.retiredOn)
+    .map((balance) => ({ carriedOver: 0, takenToDate: takenToDate(employeeId, balance), ...balance }));
 
-const setEntitled = (employeeId, type, entitled) => {
+const setEntitled = (employeeId, type, entitled, expiresOn) => {
   const balances = db.leaveBalances[employeeId] ?? [];
   db.leaveBalances = {
     ...db.leaveBalances,
     [employeeId]: balances.some((balance) => balance.type === type)
-      ? balances.map((balance) => (balance.type === type ? { ...balance, entitled } : balance))
-      : [...balances, { type, entitled, taken: 0, pending: 0 }],
+      ? balances.map((balance) => (balance.type === type ? { ...balance, entitled, ...(expiresOn && { expiresOn }) } : balance))
+      : [...balances, { type, entitled, taken: 0, pending: 0, ...(expiresOn && { expiresOn }) }],
   };
 };
 
@@ -791,9 +809,18 @@ const routes = [
   ['GET', /^\/api\/leave\/requests$/, ({ user }) => db.leaveRequests.filter(({ employeeId }) => employeeId === user.id).map(withName)],
   ['POST', /^\/api\/leave\/requests$/, ({ user, body }) => {
     // The real backend counts days itself. The mock trusts the client to keep things simple.
-    const request = { id: `LR-${randomUUID().slice(0, 6)}`, employeeId: user.id, type: body.type, from: body.from, to: body.to, ...(body.halfDay && { halfDay: body.halfDay }), days: body.days, reason: body.reason, status: 'pending', appliedOn: today() };
+    const kind = body.kind ?? 'initial';
+    const request = {
+      id: `LR-${randomUUID().slice(0, 6)}`, employeeId: user.id, type: body.type, from: body.from, to: body.to, ...(body.halfDay && { halfDay: body.halfDay }), days: body.days, reason: body.reason,
+      status: 'pending', appliedOn: today(), kind, ...(kind !== 'initial' && { relatedRequestId: body.relatedRequestId }),
+      usesFlightEntitlement: Boolean(body.usesFlightEntitlement), wantsSalaryAdvance: Boolean(body.wantsSalaryAdvance),
+    };
     // A super admin's leave needs nobody's approval.
-    db.leaveRequests = [user.roles.includes('SUPER_ADMIN') ? { ...request, status: 'approved', decidedBy: user.id, decidedOn: today() } : request, ...db.leaveRequests];
+    const isApproved = user.roles.includes('SUPER_ADMIN');
+    db.leaveRequests = [isApproved ? { ...request, status: 'approved', decidedBy: user.id, decidedOn: today() } : request, ...db.leaveRequests];
+    if (isApproved) {
+      replaceAmended(request);
+    }
     return db.leaveRequests[0];
   }],
   ['POST', /^\/api\/leave\/requests\/([\w-]+)\/cancel$/, ({ user, params: [id] }) => {
@@ -1093,7 +1120,7 @@ const routes = [
     if (!type) {
       throw new HttpError(404, 'Leave type not found');
     }
-    const updated = { ...type, ...pick(body, ['name', 'allowsHalfDay', 'defaultEntitlement', 'documentRequiredAfterDays', 'isForEveryone', 'carriesForward', 'carryForwardCap', 'needsHrApproval']) };
+    const updated = { ...type, noticeDays: undefined, ...pick(body, ['name', 'allowsHalfDay', 'defaultEntitlement', 'documentRequiredAfterDays', 'isForEveryone', 'carriesForward', 'carryForwardCap', 'needsHrApproval', 'noticeDays']) };
     db.leaveTypes = db.leaveTypes.map((entry) => (entry.code === code ? updated : entry));
     return updated;
   }],
@@ -1103,7 +1130,7 @@ const routes = [
     if (!code || db.leaveTypes.some((entry) => entry.code === code)) {
       throw new HttpError(409, "There's already a leave type called that.");
     }
-    const type = { code, ...pick(body, ['name', 'allowsHalfDay', 'isUnlimited', 'defaultEntitlement', 'documentRequiredAfterDays', 'isForEveryone', 'carriesForward', 'carryForwardCap', 'needsHrApproval']) };
+    const type = { code, ...pick(body, ['name', 'allowsHalfDay', 'isUnlimited', 'defaultEntitlement', 'documentRequiredAfterDays', 'isForEveryone', 'carriesForward', 'carryForwardCap', 'needsHrApproval', 'noticeDays']) };
     db.leaveTypes = [...db.leaveTypes.filter(({ code: existing }) => existing !== 'comp-off'), type, ...db.leaveTypes.filter(({ code: existing }) => existing === 'comp-off')];
     if (type.isForEveryone && !type.isUnlimited) {
       activeEmployees().forEach(({ id }) => setEntitled(id, code, Number(type.defaultEntitlement ?? 0)));

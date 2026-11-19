@@ -36,6 +36,7 @@ class CompOffApiTests {
     void cleanUp() {
         jdbc.update("delete from punch");
         jdbc.update("delete from home_day");
+        jdbc.update("delete from leave_request where type = 'comp-off'");
         jdbc.update("delete from comp_off_claim");
         jdbc.update("delete from balance_adjustment where id <> 'BA-1'");
         jdbc.update("delete from leave_entitlement where type = 'comp-off'");
@@ -91,7 +92,28 @@ class CompOffApiTests {
         assertThat(JsonPath.<Number>read(decided, "$.days").doubleValue()).isEqualTo(1.0);
         assertThat(compOff(arjun)).isEqualTo("1.0");
         assertThat(JsonPath.<List<String>>read(arjun.get("/api/notifications").body(), "$[*].text"))
-                .contains("Vikram Singh approved 1 day of compensatory off for working on Friday 6 November.");
+                .contains("Vikram Singh approved 1 day of compensatory off for working on Friday 6 November. Take it by Friday 20 November, or it's gone.");
+    }
+
+    @Test
+    void compensatoryOffIsTakenWithinFourteenDaysOfTheDayWorked() throws Exception {
+        workedFriday("09:00", "15:00");
+        vikram.post("/api/team/comp-offs/CO-TEST/decision", "{\"decision\":\"approved\"}");
+        ApiClient arjun = as("OPR-0018");
+        String compOff = "{\"type\":\"comp-off\",\"from\":\"%s\",\"to\":\"%s\",\"reason\":\"Rest\"}";
+
+        assertThat(JsonPath.<List<String>>read(arjun.get("/api/leave/balances").body(), "$[?(@.type == 'comp-off')].expiresOn")).containsExactly("2026-11-20");
+        assertThat(arjun.post("/api/leave/requests", compOff.formatted("2026-11-22", "2026-11-22")).body())
+                .isEqualTo("{\"message\":\"You don't have enough compensatory off for those dates. It's taken within 14 days of the day worked.\"}");
+        assertThat(arjun.post("/api/leave/requests", compOff.formatted("2026-11-15", "2026-11-15")).statusCode()).isEqualTo(200);
+        assertThat(JsonPath.<List<Object>>read(arjun.get("/api/leave/balances").body(), "$[?(@.type == 'comp-off')].pending")).containsExactly(1.0);
+    }
+
+    @Test
+    void unusedCompensatoryOffIsGoneAfterFourteenDays() throws Exception {
+        jdbc.update("insert into comp_off_claim (id, employee_id, work_date, status, days) values ('CO-TEST', 'OPR-0018', '2026-10-23', 'approved', 1)");
+
+        assertThat(compOff(as("OPR-0018"))).isEqualTo("none");
     }
 
     @Test

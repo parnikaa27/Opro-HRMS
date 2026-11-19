@@ -11,7 +11,7 @@ import { formatDayShort } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { fixCategoryLabel } from '../attendance/fix-categories';
 import { LeaveApi } from '../leave/leave-api';
-import { describeDates, describeLength } from '../leave/leave-format';
+import { describeDates, describeExtras, describeLength } from '../leave/leave-format';
 import { CompOffList } from './comp-off-list';
 import { DecisionState } from './decision-state';
 import { DeclineForm } from './decline-form';
@@ -130,6 +130,9 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
                 @if (request.hasCertificate) {
                   <span class="certificate-note" data-testid="certificate">Medical certificate attached</span>
                 }
+                @if (describeExtras(request); as extras) {
+                  <span class="certificate-note" data-testid="leave-extras">{{ extras }}</span>
+                }
               </div>
               <div><small>DATES</small><strong>{{ describeDates(request) }}</strong></div>
               <div><small>DURATION</small><strong>{{ describeLength(request) }}</strong></div>
@@ -239,6 +242,7 @@ export class ApprovalsPage {
   protected readonly describeDates = describeDates;
   protected readonly isWaitingForHr = isWaitingForHr;
   protected readonly describeLength = describeLength;
+  protected readonly describeExtras = describeExtras;
   protected readonly formatDayShort = formatDayShort;
   protected readonly fixCategoryLabel = fixCategoryLabel;
   protected readonly submittedAgo = submittedAgo;

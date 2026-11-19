@@ -684,6 +684,15 @@
 :root[data-theme='dark'] .weight-total.is-off {
   color: #ff8c75;
 }
+:root[data-theme='dark'] .day-strip li {
+  background: #1f302d;
+}
+:root[data-theme='dark'] .day-strip li {
+  color: #5ac6ba;
+}
+:root[data-theme='dark'] .day-strip li.off {
+  background: #202c34;
+}
 @media (max-width: 860px) {
 :root[data-theme='dark'] .mobile-menu {
   color: #deedf8;
@@ -1374,6 +1383,15 @@
 }
 :root:not([data-theme='light']) .weight-total.is-off {
   color: #ff8c75;
+}
+:root:not([data-theme='light']) .day-strip li {
+  background: #1f302d;
+}
+:root:not([data-theme='light']) .day-strip li {
+  color: #5ac6ba;
+}
+:root:not([data-theme='light']) .day-strip li.off {
+  background: #202c34;
 }
 @media (max-width: 860px) {
 :root:not([data-theme='light']) .mobile-menu {
