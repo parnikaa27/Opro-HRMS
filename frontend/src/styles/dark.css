@@ -693,6 +693,9 @@
 :root[data-theme='dark'] .day-strip li.off {
   background: #202c34;
 }
+:root[data-theme='dark'] .inline-select select {
+  background: #19242c;
+}
 @media (max-width: 860px) {
 :root[data-theme='dark'] .mobile-menu {
   color: #deedf8;
@@ -1392,6 +1395,9 @@
 }
 :root:not([data-theme='light']) .day-strip li.off {
   background: #202c34;
+}
+:root:not([data-theme='light']) .inline-select select {
+  background: #19242c;
 }
 @media (max-width: 860px) {
 :root:not([data-theme='light']) .mobile-menu {

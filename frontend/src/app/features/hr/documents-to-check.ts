@@ -6,6 +6,7 @@ import { Dialog } from '../../shared/ui/dialog';
 import { Icon } from '../../shared/ui/icon';
 import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { valueOr } from '../../shared/utils/resource';
+import { DocumentFiles } from '../documents/document-files';
 import { DecisionState } from '../team/decision-state';
 import { DeclineForm } from '../team/decline-form';
 import { submittedAgo } from '../team/request-row';
@@ -14,7 +15,7 @@ import { HrApi } from './hr-api';
 // Documents people uploaded, waiting for HR to check, oldest first. Part of the inbox.
 @Component({
   selector: 'app-documents-to-check',
-  imports: [Avatar, DeclineForm, Dialog, Icon, ListSkeleton, RouterLink],
+  imports: [Avatar, DeclineForm, Dialog, DocumentFiles, Icon, ListSkeleton, RouterLink],
   template: `
     <section class="card all-requests" data-testid="documents-to-check">
       <div class="card-heading">
@@ -36,8 +37,8 @@ import { HrApi } from './hr-api';
               <span>{{ document.name }} · {{ submittedAgo(document.updatedOn ?? '') }}</span>
             </div>
             <div>
-              <small>FILE</small>
-              <a [href]="filePath(document)" target="_blank" rel="noopener" class="text-link">Open</a>
+              <small>{{ document.files.length > 1 ? 'FILES' : 'FILE' }}</small>
+              <app-document-files [files]="document.files" [name]="document.name" [basePath]="basePath(document)" />
             </div>
             <div class="request-actions labeled">
               <button type="button" class="decline" [disabled]="decisions.busyId() === key(document)" (click)="declining.set(document)" data-testid="send-back"><app-icon name="x" [size]="16" /> Send back</button>
@@ -71,8 +72,8 @@ export class DocumentsToCheck {
   protected readonly submittedAgo = submittedAgo;
   protected readonly key = ({ employeeId, type }: DocumentEntry) => `${employeeId}/${type}`;
   protected readonly firstName = ({ employeeName }: DocumentEntry) => (employeeName ?? '').split(' ')[0];
-  protected readonly filePath = ({ employeeId, type }: DocumentEntry) =>
-    `/api/hr/employees/${encodeURIComponent(employeeId ?? '')}/documents/${encodeURIComponent(type)}/file`;
+  protected readonly basePath = ({ employeeId, type }: DocumentEntry) =>
+    `/api/hr/employees/${encodeURIComponent(employeeId ?? '')}/documents/${encodeURIComponent(type)}`;
 
   protected verify(document: DocumentEntry) {
     return this.decisions.run(this.key(document), () => this.api.decideDocument(document.employeeId ?? '', document.type, 'verified'), () => this.waiting.reload());

@@ -41,7 +41,7 @@ class FlightApiTests {
     @AfterEach
     void cleanUp() {
         jdbc.update("delete from flight_claim where id not in ('FC-1', 'FC-2')");
-        jdbc.update("delete from stored_file where id not in (select file_id from employee_document where file_id is not null)");
+        jdbc.update("delete from stored_file where id not in (select file_id from document_file)");
         jdbc.update("update flight_allowance set amount_usd = 1200 where employee_id = 'OPR-0018'");
         jdbc.update("delete from flight_allowance where allowance_year <> 2026");
         jdbc.update("update exchange_rate set per_usd = 15.42 where currency = 'MVR'");

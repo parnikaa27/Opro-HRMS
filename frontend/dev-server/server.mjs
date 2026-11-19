@@ -84,17 +84,22 @@ const samplePdf = (line) => {
 };
 
 // The same people's documents Spring seeds: their contract, visa or national ID papers, and insurance waiting for HR.
+// Each has one file, served as a sample PDF.
 const seedDocuments = (employees, visas) => employees.flatMap((employee) => {
   const visa = visas.find(({ employeeId }) => employeeId === employee.id);
-  const verified = { employeeId: employee.id, status: 'verified', hasFile: true };
+  const copy = (type, fields) => ({
+    employeeId: employee.id, type, status: 'verified', issuedOn: employee.joinedOn, files: [{ id: `DF-${employee.id}-${type}`, uploadedOn: employee.joinedOn }], ...fields,
+  });
   return [
-    { ...verified, type: 'employment-contract', updatedOn: employee.joinedOn },
-    ...(visa ? [{ ...verified, type: 'visa-copy', expiresOn: visa.visaExpiry }, { ...verified, type: 'passport-copy', expiresOn: visa.passportExpiry }] : []),
-    ...(employee.nationality === 'Maldivian' ? [{ ...verified, type: 'national-id' }] : []),
-    { ...verified, type: 'health-insurance', updatedOn: '2026-02-05', status: 'pending' },
+    copy('employment-contract', { updatedOn: employee.joinedOn }),
+    ...(visa ? [copy('visa-copy', { issuedOn: visa.visaIssuedOn, expiresOn: visa.visaExpiry }), copy('passport-copy', { expiresOn: visa.passportExpiry })] : []),
+    ...(employee.nationality === 'Maldivian' ? [copy('national-id', {})] : []),
+    copy('health-insurance', { updatedOn: '2026-02-05', issuedOn: '2026-02-01', status: 'pending' }),
   ];
 });
 db.documents = seedDocuments(db.employees, db.visas);
+// Types not for everyone reach only the people HR asks.
+db.askedFor = [{ type: 'marriage-certificate', employeeId: 'OPR-0015' }];
 
 class HttpError extends Error {
   constructor(status, message) {
@@ -205,18 +210,22 @@ const removeFrom = (collection, id, what) => {
   return undefined;
 };
 
+const appliesTo = (type, employee) =>
+  !type.retiredOn && (type.isForEveryone
+    ? employee.nationality !== 'Maldivian' || !type.isForExpatriatesOnly
+    : db.askedFor.some((entry) => entry.type === type.code && entry.employeeId === employee.id));
+
 // Every type that applies to them, plus anything they hold of a retired one, with missing and expired worked out.
 const documentEntries = (employee) => {
   const held = db.documents.filter(({ employeeId }) => employeeId === employee.id);
-  const isExpatriate = employee.nationality !== 'Maldivian';
   return [...db.documentTypes]
     .sort((first, second) => first.sortOrder - second.sortOrder || first.name.localeCompare(second.name))
     .map((type) => ({ type, document: held.find((entry) => entry.type === type.code) }))
-    .filter(({ type, document }) => document || (!type.retiredOn && (isExpatriate || !type.isForExpatriatesOnly)))
+    .filter(({ type, document }) => document || appliesTo(type, employee))
     .map(({ type, document }) => documentView(type, document));
 };
 const documentView = (type, document) => ({
-  type: type.code, name: type.name, uploadedBy: type.uploadedBy, hasExpiry: type.hasExpiry, hasFile: false,
+  type: type.code, name: type.name, uploadedBy: type.uploadedBy, hasExpiry: type.hasExpiry, isForEveryone: type.isForEveryone, files: [],
   ...(document && { ...document, employeeName: nameOf(document.employeeId) }),
   status: !document ? 'missing' : document.status === 'verified' && document.expiresOn && document.expiresOn < today() ? 'expired' : document.status,
 });
@@ -234,30 +243,54 @@ const heldDocument = (employeeId, code) => {
   }
   return document;
 };
+// One file at a time. Same dates add a page to the copy on file; new ones make a new copy that replaces its files.
 // An employee's own upload waits for HR. HR's counts as verified, and the person is told.
-const uploadDocument = ({ by, owner, code, file, expiresOn }) => {
+const uploadDocument = ({ by, owner, code, file, issuedOn, expiresOn }) => {
   const type = activeDocumentType(code);
   const isOwn = by.id === owner.id;
-  if (isOwn && type.uploadedBy !== 'employee') {
+  if (isOwn && (type.uploadedBy !== 'employee' || !appliesTo(type, owner))) {
     throw new HttpError(403, `HR adds your ${type.name.toLowerCase()}.`);
+  }
+  if (!DATE.test(String(issuedOn)) || issuedOn > today()) {
+    throw new HttpError(400, "Enter the date it starts. It can't be after today.");
   }
   if (type.hasExpiry && !(DATE.test(String(expiresOn)) && expiresOn > today())) {
     throw new HttpError(400, 'Enter the date it expires. It has to be after today.');
   }
+  const expires = type.hasExpiry ? expiresOn : undefined;
+  const held = db.documents.find((entry) => entry.employeeId === owner.id && entry.type === code);
+  const isSameCopy = held && held.issuedOn === issuedOn && held.expiresOn === expires;
+  const added = { id: `DF-${randomUUID().slice(0, 8)}`, uploadedOn: today() };
   const document = {
-    employeeId: owner.id, type: code, status: isOwn ? 'pending' : 'verified', updatedOn: today(), hasFile: true, ...(type.hasExpiry && { expiresOn }),
+    employeeId: owner.id, type: code, status: isOwn ? 'pending' : 'verified', updatedOn: today(), issuedOn, ...(expires && { expiresOn: expires }),
+    files: [...(isSameCopy ? held.files : []), added],
   };
-  db.documents = [...db.documents.filter((entry) => !(entry.employeeId === owner.id && entry.type === code)), document];
-  db.documentFiles.set(`${owner.id}/${code}`, file);
+  db.documents = [...db.documents.filter((entry) => entry !== held), document];
+  db.documentFiles.set(added.id, file);
   if (!isOwn) {
     notify(owner.id, 'record', `HR added your ${type.name.toLowerCase()}.`);
   }
   return documentView(type, document);
 };
-const sendDocument = (res, employee, code) => {
+// Someone takes their own file off until HR verifies the copy; HR takes any off. The last one takes the copy with it.
+const removeDocumentFile = ({ by, owner, code, fileId }) => {
+  const document = heldDocument(owner.id, code);
+  if (!document.files.some(({ id }) => id === fileId)) {
+    throw new HttpError(404, 'File not found');
+  }
+  if (by.id === owner.id && document.status === 'verified') {
+    throw new HttpError(409, 'HR has verified this, so ask HR to take a file off.');
+  }
+  const kept = { ...document, files: document.files.filter(({ id }) => id !== fileId) };
+  db.documents = db.documents.filter((entry) => entry !== document).concat(kept.files.length ? [kept] : []);
+  return documentView(db.documentTypes.find((type) => type.code === code), kept.files.length ? kept : undefined);
+};
+const sendDocument = (res, employee, code, fileId) => {
   const type = db.documentTypes.find((entry) => entry.code === code);
-  heldDocument(employee.id, code);
-  const uploaded = db.documentFiles.get(`${employee.id}/${code}`);
+  if (!heldDocument(employee.id, code).files.some(({ id }) => id === fileId)) {
+    throw new HttpError(404, 'File not found');
+  }
+  const uploaded = db.documentFiles.get(fileId);
   if (uploaded) {
     return sendFile(res, uploaded, type.name);
   }
@@ -266,12 +299,22 @@ const sendDocument = (res, employee, code) => {
   res.end(samplePdf(`${type.name} for ${employee.fullName}`));
   return SENT;
 };
+// HR never handles their own documents.
+const someoneElseForDocuments = (user, id) => {
+  if (id === user.id) {
+    throw new HttpError(403, 'Another HR person handles your own documents.');
+  }
+  return findOr404('employees', id, 'Employee');
+};
 const validDocumentType = (body) => {
   const name = String(body.name ?? '').trim();
   if (!name || !['employee', 'hr'].includes(body.uploadedBy) || typeof body.hasExpiry !== 'boolean' || typeof body.isForExpatriatesOnly !== 'boolean') {
     throw new HttpError(400, 'Give it a name, who uploads it, and whether it expires');
   }
-  return { name, uploadedBy: body.uploadedBy, hasExpiry: body.hasExpiry, isForExpatriatesOnly: body.isForExpatriatesOnly };
+  return {
+    name, uploadedBy: body.uploadedBy, hasExpiry: body.hasExpiry, isForExpatriatesOnly: body.isForExpatriatesOnly,
+    remindDaysBefore: Number(body.remindDaysBefore ?? 30), isForEveryone: body.isForEveryone !== false,
+  };
 };
 const checkDocumentName = (name, code) => {
   if (db.documentTypes.some((type) => !type.retiredOn && type.code !== code && type.name.toLowerCase() === name.toLowerCase())) {
@@ -838,8 +881,9 @@ const routes = [
   ['GET', /^\/api\/events$/, ({ query }) => db.events.filter(({ date }) => date.startsWith(query.get('year') ?? today().slice(0, 4)))],
   ['GET', /^\/api\/documents$/, ({ user }) => documentEntries(user)],
   ['PUT', /^\/api\/documents\/([\w-]+)\/file$/, ({ user, params: [code], query, body }) =>
-    uploadDocument({ by: user, owner: user, code, file: body, expiresOn: query.get('expiresOn') }), { upload: CERTIFICATE_UPLOAD }],
-  ['GET', /^\/api\/documents\/([\w-]+)\/file$/, ({ user, params: [code], res }) => sendDocument(res, user, code)],
+    uploadDocument({ by: user, owner: user, code, file: body, issuedOn: query.get('issuedOn'), expiresOn: query.get('expiresOn') }), { upload: CERTIFICATE_UPLOAD }],
+  ['GET', /^\/api\/documents\/([\w-]+)\/files\/([\w-]+)$/, ({ user, params: [code, fileId], res }) => sendDocument(res, user, code, fileId)],
+  ['DELETE', /^\/api\/documents\/([\w-]+)\/files\/([\w-]+)$/, ({ user, params: [code, fileId] }) => removeDocumentFile({ by: user, owner: user, code, fileId })],
   ['GET', /^\/api\/profile\/record$/, ({ user }) => recordOf(user.id, false)],
   // New details wait for HR to verify them before payroll uses them.
   ['PUT', /^\/api\/profile\/bank-account$/, ({ user, body }) => {
@@ -1304,9 +1348,43 @@ const routes = [
   ['GET', /^\/api\/hr\/documents$/, ({ user }) => {
     requireHr(user);
     return db.documents
-      .filter(({ status }) => status === 'pending')
+      .filter(({ status, employeeId }) => status === 'pending' && employeeId !== user.id)
       .sort((first, second) => String(first.updatedOn).localeCompare(String(second.updatedOn)))
       .map((document) => documentView(db.documentTypes.find(({ code }) => code === document.type), document));
+  }],
+  // Everyone still to hand something in: missing, sent back or expired.
+  ['GET', /^\/api\/hr\/documents\/to-collect$/, ({ user }) => {
+    requireHr(user);
+    return activeEmployees()
+      .map((employee) => ({
+        employeeId: employee.id, employeeName: employee.fullName,
+        documents: documentEntries(employee).filter(({ status, type }) => ['missing', 'rejected', 'expired'].includes(status) && !db.documentTypes.find(({ code }) => code === type)?.retiredOn),
+      }))
+      .filter(({ documents }) => documents.length)
+      .sort((first, second) => first.employeeName.localeCompare(second.employeeName));
+  }],
+  // HR asks one person for a type that isn't for everyone, or stops asking.
+  ['POST', /^\/api\/hr\/employees\/([\w-]+)\/document-types\/([\w-]+)$/, ({ user, params: [id, code] }) => {
+    requireHr(user);
+    const owner = someoneElseForDocuments(user, id);
+    const type = activeDocumentType(code);
+    if (type.isForEveryone || db.askedFor.some((entry) => entry.type === code && entry.employeeId === id)) {
+      throw new HttpError(409, type.isForEveryone ? `Everyone is already asked for ${type.name.toLowerCase()}.` : `They're already asked for ${type.name.toLowerCase()}.`);
+    }
+    db.askedFor = [...db.askedFor, { type: code, employeeId: owner.id }];
+    if (type.uploadedBy === 'employee') {
+      notify(owner.id, 'record', `HR asked for your ${type.name.toLowerCase()}. Upload it from Documents.`);
+    }
+    return undefined;
+  }],
+  ['DELETE', /^\/api\/hr\/employees\/([\w-]+)\/document-types\/([\w-]+)$/, ({ user, params: [id, code] }) => {
+    requireHr(user);
+    someoneElseForDocuments(user, id);
+    if (!db.askedFor.some((entry) => entry.type === code && entry.employeeId === id)) {
+      throw new HttpError(404, "They aren't asked for that document.");
+    }
+    db.askedFor = db.askedFor.filter((entry) => !(entry.type === code && entry.employeeId === id));
+    return undefined;
   }],
   ['GET', /^\/api\/hr\/employees\/([\w-]+)\/documents$/, ({ user, params: [id] }) => {
     requireHr(user);
@@ -1314,14 +1392,15 @@ const routes = [
   }],
   ['PUT', /^\/api\/hr\/employees\/([\w-]+)\/documents\/([\w-]+)\/file$/, ({ user, params: [id, code], query, body }) => {
     requireHr(user);
-    if (id === user.id) {
-      throw new HttpError(403, 'Another HR person handles your own documents.');
-    }
-    return uploadDocument({ by: user, owner: findOr404('employees', id, 'Employee'), code, file: body, expiresOn: query.get('expiresOn') });
+    return uploadDocument({ by: user, owner: someoneElseForDocuments(user, id), code, file: body, issuedOn: query.get('issuedOn'), expiresOn: query.get('expiresOn') });
   }, { upload: CERTIFICATE_UPLOAD }],
-  ['GET', /^\/api\/hr\/employees\/([\w-]+)\/documents\/([\w-]+)\/file$/, ({ user, params: [id, code], res }) => {
+  ['GET', /^\/api\/hr\/employees\/([\w-]+)\/documents\/([\w-]+)\/files\/([\w-]+)$/, ({ user, params: [id, code, fileId], res }) => {
     requireHr(user);
-    return sendDocument(res, findOr404('employees', id, 'Employee'), code);
+    return sendDocument(res, findOr404('employees', id, 'Employee'), code, fileId);
+  }],
+  ['DELETE', /^\/api\/hr\/employees\/([\w-]+)\/documents\/([\w-]+)\/files\/([\w-]+)$/, ({ user, params: [id, code, fileId] }) => {
+    requireHr(user);
+    return removeDocumentFile({ by: user, owner: someoneElseForDocuments(user, id), code, fileId });
   }],
   // Sending one back needs a reason, so they know what to fix.
   ['POST', /^\/api\/hr\/employees\/([\w-]+)\/documents\/([\w-]+)\/decision$/, ({ user, params: [id, code], body }) => {

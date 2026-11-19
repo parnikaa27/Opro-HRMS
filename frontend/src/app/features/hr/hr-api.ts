@@ -2,7 +2,18 @@ import { HttpClient, httpResource } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AttendanceDay, WorkSchedule } from '../../models/attendance';
-import { Announcement, ApprovalRules, ApprovalsWaiting, ChangeRequest, CompanyEvent, DocumentEntry, DocumentType, Holiday } from '../../models/company';
+import {
+  Announcement,
+  ApprovalRules,
+  ApprovalsWaiting,
+  ChangeRequest,
+  CompanyEvent,
+  DocumentDates,
+  DocumentEntry,
+  DocumentsToCollect,
+  DocumentType,
+  Holiday,
+} from '../../models/company';
 import { Employee, EmployeeDetails, Visa } from '../../models/employee';
 import { FlightYear } from '../../models/flight';
 import { BalanceAdjustment, LeaveBalance, LeaveType } from '../../models/leave';
@@ -96,9 +107,15 @@ export class HrApi {
   waitingDocuments = ({ isEnabled = () => true }: { isEnabled?: () => boolean } = {}) =>
     httpResource<DocumentEntry[]>(() => (isEnabled() ? '/api/hr/documents' : undefined), { defaultValue: [] });
   employeeDocuments = (id: () => string) => httpResource<DocumentEntry[]>(() => `/api/hr/employees/${enc(id())}/documents`, { defaultValue: [] });
-  uploadDocumentFor = (employeeId: string, type: string, file: File, expiresOn?: string) =>
+  documentsToCollect = () => httpResource<DocumentsToCollect[]>(() => '/api/hr/documents/to-collect', { defaultValue: [] });
+  removeDocumentFileFor = (employeeId: string, type: string, fileId: string) =>
+    this.send<DocumentEntry>('DELETE', `/api/hr/employees/${enc(employeeId)}/documents/${enc(type)}/files/${enc(fileId)}`);
+  // Asks one person for a type that isn't for everyone, or stops asking.
+  askForDocument = (employeeId: string, type: string) => this.send<void>('POST', `/api/hr/employees/${enc(employeeId)}/document-types/${enc(type)}`, {});
+  stopAskingForDocument = (employeeId: string, type: string) => this.send<void>('DELETE', `/api/hr/employees/${enc(employeeId)}/document-types/${enc(type)}`);
+  uploadDocumentFor = (employeeId: string, type: string, file: File, dates: DocumentDates) =>
     firstValueFrom(
-      this.http.put<DocumentEntry>(`/api/hr/employees/${enc(employeeId)}/documents/${enc(type)}/file`, file, { params: expiresOn ? { expiresOn } : {} }),
+      this.http.put<DocumentEntry>(`/api/hr/employees/${enc(employeeId)}/documents/${enc(type)}/file`, file, { params: { ...dates } }),
     );
   decideDocument = (employeeId: string, type: string, decision: 'verified' | 'rejected', note?: string) =>
     this.send<DocumentEntry>('POST', `/api/hr/employees/${enc(employeeId)}/documents/${enc(type)}/decision`, { decision, ...(note && { note }) });

@@ -1174,3 +1174,41 @@ label.check-label {
     font-weight: 700;
   }
 }
+
+/* A document's files, one link each, with a small cross to take a wrong one off. */
+.document-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+}
+
+.icon-button.small {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+
+/* A small select in a card heading, like HR asking someone for one more document. */
+.inline-select select {
+  width: auto;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: white;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+/* HR's "To collect" card sits under the holiday card, with the same space the design leaves between cards. */
+.to-collect {
+  margin-top: 19px;
+}

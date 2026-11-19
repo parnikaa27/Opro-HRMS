@@ -11,6 +11,7 @@ import { plural } from '../../shared/utils/text';
 import { greetingFor } from '../dashboard/dashboard-page';
 import { HolidaysApi } from '../holidays/holidays-api';
 import { visaAlertsFor } from '../team/visa-alerts';
+import { DocumentsToCollect } from './documents-to-collect';
 import { HrApi } from './hr-api';
 
 const PREVIEW = 4;
@@ -19,7 +20,7 @@ const IN_OFFICE: readonly AttendanceStatus[] = ['present', 'late', 'half-day', '
 
 @Component({
   selector: 'app-hr-overview-page',
-  imports: [Avatar, Icon, RouterLink, WelcomeBanner],
+  imports: [Avatar, DocumentsToCollect, Icon, RouterLink, WelcomeBanner],
   template: `
     <app-welcome-banner [dateLabel]="dateLabel" [heading]="greeting + ', ' + firstName() + '.'" [line]="line()" />
 
@@ -130,6 +131,8 @@ const IN_OFFICE: readonly AttendanceStatus[] = ['present', 'late', 'half-day', '
         <p class="attendance-off">No tentative holidays in the next two months.</p>
       }
     </section>
+
+    <app-documents-to-collect />
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

@@ -69,7 +69,7 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 | `/login` | Mock user picker (dev only) |
 | `/` Overview | Welcome banner, today's attendance (time in, expected out, effective hours, punch in and out), leave balance, visa status, recent attendance table, dark staff card, next holiday and long weekend, latest leave request |
 | `/performance` | Their goals in the open appraisal cycle, their appraisals with each goal rated (acknowledge once read), and any probation review. Never the HOD's recommendations |
-| `/documents` | Every document on HR's list that applies to them, with its status (missing, waiting for HR, verified, sent back with HR's reason, expired) and download. Upload a copy of the ones employees send, with an expiry date where the type expires |
+| `/documents` | Every document on HR's list that applies to them, with its status (missing, waiting for HR, verified, sent back with HR's reason, expired), its dates and each file to download. Upload one or more files of the ones employees send, with the start date and, where the type expires, the end date, and take a wrong file off until HR verifies it |
 | `/attendance` | My attendance: four summary cards (days present, work hours, on time, overtime), the attendance log for a chosen month, CSV export, punch fix requests and their status, and the punch button while today is on screen |
 | `/leave` | Leave and time off: two balance rings, then a balance table for their leave year (type, this year, carried forward, approved, taken so far, waiting, left; comp off says when it runs out), request history with cancel (pending, or approved and not started), and the Request leave modal laid out like the paper form (new, amended or extended application, flight entitlement and salary advance ticks, the days marked AL, PH or OFF and the day they're back) with a success screen |
 | `/calendar` | Company calendar: month grid with public holidays and company events, upcoming holidays, the holiday policy. Islamic holidays are marked **tentative** until confirmed after moon sighting. `/holidays` redirects here |
@@ -221,8 +221,12 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 
 ### Documents
 
-- **HR keeps the list** in Policies: each document's name, who uploads it (**the employee**, or **HR**), whether it **expires** (then a date after today is asked for), and whether only **expatriates** need it (anyone not Maldivian). A type nobody uploaded is deleted when removed; a used one is retired: nobody is asked for it, copies on file stay. The real list is still to come from Parnika; the dev seed has placeholders.
-- **One copy per type per person.** A new upload replaces the old file. PDF, JPG or PNG up to 5 MB, checked by its first bytes.
+- **HR keeps the list** in Policies: each document's name, who uploads it (**the employee**, or **HR**), whether it **expires** (then a date after today is asked for, and how many days ahead it reminds, default 30), and who needs it: **everyone**, **expatriates** only (anyone not Maldivian), or **people HR asks** one by one from their page (a marriage certificate, say). Stopping asking keeps a copy already on file. A type nobody uploaded is deleted when removed; a used one is retired: nobody is asked for it, copies on file stay. The real list is still to come from Parnika; the dev seed has placeholders.
+- **One copy per type per person, with one or more files** (the pages of a passport, each certificate), uploaded one at a time. PDF, JPG or PNG up to 5 MB each, checked by its first bytes.
+- **Every copy has dates:** the day it starts, always, and the day it expires for types that do. A file with the same dates is another page of the copy on file; new dates make a new copy, whose files replace the old ones.
+- **A wrong file comes off with its cross.** The person can take their own off until HR has verified the copy; HR can take any off (never their own). The last file going takes the copy with it.
+- **Reminders** for a verified copy that expires (`DocumentReminders`, run with the morning reminders, each once): the person and HR as many days ahead as HR set for the type, super admins too in the last 7 days, and everyone on the day.
+- **HR's overview** shows who still has something to hand in, and what: missing, sent back or expired.
 - An employee's upload is **waiting for HR**. HR **verifies** it, or **sends it back** with a reason the employee sees, and they upload again. Both tell the employee.
 - HR can upload any type for someone (never for themselves). That copy counts as verified straight away, and the person is told.
 - Status is worked out on every read: **missing** without a copy, **expired** once a verified copy's date has passed.
@@ -413,7 +417,8 @@ The full, generated reference is Swagger UI at `http://localhost:8080/swagger-ui
 | GET | `/api/announcements` | Company announcements |
 | GET | `/api/events?year=YYYY` | Company events for the calendar |
 | GET | `/api/documents` | Every document type that applies to them, with their copy's `status`, dates and any `decisionNote` |
-| PUT / GET | `/api/documents/:type/file?expiresOn=` | Upload own copy (raw body, 5 MB max) of a type employees send / download it |
+| PUT | `/api/documents/:type/file?issuedOn=&expiresOn=` | Upload one file of an own copy (raw body, 5 MB max) of a type employees send. Same dates add a page, new ones make a new copy |
+| GET / DELETE | `/api/documents/:type/files/:fileId` | Download one file / take it off (until HR verifies the copy) |
 | GET | `/api/notifications` | Own notifications |
 | POST | `/api/notifications/read` | Mark all own notifications read |
 | GET | `/api/team` | Direct reports with today's attendance and visa |
@@ -462,10 +467,13 @@ The full, generated reference is Swagger UI at `http://localhost:8080/swagger-ui
 | POST / DELETE | `/api/hr/employees/:id/education`, `.../education/:entryId`, `/api/hr/employees/:id/experience`, `.../experience/:entryId` | Add or remove a qualification or a past job |
 | GET / POST | `/api/hr/bank-accounts`, `/api/hr/employees/:id/bank-account/decision` | Bank details waiting for HR / `verified`, or `rejected` with a `note` |
 | GET / POST / PUT / DELETE | `/api/hr/quotas`, `/api/hr/quotas/:id` | Expatriate quota approvals with `used` counted per job category |
-| GET / POST / PUT / DELETE | `/api/hr/document-types`, `/api/hr/document-types/:code` | HR's document list / add (`name`, `uploadedBy`, `hasExpiry`, `isForExpatriatesOnly`) / change / remove (deleted if unused, otherwise retired) |
-| GET | `/api/hr/documents` | Uploads waiting for HR, oldest first |
+| GET / POST / PUT / DELETE | `/api/hr/document-types`, `/api/hr/document-types/:code` | HR's document list / add (`name`, `uploadedBy`, `hasExpiry`, `isForExpatriatesOnly`, `remindDaysBefore`, `isForEveryone`) / change / remove (deleted if unused, otherwise retired) |
+| GET | `/api/hr/documents` | Uploads waiting for HR, oldest first, never the reader's own |
+| GET | `/api/hr/documents/to-collect` | Everyone with something missing, sent back or expired, and what |
+| POST / DELETE | `/api/hr/employees/:id/document-types/:type` | Ask one person for a type not for everyone / stop asking |
 | GET | `/api/hr/employees/:id/documents` | One person's documents |
-| PUT / GET | `/api/hr/employees/:id/documents/:type/file?expiresOn=` | Upload a copy for them, counted as verified / open it |
+| PUT | `/api/hr/employees/:id/documents/:type/file?issuedOn=&expiresOn=` | Upload one file for them, counted as verified |
+| GET / DELETE | `/api/hr/employees/:id/documents/:type/files/:fileId` | Open one file / take it off |
 | POST | `/api/hr/employees/:id/documents/:type/decision` | `verified`, or `rejected` with a `note` |
 | POST | `/api/hr/change-requests/:id/decision` | `done` or `declined` with a `note` |
 | POST / PUT / DELETE | `/api/hr/announcements`, `/api/hr/announcements/:id` | Manage announcements. A new one notifies everyone |

@@ -41,8 +41,8 @@ type Editing = DocumentType | 'new' | undefined;
                 <tr data-testid="doc-type-row">
                   <td><strong>{{ type.name }}</strong></td>
                   <td data-label="UPLOADED BY">{{ type.uploadedBy === 'employee' ? 'The employee' : 'HR' }}</td>
-                  <td data-label="EXPIRES">{{ type.hasExpiry ? 'Yes' : 'No' }}</td>
-                  <td data-label="NEEDED FROM">{{ type.isForExpatriatesOnly ? 'Expatriates only' : 'Everyone' }}</td>
+                  <td data-label="EXPIRES">{{ type.hasExpiry ? 'Yes, reminds ' + type.remindDaysBefore + ' days ahead' : 'No' }}</td>
+                  <td data-label="NEEDED FROM">{{ !type.isForEveryone ? 'People HR asks' : type.isForExpatriatesOnly ? 'Expatriates only' : 'Everyone' }}</td>
                   <td class="row-actions">
                     <button type="button" class="text-link" (click)="editing.set(type)" data-testid="edit-doc-type">Edit</button>
                     <app-confirm-button label="Remove" [question]="'Remove ' + type.name.toLowerCase() + '?'" yes="Yes, remove it" testId="remove-doc-type" (confirmed)="remove(type)" />

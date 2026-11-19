@@ -19,7 +19,6 @@ Walked through by hand as Arjun (expatriate employee), Vikram (HOD), Ananya (HR)
 - [ ] Picking someone else on the sign in page without signing out keeps the first person's name and staff card on screen, while the data is the new person's. `Session.signIn` reuses the user it already has. Dev sign in only, but it muddles testing.
 - [ ] A holiday added inside leave already booked (or an Islamic holiday confirmed on a new date) doesn't give the day back. The request keeps its old day count, so the balance is a day short.
 - [ ] HR's overview says Inbox 1 (detail changes only) while the sidebar badge says 11 (everything waiting).
-- [ ] HR's own uploads appear in their own "To check" list with Verify and Send back. The server refuses, so it's only confusing.
 
 **Rules that are missing**
 - [ ] Leave can be booked for past days, even days the person worked. Decide which types may be backdated (sick leave after the fact, say) and how far.
@@ -29,7 +28,6 @@ Walked through by hand as Arjun (expatriate employee), Vikram (HOD), Ananya (HR)
 - [ ] Waiting requests never expire or escalate. A leave day already past (Rohit, 18 November) still waits, and the HOD gets no reminder.
 - [ ] No cover when an HOD is away: only a super admin can step in. Consider an acting HOD for a date range.
 - [ ] Flight allowances don't roll into a new year. HR has to set each person's allowance again every January.
-- [ ] Uploaded documents with an expiry date (passport copy, visa copy) get no reminders. Only the visa record's dates do.
 - [ ] The Overtime card on the attendance page counts days the HOD declined, and doesn't split approved from waiting.
 
 **Wording and display**
@@ -44,8 +42,7 @@ Walked through by hand as Arjun (expatriate employee), Vikram (HOD), Ananya (HR)
 
 ## From the meeting with Madhu (19 November)
 
-Being built in batches, one PR each. Leave is done (see Leave below). Still to come:
-- [ ] **Documents:** several files per type, each removable; a start and end date on every document; document types HR adds for one person; reminder days HR sets per type (default 30), super admins told at 7 days or less and on the day; HR's view of which document is missing from whom.
+Being built in batches, one PR each. Leave and documents are done (see Leave below, and Documents in CLAUDE.md). Still to come:
 - [ ] **Exit:** the employee resigns (date put in, reason, release date), the HOD then HR approve, the exit date is set, then HR ticks back each item on a return checklist HR keeps (laptop, ID card, bus card, accommodation keys). "Mark as leaving" stays locked until every item is back.
 - [ ] **Performance:** the employee writes their goals and KPIs, the HOD then HR approve them; the employee adds accomplishments, strengths, learning and development and a plan for certifications, which the HOD comments on; the employee must accept the rating.
 - [ ] **Allowances:** monthly allowances HR sets per person, and one-off grants an HOD makes that HR approves.
@@ -61,7 +58,8 @@ Being built in batches, one PR each. Leave is done (see Leave below). Still to c
 - [ ] **Office and resort locations.** The pins and radii in `backend/src/main/resources/application.yml` are placeholders. Office punches fail at the real office until they're right.
 - [ ] **Leave rules**, checked against the Maldives Employment Act: days per type (annual 30, sick 30, family 10, maternity 60, paternity 3), when a medical certificate is needed (after 2 days), and carry forward (every type lapses today).
 - [ ] **Attendance rules:** shift 9 to 5, 15 minutes' grace, half day under 4 hours.
-- [ ] **The document list:** each document's name, who uploads it, whether it expires, and whether only expatriates need it. HR enters it in Policies. The dev data has placeholders.
+- [ ] **The document list:** each document's name, who uploads it, whether it expires (and how many days ahead to remind), and whether everyone, only expatriates, or people HR picks need it. HR enters it in Policies. The dev data has placeholders.
+- [ ] **Visa copy reminders twice over:** a visa copy that expires on the same day as the visa record reminds once for each. Fine if the copy is the proof HR wants renewed too; otherwise make the visa copy a type that doesn't expire.
 - [ ] **Exchange rates:** MVR 15.42 and INR 88 per USD are starting values. HR can change them in Policies.
 - [ ] **Footer:** legal name, address, HR email, and the Privacy and HR policy links in `frontend/src/app/core/config.ts`.
 - [ ] **Overtime:** 30 minutes past the shift is the placeholder minimum, and whether overtime is paid (at what rate) or taken as time off. Payroll needs the rate.

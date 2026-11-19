@@ -3,9 +3,9 @@ package mv.opro.hrms.document;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import java.time.LocalDate;
-import java.util.UUID;
+import java.util.Objects;
 
-// One person's copy of one document type. An employee's upload waits for HR; HR's own uploads count as verified.
+// One person's copy of one document type, with its files. An employee's upload waits for HR; HR's own uploads count as verified.
 @Entity
 public class EmployeeDocument {
 
@@ -21,7 +21,7 @@ public class EmployeeDocument {
     private String status;
     private LocalDate updatedOn;
     private LocalDate expiresOn;
-    private UUID fileId;
+    private LocalDate issuedOn;
     private String uploadedBy;
     private String decidedBy;
     private LocalDate decidedOn;
@@ -35,18 +35,21 @@ public class EmployeeDocument {
         this.typeCode = typeCode;
     }
 
-    // A new file replaces the old one. Returns the old one so it can go.
-    UUID upload(UUID file, String by, LocalDate on, LocalDate expires, boolean isVerified) {
-        UUID previous = fileId;
-        fileId = file;
+    // Same dates as now: another page of the same copy. Different ones: a new copy, whose files replace the old.
+    boolean isSameCopy(LocalDate issued, LocalDate expires) {
+        return Objects.equals(issuedOn, issued) && Objects.equals(expiresOn, expires);
+    }
+
+    // A new file waits for HR again, unless HR uploaded it.
+    void upload(String by, LocalDate on, LocalDate issued, LocalDate expires, boolean isVerified) {
         uploadedBy = by;
         updatedOn = on;
+        issuedOn = issued;
         expiresOn = expires;
         status = isVerified ? VERIFIED : PENDING;
         decidedBy = isVerified ? by : null;
         decidedOn = isVerified ? on : null;
         decisionNote = null;
-        return previous;
     }
 
     void decide(String decision, String by, LocalDate on, String note) {
@@ -58,6 +61,14 @@ public class EmployeeDocument {
 
     boolean isPending() {
         return PENDING.equals(status);
+    }
+
+    boolean isVerified() {
+        return VERIFIED.equals(status);
+    }
+
+    public String getId() {
+        return id;
     }
 
     public String getEmployeeId() {
@@ -80,8 +91,8 @@ public class EmployeeDocument {
         return expiresOn;
     }
 
-    public UUID getFileId() {
-        return fileId;
+    public LocalDate getIssuedOn() {
+        return issuedOn;
     }
 
     public String getDecisionNote() {
