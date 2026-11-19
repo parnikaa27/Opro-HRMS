@@ -3,6 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { valueOr } from '../../shared/utils/resource';
+import { AllowanceApi } from '../../features/allowance/allowance-api';
 import { ExitApi } from '../../features/exit/exit-api';
 import { HrApi, NOTHING_WAITING } from '../../features/hr/hr-api';
 import { isWaitingForHr } from '../../shared/utils/approval-step';
@@ -66,12 +67,13 @@ export class Shell {
   private readonly waitingBanks = this.hr.waitingBanks({ isEnabled: () => this.view() === 'hr' && this.session.isHr() });
   private readonly waitingApprovals = this.hr.approvals({ isEnabled: () => this.view() === 'hr' && this.session.isHr() });
   private readonly waitingResignations = inject(ExitApi).waitingForHr({ isEnabled: () => this.view() === 'hr' && this.session.isHr() });
+  private readonly waitingGrants = inject(AllowanceApi).waitingForHr({ isEnabled: () => this.view() === 'hr' && this.session.isHr() });
   protected readonly badges = computed<Partial<Record<BadgeKey, number>>>(() => ({
     approvals: [valueOr(this.pendingLeave, []), valueOr(this.pendingFixes, []), valueOr(this.pendingHomeDays, []), valueOr(this.pendingCompOffs, []), valueOr(this.pendingOvertime, []), valueOr(this.pendingResignations, [])].reduce(
       (total, list) => total + list.filter((item) => !isWaitingForHr(item)).length,
       0,
     ),
-    inbox: valueOr(this.changeRequests, []).filter(({ status }) => status === 'open').length + valueOr(this.waitingDocuments, []).length + valueOr(this.waitingBanks, []).length + valueOr(this.waitingResignations, []).length +
+    inbox: valueOr(this.changeRequests, []).filter(({ status }) => status === 'open').length + valueOr(this.waitingDocuments, []).length + valueOr(this.waitingBanks, []).length + valueOr(this.waitingResignations, []).length + valueOr(this.waitingGrants, []).length +
       Object.values(valueOr(this.waitingApprovals, NOTHING_WAITING)).reduce((total, list) => total + list.length, 0),
   }));
 
@@ -80,7 +82,7 @@ export class Shell {
     const seen = saves();
     effect(() => {
       if (saves() !== seen) {
-        untracked(() => [this.pendingLeave, this.pendingFixes, this.pendingHomeDays, this.pendingCompOffs, this.pendingOvertime, this.pendingResignations, this.changeRequests, this.waitingDocuments, this.waitingBanks, this.waitingApprovals, this.waitingResignations].forEach((counts) => counts.reload()));
+        untracked(() => [this.pendingLeave, this.pendingFixes, this.pendingHomeDays, this.pendingCompOffs, this.pendingOvertime, this.pendingResignations, this.changeRequests, this.waitingDocuments, this.waitingBanks, this.waitingApprovals, this.waitingResignations, this.waitingGrants].forEach((counts) => counts.reload()));
       }
     });
   }

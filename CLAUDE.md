@@ -73,7 +73,7 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 | `/attendance` | My attendance: four summary cards (days present, work hours, on time, overtime), the attendance log for a chosen month, CSV export, punch fix requests and their status, and the punch button while today is on screen |
 | `/leave` | Leave and time off: two balance rings, then a balance table for their leave year (type, this year, carried forward, approved, taken so far, waiting, left; comp off says when it runs out), request history with cancel (pending, or approved and not started), and the Request leave modal laid out like the paper form (new, amended or extended application, flight entitlement and salary advance ticks, the days marked AL, PH or OFF and the day they're back) with a success screen |
 | `/calendar` | Company calendar: month grid with public holidays and company events, upcoming holidays, the holiday policy. Islamic holidays are marked **tentative** until confirmed after moon sighting. `/holidays` redirects here |
-| `/profile` | Virtual ID card (printable), personal and job details, emergency contact, visa and work permit details (with employment approval and the work permit medical), their record (bank details they enter for HR to verify, shown as the last 4 digits; insurance, education and experience HR keeps), request a change to personal details, the flight allowance (used, waiting and left in USD, MVR or INR) with flight claims, and their resignation (resign, withdraw while it waits, then the exit date and what to hand back) |
+| `/profile` | Virtual ID card (printable), personal and job details, emergency contact, visa and work permit details (with employment approval and the work permit medical), their record (bank details they enter for HR to verify, shown as the last 4 digits; insurance, education and experience HR keeps), request a change to personal details, the flight allowance (used, waiting and left in USD, MVR or INR) with flight claims, their allowances (monthly ones and one-off grants), and their resignation (resign, withdraw while it waits, then the exit date and what to hand back) |
 | Notifications | Header panel, not a page: leave, punch fix, home working, compensatory off, overtime and flight claim decisions, goals set, an appraisal or probation review done, a cycle opened (HODs), visa reminders, announcements, every change HR makes to your record (punches, leave recorded for you, balance adjustments, visa, details, photo, a detail change request) changes to working hours, and on the day, birthdays and work anniversaries (theirs, and their reports' for HODs and HR). Each says what changed and why, in plain words. Marking someone as leaving sends nothing: HR tells people in person |
 | Search | Top bar, ⌘K or Ctrl K. Finds pages, and people for managers |
 
@@ -87,7 +87,7 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 | `/team/attendance` | Team summary cards and a table with one row per report (days present, late, missed, hours, today), month picker, CSV export |
 | `/team/performance` | Reports on probation to review (confirm, extend with a new date, or don't confirm), and each report in the open cycle: approve or send back the goals they wrote, then appraise them with their self review alongside |
 | `/team/calendar` | The company calendar plus who on the team is away (approved filled, pending dashed) |
-| `/team/:employeeId` | One report's leave balances, attendance log with a month picker, leave requests, staff card and visa. Read only |
+| `/team/:employeeId` | One report's leave balances, attendance log with a month picker, leave requests, staff card and visa, and their one-off allowances, with granting another |
 
 **Super admin view (super admins only)**
 
@@ -114,12 +114,12 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 | `/hr/people/:employeeId` | One person's balances, this month's log, requests (with any medical certificate to open), balance change log, staff card, visa and their record (insurance, bank details to verify, education, experience). Set their days of a type or give or take away a type (Leave days), adjust a balance, update visa, set their flight allowance. A More menu holds edit details, change photo and mark as leaving |
 | `/hr/calendar` | Holidays and events per year: add, edit, delete, confirm a tentative date, add the civil holidays to an empty year |
 | `/hr/visas` | Every expatriate, people with no record first, then soonest visa or passport expiry, and the expatriate quota: approvals by job category with slots used, expiry, and any job category with no quota |
-| `/hr/inbox` | Profile change requests in tabs (Open, Done, Declined), requests the HOD approved that HR approves too (approve, or decline with a reason), resignations the HOD approved (approve with the exit date, or decline), and documents and bank details to check, oldest first: verify, or send back with a reason. Declining needs a reason |
+| `/hr/inbox` | Profile change requests in tabs (Open, Done, Declined), requests the HOD approved that HR approves too (approve, or decline with a reason), resignations the HOD approved (approve with the exit date, or decline), one-off allowances HODs granted (approve, or decline with a reason), and documents and bank details to check, oldest first: verify, or send back with a reason. Declining needs a reason |
 | `/hr/announcements` | Post, edit and take down notes from HR. A new one notifies everyone |
 | `/hr/dashboard` | The executive dashboard: employees, joiners, leavers with attrition and retention, who's in today; locals and expatriates, gender, employment type, age, departments and nationalities; today's attendance and this month's; leave waiting, annual leave used, sick leave by month; papers expired or expiring within 60 days and quota use; birthdays and anniversaries this month, probation ending within 30 days, contracts within 60; performance (on probation, appraised so far, average rating, rated 4 or 5, recommended for promotion). Only what today's data supports: recruitment, payroll and training appear when those modules exist |
 | `/hr/reports` | Headcount, joiners and leavers, workforce mix, leave balances, leave taken, attendance and visa and permit expiry, each shown as a table and saved as CSV, Excel or PDF |
 | `/hr/performance` | Open and close appraisal cycles, goals the HOD approved for HR to approve or send back, how far the latest cycle has got (goals and where they stand, rating, the HOD's promotion and increment recommendations, whether the person has accepted), and every probation review |
-| `/hr/policy` | Policies: add, edit and remove leave types (yearly days, half days, given to everyone or people HR picks, lapse or carry forward up to a cap; a new entitlement applies from the next leave year; approved by the HOD, or the HOD then HR), which other requests HR approves after the HOD, the work schedule as dated versions, the documents Opro keeps, what comes back when someone leaves, and the exchange rates for flight allowances |
+| `/hr/policy` | Policies: add, edit and remove leave types (yearly days, half days, given to everyone or people HR picks, lapse or carry forward up to a cap; a new entitlement applies from the next leave year; approved by the HOD, or the HOD then HR), which other requests HR approves after the HOD, the work schedule as dated versions, the documents Opro keeps, what comes back when someone leaves, the kinds of allowance, and the exchange rates for flight allowances |
 
 ### Attendance rules (placeholders, confirm with HR)
 
@@ -232,6 +232,13 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 - HR can upload any type for someone (never for themselves). That copy counts as verified straight away, and the person is told.
 - Status is worked out on every read: **missing** without a copy, **expired** once a verified copy's date has passed.
 - Only the person and HR can see or open documents. HODs and super admins don't.
+
+### Allowances
+
+- **HR keeps the kinds** in Policies (to start: housing, food, transport, phone). A kind nobody had is deleted when removed; a used one is retired, and history keeps its name.
+- **Monthly allowances:** HR sets what someone gets of a kind every month, in MVR or USD, from the first of a month. A new amount ends the running one the month before it starts (one that hasn't started is replaced), so history stays. HR can stop one after a month. The person is told each time. HR never sets their own.
+- **One-off grants:** an HOD grants a report an amount with a reason from that report's page. HR approves it, or declines with a reason the HOD hears; an HOD who is HR covers both. The person is told when it's approved.
+- **Who sees them:** the person on their profile, and HR. HODs see only the one-off grants their reports have had. Nothing is paid: they're kept for payroll.
 
 ### Leaving Opro
 
@@ -491,6 +498,11 @@ The full, generated reference is Swagger UI at `http://localhost:8080/swagger-ui
 | POST | `/api/hr/employees` | Add a person. The server sets the ID and roles, and seeds balances |
 | PUT | `/api/hr/employees/:id` | Edit details and `managerId` |
 | POST / DELETE | `/api/hr/employees/:id/leaving` | Set a last day with a reason / take it back before it passes. Refused while someone who resigned still has an item out. `?include=former` on the list adds people who have left |
+| GET / GET | `/api/allowances`, `/api/allowance-types` | Own monthly allowances and one-off grants / the kinds of allowance, retired ones with `retiredOn` |
+| GET / POST | `/api/team/allowance-grants` | One-off grants the HOD's reports have had / grant one (`employeeId`, `type`, `amount`, `currency`: MVR or USD, `reason`) |
+| GET / PUT / POST | `/api/hr/employees/:id/allowances`, `.../allowances/:type`, `.../allowances/:type/stop` | Someone's allowances / set a monthly one (`amount`, `currency`, `startsOn` on the 1st, `note`) / stop one after a month (`lastMonth`: YYYY-MM). Never their own |
+| GET / POST | `/api/hr/allowance-grants`, `/api/hr/allowance-grants/:id/decision` | One-off grants waiting for HR, never the reader's own / `approved`, or `rejected` with a `note` |
+| POST / DELETE | `/api/hr/allowance-types`, `/api/hr/allowance-types/:code` | Add a kind (`name`) / remove one (deleted if unused, otherwise retired) |
 | GET / POST | `/api/resignation`, `/api/resignation/:id/withdraw` | Own resignations, newest first, with the checklist once accepted / resign (`reason`, `releaseOn`) / withdraw one still waiting |
 | GET / POST | `/api/{team,company}/resignations?status=`, `.../:id/decision` | The HOD's step on reports' resignations (`approved`, or `rejected` with a `note`) |
 | GET / POST | `/api/hr/resignations`, `/api/hr/resignations/:id/decision` | Resignations waiting for HR, never the reader's own / `approved` with an `exitOn`, or `rejected` with a `note` |

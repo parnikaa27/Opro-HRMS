@@ -41,6 +41,7 @@ const db = {
   // The two late days in Spring's dev seed, with the minutes Spring works out from its fixed punches.
   overtime: load('overtime'),
   performance: load('performance'),
+  allowances: load('allowances'),
   // Which requests HR approves after the HOD. Leave types carry their own needsHrApproval.
   approvalRules: { punchFixes: false, homeDays: false, compOff: false, overtime: false },
   receipts: new Map(),
@@ -355,6 +356,37 @@ const approveResignation = (user, resignation, exitOn) => {
     notify(managerId, 'record', `${nameOf(resignation.employeeId)}'s exit date is ${sayDate(exitOn)}.`);
   }
   return replaceResignation({ ...resignation, status: 'approved', decidedBy: user.id, decidedOn: today(), exitOn });
+};
+
+// Allowances, shaped as Spring sends them: type names filled in, and people's names on grants.
+const allowanceTypeName = (code) => db.allowances.types.find((type) => type.code === code)?.name ?? code;
+const monthlyView = ({ employeeId: _employee, ...allowance }) => ({ ...allowance, typeName: allowanceTypeName(allowance.typeCode) });
+const grantView = ({ grantedBy, decidedBy, ...grant }) => ({
+  ...grant, employeeName: nameOf(grant.employeeId), typeName: allowanceTypeName(grant.typeCode), grantedByName: nameOf(grantedBy), ...(decidedBy && { decidedByName: nameOf(decidedBy) }),
+});
+const allowancesOf = (employeeId) => ({
+  monthly: db.allowances.monthly.filter((entry) => entry.employeeId === employeeId).sort((first, second) => second.startsOn.localeCompare(first.startsOn)).map(monthlyView),
+  grants: db.allowances.grants.filter((entry) => entry.employeeId === employeeId).sort((first, second) => second.grantedOn.localeCompare(first.grantedOn)).map(grantView),
+});
+const sayMoney = (amount, currency) => `${currency} ${new Intl.NumberFormat('en-GB', { maximumFractionDigits: 2 }).format(amount)}`;
+const sayMonth = (date) => new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${date.slice(0, 7)}-01T00:00:00Z`));
+const activeAllowanceType = (code) => {
+  const type = db.allowances.types.find((entry) => entry.code === code && !entry.retiredOn);
+  if (!type) {
+    throw new HttpError(400, 'Pick a kind of allowance from the list.');
+  }
+  return type;
+};
+const validMoney = ({ amount, currency }) => {
+  if (!(Number(amount) > 0 && Number(amount) <= 1_000_000) || !['MVR', 'USD'].includes(currency)) {
+    throw new HttpError(400, 'Give an amount and MVR or USD.');
+  }
+};
+const approveGrant = (user, grant) => {
+  const decided = { ...grant, status: 'approved', decidedBy: user.id, decidedOn: today() };
+  db.allowances.grants = db.allowances.grants.map((entry) => (entry.id === grant.id ? decided : entry));
+  notify(grant.employeeId, 'record', `You've been granted ${sayMoney(grant.amount, grant.currency)} of ${allowanceTypeName(grant.typeCode).toLowerCase()} allowance: ${sentence(grant.reason)}`);
+  return grantView(decided);
 };
 
 // HR never handles their own documents.
@@ -1006,6 +1038,32 @@ const routes = [
     }
     return replaceResignation({ ...resignation, status: 'withdrawn', decidedOn: today() });
   }],
+  ['GET', /^\/api\/allowances$/, ({ user }) => allowancesOf(user.id)],
+  ['GET', /^\/api\/allowance-types$/, () => [...db.allowances.types].sort((first, second) => first.sortOrder - second.sortOrder).map(({ sortOrder: _order, ...type }) => type)],
+  ['GET', /^\/api\/team\/allowance-grants$/, ({ user }) => {
+    const ids = requireManager(user);
+    return db.allowances.grants.filter((grant) => ids.has(grant.employeeId)).sort((first, second) => second.grantedOn.localeCompare(first.grantedOn)).map(grantView);
+  }],
+  // An HOD grants a report a one-off amount. HR approves it, unless the HOD is HR.
+  ['POST', /^\/api\/team\/allowance-grants$/, ({ user, body }) => {
+    const ids = requireManager(user);
+    if (!ids.has(body.employeeId)) {
+      throw new HttpError(404, 'Not one of your reports');
+    }
+    const type = activeAllowanceType(body.type);
+    validMoney(body);
+    const reason = String(body.reason ?? '').trim();
+    if (!reason) {
+      throw new HttpError(400, 'Say why, for HR and for them.');
+    }
+    const grant = { id: `AG-${randomUUID().slice(0, 6)}`, employeeId: body.employeeId, typeCode: type.code, amount: Number(body.amount), currency: body.currency, reason, status: 'pending', grantedBy: user.id, grantedOn: today() };
+    db.allowances.grants = [grant, ...db.allowances.grants];
+    if (user.roles.includes('HR')) {
+      return approveGrant(user, grant);
+    }
+    hrBut(body.employeeId).forEach((hr) => notify(hr.id, 'approval', `${user.fullName} granted ${nameOf(body.employeeId)} ${sayMoney(grant.amount, grant.currency)} of ${type.name.toLowerCase()} allowance. Decide it from Inbox.`));
+    return grantView(grant);
+  }],
   ['GET', /^\/api\/documents$/, ({ user }) => documentEntries(user)],
   ['PUT', /^\/api\/documents\/([\w-]+)\/file$/, ({ user, params: [code], query, body }) =>
     uploadDocument({ by: user, owner: user, code, file: body, issuedOn: query.get('issuedOn'), expiresOn: query.get('expiresOn') }), { upload: CERTIFICATE_UPLOAD }],
@@ -1161,6 +1219,100 @@ const routes = [
       notify(details.managerId, 'record', `${employee.fullName} now reports to you.`);
     }
     return withRoles(replaceIn('employees', { ...rest, ...details }));
+  }],
+  ['GET', /^\/api\/hr\/employees\/([\w-]+)\/allowances$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    return allowancesOf(id);
+  }],
+  // An amount already running ends the month before; one not started by then is replaced.
+  ['PUT', /^\/api\/hr\/employees\/([\w-]+)\/allowances\/([\w-]+)$/, ({ user, params: [id, code], body }) => {
+    requireHr(user);
+    if (id === user.id) {
+      throw new HttpError(403, 'Another HR person handles your own allowances.');
+    }
+    const type = activeAllowanceType(code);
+    validMoney(body);
+    if (!DATE.test(String(body.startsOn)) || !body.startsOn.endsWith('-01')) {
+      throw new HttpError(400, 'Allowances start on the first of a month.');
+    }
+    const current = db.allowances.monthly.find((entry) => entry.employeeId === id && entry.typeCode === code && !entry.endsOn);
+    const lastDayBefore = new Date(Date.parse(`${body.startsOn}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+    db.allowances.monthly = db.allowances.monthly
+      .filter((entry) => entry !== current || current.startsOn < body.startsOn)
+      .map((entry) => (entry === current ? { ...entry, endsOn: lastDayBefore } : entry));
+    const note = String(body.note ?? '').trim();
+    const saved = { id: `MA-${randomUUID().slice(0, 6)}`, employeeId: id, typeCode: code, amount: Number(body.amount), currency: body.currency, startsOn: body.startsOn, ...(note && { note }) };
+    db.allowances.monthly = [saved, ...db.allowances.monthly];
+    notify(id, 'record', `HR set your ${type.name.toLowerCase()} allowance to ${sayMoney(saved.amount, saved.currency)} a month from ${sayMonth(saved.startsOn)}.`);
+    return monthlyView(saved);
+  }],
+  ['POST', /^\/api\/hr\/employees\/([\w-]+)\/allowances\/([\w-]+)\/stop$/, ({ user, params: [id, code], body }) => {
+    requireHr(user);
+    if (id === user.id) {
+      throw new HttpError(403, 'Another HR person handles your own allowances.');
+    }
+    const current = db.allowances.monthly.find((entry) => entry.employeeId === id && entry.typeCode === code && !entry.endsOn);
+    if (!current) {
+      throw new HttpError(404, `They don't get a ${allowanceTypeName(code).toLowerCase()} allowance.`);
+    }
+    const [year, month] = String(body.lastMonth ?? '').split('-').map(Number);
+    const endsOn = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+    if (!(year && month) || endsOn < current.startsOn) {
+      throw new HttpError(400, `Pick a month from ${sayMonth(current.startsOn)} on.`);
+    }
+    const stopped = { ...current, endsOn };
+    db.allowances.monthly = db.allowances.monthly.map((entry) => (entry === current ? stopped : entry));
+    notify(id, 'record', `HR stopped your ${allowanceTypeName(code).toLowerCase()} allowance after ${sayMonth(endsOn)}.`);
+    return monthlyView(stopped);
+  }],
+  ['GET', /^\/api\/hr\/allowance-grants$/, ({ user }) => {
+    requireHr(user);
+    return db.allowances.grants.filter(({ status, employeeId }) => status === 'pending' && employeeId !== user.id).sort((first, second) => first.grantedOn.localeCompare(second.grantedOn)).map(grantView);
+  }],
+  ['POST', /^\/api\/hr\/allowance-grants\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => {
+    requireHr(user);
+    const grant = db.allowances.grants.find((entry) => entry.id === id && entry.status === 'pending');
+    if (!grant) {
+      throw new HttpError(404, 'Nothing waiting for HR with that id');
+    }
+    if (grant.employeeId === user.id) {
+      throw new HttpError(403, 'Your own requests go to another HR person.');
+    }
+    if (body.decision === 'approved') {
+      return approveGrant(user, grant);
+    }
+    const note = String(body.note ?? '').trim();
+    if (!note) {
+      throw new HttpError(400, 'Give a short reason so the HOD knows why.');
+    }
+    const decided = { ...grant, status: 'rejected', decidedBy: user.id, decidedOn: today(), decisionNote: note };
+    db.allowances.grants = db.allowances.grants.map((entry) => (entry.id === id ? decided : entry));
+    notify(grant.grantedBy, 'record', `HR didn't approve the ${allowanceTypeName(grant.typeCode).toLowerCase()} allowance for ${nameOf(grant.employeeId)}: ${sentence(note)}`);
+    return grantView(decided);
+  }],
+  ['POST', /^\/api\/hr\/allowance-types$/, ({ user, body }) => {
+    requireHr(user);
+    const name = String(body.name ?? '').trim();
+    const code = name.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+    if (!code) {
+      throw new HttpError(400, 'Give the allowance a name with letters or numbers.');
+    }
+    if (db.allowances.types.some((type) => type.code === code || (!type.retiredOn && type.name.toLowerCase() === name.toLowerCase()))) {
+      throw new HttpError(409, "There's already an allowance called that.");
+    }
+    const type = { code, name, sortOrder: Math.max(0, ...db.allowances.types.map(({ sortOrder }) => sortOrder)) + 1 };
+    db.allowances.types = [...db.allowances.types, type];
+    return { code, name };
+  }],
+  // Deleted if nobody ever had it, otherwise retired.
+  ['DELETE', /^\/api\/hr\/allowance-types\/([\w-]+)$/, ({ user, params: [code] }) => {
+    requireHr(user);
+    activeAllowanceType(code);
+    const isUsed = db.allowances.monthly.some(({ typeCode }) => typeCode === code) || db.allowances.grants.some(({ typeCode }) => typeCode === code);
+    db.allowances.types = isUsed
+      ? db.allowances.types.map((type) => (type.code === code ? { ...type, retiredOn: today() } : type))
+      : db.allowances.types.filter((type) => type.code !== code);
+    return undefined;
   }],
   ['GET', /^\/api\/hr\/resignations$/, ({ user }) => {
     requireHr(user);

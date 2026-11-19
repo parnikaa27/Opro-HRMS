@@ -42,8 +42,7 @@ Walked through by hand as Arjun (expatriate employee), Vikram (HOD), Ananya (HR)
 
 ## From the meeting with Madhu (19 November)
 
-Being built in batches, one PR each. Leave, documents, exit and the performance changes are done (see Leave below, and Documents, Leaving Opro and Performance in CLAUDE.md). Still to come:
-- [ ] **Allowances:** monthly allowances HR sets per person, and one-off grants an HOD makes that HR approves.
+Being built in batches, one PR each. Leave, documents, exit, the performance changes and allowances are done (see Leave below, and Documents, Leaving Opro, Performance and Allowances in CLAUDE.md). Still to come:
 - [ ] **Onboarding:** a proper process. Needs a conversation first: what's on the checklist and who ticks it.
 - [ ] **Recruitment:** needs its own conversation first.
 
@@ -65,6 +64,7 @@ Being built in batches, one PR each. Leave, documents, exit and the performance 
 - [ ] **Leave notice:** the paper form asks a month ahead for scheduled leave. Set "Asked for (days ahead)" on annual leave in Policies, and on any other type that needs it. Nothing has notice until then.
 - [ ] **Flight entitlement and salary advance ticks on leave requests:** today they're shown to the HOD and HR only. Should ticking the flight box start a flight claim, and who acts on a salary advance before payroll exists?
 - [ ] **Leaving without resigning** (a contract ending, a dismissal): today the return checklist only applies to someone who resigned. Should HR tick items off for everyone who leaves? And is there a minimum notice period between resigning and the last day?
+- [ ] **Allowances:** the real list of kinds and who gets how much, and whether any one-off grants HR makes directly (today only an HOD grants them).
 - [ ] **Comp off for super admins:** today they earn none for working a Friday or a holiday, because nobody is above them to approve it.
 
 ## Later, if needed

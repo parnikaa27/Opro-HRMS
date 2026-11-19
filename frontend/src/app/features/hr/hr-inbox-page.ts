@@ -16,6 +16,7 @@ import { BanksToCheck } from './banks-to-check';
 import { DocumentsToCheck } from './documents-to-check';
 import { HrApi } from './hr-api';
 import { ResignationsToDecide } from '../exit/resignations-to-decide';
+import { GrantsToDecide } from '../allowance/grants-to-decide';
 
 type Status = ChangeRequest['status'];
 
@@ -27,7 +28,7 @@ const TABS: { value: Status; label: string; empty: string }[] = [
 
 @Component({
   selector: 'app-hr-inbox-page',
-  imports: [ApprovalsToDecide, Avatar, BanksToCheck, DeclineForm, Dialog, DocumentsToCheck, Icon, ListSkeleton, ResignationsToDecide, RouterLink, StatusPill],
+  imports: [ApprovalsToDecide, Avatar, BanksToCheck, DeclineForm, Dialog, DocumentsToCheck, GrantsToDecide, Icon, ListSkeleton, ResignationsToDecide, RouterLink, StatusPill],
   template: `
     <div class="page-view">
       <div class="page-title">
@@ -83,6 +84,7 @@ const TABS: { value: Status; label: string; empty: string }[] = [
 
       <app-approvals-to-decide />
       <app-resignations-to-decide />
+      <app-grants-to-decide />
       <app-documents-to-check />
       <app-banks-to-check />
     </div>

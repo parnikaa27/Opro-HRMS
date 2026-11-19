@@ -10,10 +10,11 @@ import { IdCard } from './id-card';
 import { RecordCard } from './record-card';
 import { VisaDetails } from './visa-details';
 import { ResignationCard } from '../exit/resignation-card';
+import { AllowancesCard } from '../allowance/allowances-card';
 
 @Component({
   selector: 'app-profile-page',
-  imports: [ChangeRequestForm, Dialog, EmployeeCard, FlightCard, Icon, IdCard, RecordCard, ResignationCard, SuccessState, VisaDetails],
+  imports: [AllowancesCard, ChangeRequestForm, Dialog, EmployeeCard, FlightCard, Icon, IdCard, RecordCard, ResignationCard, SuccessState, VisaDetails],
   template: `
     @if (session.user(); as user) {
       <div class="page-view">
@@ -47,6 +48,7 @@ import { ResignationCard } from '../exit/resignation-card';
             </div>
             <div class="no-print">
               <app-flight-card />
+              <app-allowances-card />
             </div>
           </div>
           <div class="side-column no-print">

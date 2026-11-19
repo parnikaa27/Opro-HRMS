@@ -30,6 +30,7 @@ import { HrDocumentsCard } from './hr-documents-card';
 import { HrFlightCard } from './hr-flight-card';
 import { HrRecordCard } from './hr-record-card';
 import { PersonMenu } from './person-menu';
+import { HrAllowancesCard } from '../allowance/hr-allowances-card';
 
 type Action = 'adjust' | 'visa' | 'leaving' | 'days';
 
@@ -42,7 +43,7 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
 
 @Component({
   selector: 'app-hr-person-page',
-  imports: [AdjustBalanceForm, AttendanceTable, ConfirmButton, Dialog, EmployeeCard, ExitCard, HrDocumentsCard, HrFlightCard, HrRecordCard, Icon, LeaveBalances, LeaveDaysForm, LeaveRequests, LeavingForm, ListSkeleton, PersonMenu, PhotoForm, RouterLink, SuccessState, VisaCard, VisaForm],
+  imports: [AdjustBalanceForm, AttendanceTable, ConfirmButton, Dialog, EmployeeCard, ExitCard, HrAllowancesCard, HrDocumentsCard, HrFlightCard, HrRecordCard, Icon, LeaveBalances, LeaveDaysForm, LeaveRequests, LeavingForm, ListSkeleton, PersonMenu, PhotoForm, RouterLink, SuccessState, VisaCard, VisaForm],
   template: `
     <div class="page-view">
       <a routerLink="/hr/people" class="text-link back-link"><app-icon name="chevronLeft" [size]="15" /> People</a>
@@ -112,6 +113,7 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
               <app-exit-card [employeeId]="employee.id" [resignation]="resigned" [isOwn]="employee.id === myId()" (changed)="exit.reload()" />
             }
             <app-hr-documents-card [employeeId]="employee.id" [name]="employee.fullName" [isOwn]="employee.id === myId()" />
+            <app-hr-allowances-card [employeeId]="employee.id" [isOwn]="employee.id === myId()" />
           </div>
           <div class="side-column">
             <app-employee-card [employee]="employee" />
