@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 // The HOD's appraisal of one person in a cycle: an overall rating from 1 to 5, comments, and what they recommend.
-// Final once saved. The person acknowledges they've read it.
+// Final once saved. The person has to accept it.
 @Entity
 public class Appraisal {
 
@@ -21,12 +21,13 @@ public class Appraisal {
     private BigDecimal incrementPercent;
     private String appraisedBy;
     private LocalDate appraisedOn;
-    private LocalDate acknowledgedOn;
+    private LocalDate acceptedOn;
+    private String selfReviewComment;
 
     protected Appraisal() {}
 
     Appraisal(String id, String cycleId, String employeeId, int rating, String comments, boolean recommendsPromotion, BigDecimal incrementPercent,
-            String appraisedBy, LocalDate appraisedOn) {
+            String appraisedBy, LocalDate appraisedOn, String selfReviewComment) {
         this.id = id;
         this.cycleId = cycleId;
         this.employeeId = employeeId;
@@ -36,10 +37,11 @@ public class Appraisal {
         this.incrementPercent = incrementPercent;
         this.appraisedBy = appraisedBy;
         this.appraisedOn = appraisedOn;
+        this.selfReviewComment = selfReviewComment;
     }
 
-    void acknowledge(LocalDate on) {
-        acknowledgedOn = on;
+    void accept(LocalDate on) {
+        acceptedOn = on;
     }
 
     public String getId() {
@@ -78,7 +80,11 @@ public class Appraisal {
         return appraisedOn;
     }
 
-    public LocalDate getAcknowledgedOn() {
-        return acknowledgedOn;
+    public LocalDate getAcceptedOn() {
+        return acceptedOn;
+    }
+
+    public String getSelfReviewComment() {
+        return selfReviewComment;
     }
 }

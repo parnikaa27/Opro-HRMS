@@ -42,8 +42,7 @@ Walked through by hand as Arjun (expatriate employee), Vikram (HOD), Ananya (HR)
 
 ## From the meeting with Madhu (19 November)
 
-Being built in batches, one PR each. Leave, documents and exit are done (see Leave below, and Documents and Leaving Opro in CLAUDE.md). Still to come:
-- [ ] **Performance:** the employee writes their goals and KPIs, the HOD then HR approve them; the employee adds accomplishments, strengths, learning and development and a plan for certifications, which the HOD comments on; the employee must accept the rating.
+Being built in batches, one PR each. Leave, documents, exit and the performance changes are done (see Leave below, and Documents, Leaving Opro and Performance in CLAUDE.md). Still to come:
 - [ ] **Allowances:** monthly allowances HR sets per person, and one-off grants an HOD makes that HR approves.
 - [ ] **Onboarding:** a proper process. Needs a conversation first: what's on the checklist and who ticks it.
 - [ ] **Recruitment:** needs its own conversation first.
@@ -62,7 +61,7 @@ Being built in batches, one PR each. Leave, documents and exit are done (see Lea
 - [ ] **Exchange rates:** MVR 15.42 and INR 88 per USD are starting values. HR can change them in Policies.
 - [ ] **Footer:** legal name, address, HR email, and the Privacy and HR policy links in `frontend/src/app/core/config.ts`.
 - [ ] **Overtime:** 30 minutes past the shift is the placeholder minimum, and whether overtime is paid (at what rate) or taken as time off. Payroll needs the rate.
-- [ ] **Performance:** the 1 to 5 scale and its words, and whether appraisals should include a self assessment or company competencies.
+- [ ] **Performance:** the 1 to 5 scale and its words, and whether appraisals should rate company competencies too. Accepting a rating is required with no way to disagree; if staff ever need to record a disagreement, that's a small change.
 - [ ] **Leave notice:** the paper form asks a month ahead for scheduled leave. Set "Asked for (days ahead)" on annual leave in Policies, and on any other type that needs it. Nothing has notice until then.
 - [ ] **Flight entitlement and salary advance ticks on leave requests:** today they're shown to the HOD and HR only. Should ticking the flight box start a flight claim, and who acts on a salary advance before payroll exists?
 - [ ] **Leaving without resigning** (a contract ending, a dismissal): today the return checklist only applies to someone who resigned. Should HR tick items off for everyone who leaves? And is there a minimum notice period between resigning and the last day?
@@ -113,7 +112,8 @@ What the document asks for, against what's built. "Done" means built and tested;
 
 **8. Performance**
 - Done: probation reviews, appraisal cycles HR opens, goals with measures and weights, HOD appraisals rated 1 to 5, promotion and increment recommendations, a performance section on the dashboard.
-- Not yet: self assessment, 360° feedback, company competencies to rate against, acting on recommendations (needs payroll), a performance report.
+- Done since: goals and KPIs the employee writes (approved by the HOD, then HR), a self review (accomplishments, strengths, learning and development, certifications) the HOD comments on, and accepting the rating.
+- Not yet: 360° feedback, company competencies to rate against, acting on recommendations (needs payroll), a performance report.
 
 **9. Learning and development**: not started (calendar, nominations, attendance, feedback, certificates, hours, competency matrix).
 

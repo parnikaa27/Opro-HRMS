@@ -19,7 +19,28 @@ export interface Goal {
 
 export type GoalPlan = Pick<Goal, 'title' | 'measure' | 'weight'>;
 
-// Final once the HOD saves it. The recommendations are only sent to the HOD and HR.
+// What the person writes about their year. The HOD comments on it when appraising.
+export interface SelfReview {
+  accomplishments?: string;
+  strengths?: string;
+  learning?: string;
+  certifications?: string;
+}
+
+// Where someone's goals stand: draft and rejected are theirs to change, submitted waits for their HOD, hod-approved
+// for HR. Plus their self review.
+export interface CycleForm extends SelfReview {
+  goalsStatus: 'draft' | 'submitted' | 'hod-approved' | 'approved' | 'rejected';
+  goalsSubmittedOn?: string;
+  hodApprovedByName?: string;
+  hodApprovedOn?: string;
+  goalsDecidedByName?: string;
+  goalsDecidedOn?: string;
+  goalsNote?: string;
+  selfReviewedOn?: string;
+}
+
+// Final once the HOD saves it. The recommendations are only sent to the HOD and HR. The person has to accept it.
 export interface Appraisal {
   id: string;
   cycleId: string;
@@ -31,7 +52,8 @@ export interface Appraisal {
   incrementPercent?: number;
   appraisedByName?: string;
   appraisedOn: string;
-  acknowledgedOn?: string;
+  acceptedOn?: string;
+  selfReviewComment?: string;
   goals: Goal[];
 }
 
@@ -41,6 +63,7 @@ export interface NewAppraisal {
   recommendsPromotion: boolean;
   incrementPercent?: number;
   goals: { goalId: string; rating: number; comment?: string }[];
+  selfReviewComment?: string;
 }
 
 export type ProbationOutcome = 'confirmed' | 'extended' | 'not-confirmed';
@@ -65,6 +88,7 @@ export interface NewProbationReview {
 
 export interface MyPerformance {
   cycle?: AppraisalCycle;
+  form?: CycleForm;
   goals: Goal[];
   appraisals: Appraisal[];
   probationReviews: ProbationReview[];
@@ -75,6 +99,7 @@ export interface TeamMemberPerformance {
   fullName: string;
   designation: string;
   probationEndsOn?: string;
+  form?: CycleForm;
   goals: Goal[];
   appraisal?: Appraisal;
 }
@@ -89,7 +114,8 @@ export interface HrPerformanceRow {
   fullName: string;
   department: string;
   managerName?: string;
-  goalCount: number;
+  form?: CycleForm;
+  goals: Goal[];
   appraisal?: Appraisal;
 }
 

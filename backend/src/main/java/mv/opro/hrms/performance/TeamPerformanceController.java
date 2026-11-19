@@ -14,38 +14,41 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import mv.opro.hrms.common.ApiException;
 import mv.opro.hrms.employee.Employee;
+import mv.opro.hrms.employee.People;
 import mv.opro.hrms.session.CurrentUser;
 import mv.opro.hrms.team.TeamAccess;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Team performance", description = "An HOD's direct reports in the open appraisal cycle: set their goals, appraise them, and review probation before it ends.")
+@Tag(name = "Team performance", description = "An HOD's direct reports in the open appraisal cycle: approve the goals they write, appraise them, and review probation before it ends.")
 @RestController
 class TeamPerformanceController {
 
-    private static final int MAX_GOALS = 10;
     private static final int LOWEST = 1;
     private static final int HIGHEST = 5;
 
-    record Member(String employeeId, String fullName, String designation, LocalDate probationEndsOn, List<GoalResponse> goals, AppraisalResponse appraisal) {}
+    record Member(String employeeId, String fullName, String designation, LocalDate probationEndsOn, FormResponse form, List<GoalResponse> goals,
+            AppraisalResponse appraisal) {}
 
     record Team(CycleResponse cycle, List<Member> people) {}
 
-    record GoalBody(@NotBlank @Size(max = 120) String title, @NotBlank @Size(max = 300) String measure, @Min(1) @Max(100) int weight) {}
-
-    record GoalsBody(@NotNull @Size(min = 1, max = MAX_GOALS) List<@Valid GoalBody> goals) {}
+    record DecisionBody(@NotNull @Pattern(regexp = "approved|rejected") String decision, @Size(max = 300) String note) {}
 
     record GoalRatingBody(@NotBlank String goalId, @Min(LOWEST) @Max(HIGHEST) int rating, @Size(max = 500) String comment) {}
 
     record AppraisalBody(@Min(LOWEST) @Max(HIGHEST) int rating, @NotBlank @Size(max = 2000) String comments, @NotNull Boolean recommendsPromotion,
-            @DecimalMin("0.1") @DecimalMax("100") BigDecimal incrementPercent, @NotNull List<@Valid GoalRatingBody> goals) {}
+            @DecimalMin("0.1") @DecimalMax("100") BigDecimal incrementPercent, @NotNull List<@Valid GoalRatingBody> goals,
+            @Size(max = 2000) String selfReviewComment) {}
 
     record ReviewBody(@NotNull @Pattern(regexp = "confirmed|extended|not-confirmed") String outcome, LocalDate extendedTo,
             @NotBlank @Size(max = 1000) String comments) {}
@@ -53,11 +56,13 @@ class TeamPerformanceController {
     private final TeamAccess access;
     private final CurrentUser currentUser;
     private final Performance performance;
+    private final People people;
 
-    TeamPerformanceController(TeamAccess access, CurrentUser currentUser, Performance performance) {
+    TeamPerformanceController(TeamAccess access, CurrentUser currentUser, Performance performance, People people) {
         this.access = access;
         this.currentUser = currentUser;
         this.performance = performance;
+        this.people = people;
     }
 
     @GetMapping("/api/team/performance")
@@ -66,23 +71,28 @@ class TeamPerformanceController {
         List<Employee> reports = access.reportsOf(me);
         AppraisalCycle cycle = performance.openCycle().orElse(null);
         if (cycle == null) {
-            return new Team(null, reports.stream().map(person -> member(person, List.of(), null)).toList());
+            return new Team(null, reports.stream().map(person -> member(person, null, List.of(), null)).toList());
         }
-        Map<String, List<Goal>> goals = performance.goalsOf(cycle.getId(), reports.stream().map(Employee::getId).toList());
+        List<String> ids = reports.stream().map(Employee::getId).toList();
+        Map<String, List<Goal>> goals = performance.goalsOf(cycle.getId(), ids);
+        Map<String, AppraisalForm> forms = performance.formsOf(cycle.getId(), ids);
         Map<String, Appraisal> appraisals = performance.appraisalsIn(cycle.getId());
+        Map<String, String> names = people.namesOf(forms.values().stream().flatMap(form -> Stream.of(form.getHodApprovedBy(), form.getGoalsDecidedBy()))
+                .filter(Objects::nonNull).collect(Collectors.toSet()));
         return new Team(CycleResponse.of(cycle), reports.stream().map(person -> {
             List<Goal> theirs = goals.getOrDefault(person.getId(), List.of());
             Appraisal appraisal = appraisals.get(person.getId());
-            return member(person, theirs, appraisal == null ? null : AppraisalResponse.of(appraisal, cycle.getName(), me.getFullName(), theirs));
+            return member(person, FormResponse.of(forms.get(person.getId()), names), theirs,
+                    appraisal == null ? null : AppraisalResponse.of(appraisal, cycle.getName(), me.getFullName(), theirs));
         }).toList());
     }
 
-    @PutMapping("/api/team/performance/{employeeId}/goals")
-    List<GoalResponse> goals(@PathVariable String employeeId, @Valid @RequestBody GoalsBody body) {
+    // Approve the goals they sent, or send them back with a note.
+    @PostMapping("/api/team/performance/{employeeId}/goals/decision")
+    ResponseEntity<Void> decideGoals(@PathVariable String employeeId, @Valid @RequestBody DecisionBody body) {
         Employee me = currentUser.get();
-        String id = reportOf(me, employeeId).getId();
-        return performance.setGoals(me, id, body.goals().stream().map(goal -> new Performance.GoalPlan(goal.title(), goal.measure(), goal.weight())).toList())
-                .stream().map(GoalResponse::of).toList();
+        performance.decideGoalsAsHod(me, reportOf(me, employeeId).getId(), "approved".equals(body.decision()), body.note());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/api/team/performance/{employeeId}/appraisal")
@@ -90,7 +100,8 @@ class TeamPerformanceController {
         Employee me = currentUser.get();
         String id = reportOf(me, employeeId).getId();
         Appraisal appraisal = performance.appraise(me, id, new Performance.Rating(body.rating(), body.comments(), body.recommendsPromotion(),
-                body.incrementPercent(), body.goals().stream().map(goal -> new Performance.GoalRating(goal.goalId(), goal.rating(), goal.comment())).toList()));
+                body.incrementPercent(), body.goals().stream().map(goal -> new Performance.GoalRating(goal.goalId(), goal.rating(), goal.comment())).toList(),
+                body.selfReviewComment()));
         String cycleName = performance.cycle(appraisal.getCycleId()).map(AppraisalCycle::getName).orElse("");
         return AppraisalResponse.of(appraisal, cycleName, me.getFullName(), performance.goalsOf(appraisal.getCycleId(), id));
     }
@@ -108,8 +119,8 @@ class TeamPerformanceController {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Not one of your reports"));
     }
 
-    private static Member member(Employee person, List<Goal> goals, AppraisalResponse appraisal) {
-        return new Member(person.getId(), person.getFullName(), person.getDesignation(), person.getProbationEndsOn(), goals.stream().map(GoalResponse::of).toList(),
-                appraisal);
+    private static Member member(Employee person, FormResponse form, List<Goal> goals, AppraisalResponse appraisal) {
+        return new Member(person.getId(), person.getFullName(), person.getDesignation(), person.getProbationEndsOn(), form,
+                goals.stream().map(GoalResponse::of).toList(), appraisal);
     }
 }

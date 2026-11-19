@@ -68,7 +68,7 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 |---|---|
 | `/login` | Mock user picker (dev only) |
 | `/` Overview | Welcome banner, today's attendance (time in, expected out, effective hours, punch in and out), leave balance, visa status, recent attendance table, dark staff card, next holiday and long weekend, latest leave request |
-| `/performance` | Their goals in the open appraisal cycle, their appraisals with each goal rated (acknowledge once read), and any probation review. Never the HOD's recommendations |
+| `/performance` | Their goals in the open appraisal cycle (write them, send them, see where they stand or why they came back), their self review, their appraisals with each goal rated and the HOD's comment on the self review (accept the rating), and any probation review. Never the HOD's recommendations |
 | `/documents` | Every document on HR's list that applies to them, with its status (missing, waiting for HR, verified, sent back with HR's reason, expired), its dates and each file to download. Upload one or more files of the ones employees send, with the start date and, where the type expires, the end date, and take a wrong file off until HR verifies it |
 | `/attendance` | My attendance: four summary cards (days present, work hours, on time, overtime), the attendance log for a chosen month, CSV export, punch fix requests and their status, and the punch button while today is on screen |
 | `/leave` | Leave and time off: two balance rings, then a balance table for their leave year (type, this year, carried forward, approved, taken so far, waiting, left; comp off says when it runs out), request history with cancel (pending, or approved and not started), and the Request leave modal laid out like the paper form (new, amended or extended application, flight entitlement and salary advance ticks, the days marked AL, PH or OFF and the day they're back) with a success screen |
@@ -85,7 +85,7 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 | `/team/people` | Card directory of direct reports with today's status and search |
 | `/team/approvals` | Leave requests in tabs (Pending, Approved, Declined, Punch fixes, Home working, Comp off, Overtime, Resignations). Approve in one click. Declining opens a modal that needs a reason, so the employee can plan around it. Waiting leave shows who else is off on those dates |
 | `/team/attendance` | Team summary cards and a table with one row per report (days present, late, missed, hours, today), month picker, CSV export |
-| `/team/performance` | Reports on probation to review (confirm, extend with a new date, or don't confirm), and each report in the open cycle: set goals, appraise |
+| `/team/performance` | Reports on probation to review (confirm, extend with a new date, or don't confirm), and each report in the open cycle: approve or send back the goals they wrote, then appraise them with their self review alongside |
 | `/team/calendar` | The company calendar plus who on the team is away (approved filled, pending dashed) |
 | `/team/:employeeId` | One report's leave balances, attendance log with a month picker, leave requests, staff card and visa. Read only |
 
@@ -118,7 +118,7 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 | `/hr/announcements` | Post, edit and take down notes from HR. A new one notifies everyone |
 | `/hr/dashboard` | The executive dashboard: employees, joiners, leavers with attrition and retention, who's in today; locals and expatriates, gender, employment type, age, departments and nationalities; today's attendance and this month's; leave waiting, annual leave used, sick leave by month; papers expired or expiring within 60 days and quota use; birthdays and anniversaries this month, probation ending within 30 days, contracts within 60; performance (on probation, appraised so far, average rating, rated 4 or 5, recommended for promotion). Only what today's data supports: recruitment, payroll and training appear when those modules exist |
 | `/hr/reports` | Headcount, joiners and leavers, workforce mix, leave balances, leave taken, attendance and visa and permit expiry, each shown as a table and saved as CSV, Excel or PDF |
-| `/hr/performance` | Open and close appraisal cycles, how far the latest has got (goals, rating, the HOD's promotion and increment recommendations, whether the person has read it), and every probation review |
+| `/hr/performance` | Open and close appraisal cycles, goals the HOD approved for HR to approve or send back, how far the latest cycle has got (goals and where they stand, rating, the HOD's promotion and increment recommendations, whether the person has accepted), and every probation review |
 | `/hr/policy` | Policies: add, edit and remove leave types (yearly days, half days, given to everyone or people HR picks, lapse or carry forward up to a cap; a new entitlement applies from the next leave year; approved by the HOD, or the HOD then HR), which other requests HR approves after the HOD, the work schedule as dated versions, the documents Opro keeps, what comes back when someone leaves, and the exchange rates for flight allowances |
 
 ### Attendance rules (placeholders, confirm with HR)
@@ -200,9 +200,10 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 ### Performance
 
 - **Probation reviews:** an HOD reviews each report on probation (`probationEndsOn` set): **confirm** (clears the date), **extend** to a later date, or **don't confirm** (left for HR to act on). Comments are required. The person and HR are told.
-- **Appraisal cycles:** HR opens one cycle at a time ("2026 appraisals", with a due date), which asks every HOD to start. Closing it leaves anything not done undone. Everyone with an HOD is in it; super admins have none.
-- **Goals:** the HOD sets each report's goals in the open cycle, with how each is measured and a weight. Weights add up to 100%. Saving replaces them, until the person is appraised.
-- **Appraisals:** the HOD only (no self assessment, no 360° for now). Each goal and the year overall are rated **1 to 5**: Needs improvement, Below expectations, Meets expectations, Exceeds expectations, Outstanding. Comments are required. Final once saved. The person reads it and acknowledges it.
+- **Appraisal cycles:** HR opens one cycle at a time ("2026 appraisals", with a due date), which asks everyone with an HOD to write their goals and every HOD to approve and appraise. Closing it leaves anything not done undone. Everyone with an HOD is in it; super admins have none.
+- **Goals and KPIs:** each person writes their own in the open cycle, with how each is measured and a weight; weights add up to 100%. Saving replaces them; they stay a draft until sent. Their HOD approves them or sends them back with a note, then HR does the same; sent back, they're the person's to change and send again. An HOD who is HR covers both steps, and HR never decides their own. Kept per person and cycle in `appraisal_form` (`goals_status`: draft, submitted, hod-approved, approved, rejected). Goals HODs set before this count as approved.
+- **Self review:** the person writes their accomplishments, strengths, learning and development, and plan for certifications, each optional, and can change it until they're appraised. The HOD reads it in the appraisal and can comment on it.
+- **Appraisals:** the HOD only, once the goals are approved (no 360° for now). Each goal and the year overall are rated **1 to 5**: Needs improvement, Below expectations, Meets expectations, Exceeds expectations, Outstanding. Comments are required. Final once saved. **The person has to accept the rating**; there's no way to disagree in the portal. Their Performance page asks until they do, and the HOD and HR see who hasn't.
 - **Recommendations:** with the appraisal, the HOD can recommend a promotion and an increment percentage. They're advice for HR, shown on HR's page and the dashboard, never to the person. Nothing changes pay: payroll doesn't exist yet.
 
 ### Overtime
@@ -464,10 +465,12 @@ The full, generated reference is Swagger UI at `http://localhost:8080/swagger-ui
 | POST | `/api/hr/holidays/start-year` | Add the fixed civil holidays to a year (`year`) |
 | POST / PUT / DELETE | `/api/hr/events`, `/api/hr/events/:id` | Manage company events |
 | GET | `/api/hr/change-requests` | Profile change requests |
-| GET / POST | `/api/performance`, `/api/performance/appraisals/:id/acknowledge` | Own goals in the open cycle, appraisals (without recommendations) and probation reviews / acknowledge an appraisal |
-| GET | `/api/team/performance` | Direct reports with probation dates, goals and appraisal in the open cycle |
-| PUT / POST / POST | `/api/team/performance/:id/goals`, `.../appraisal`, `.../probation-review` | Set goals (`goals`: `title`, `measure`, `weight`, adding to 100) / appraise (`rating`, `comments`, `recommendsPromotion`, `incrementPercent`, `goals`: `goalId`, `rating`, `comment`) / review probation (`outcome`, `extendedTo`, `comments`) |
+| GET / POST | `/api/performance`, `/api/performance/appraisals/:id/accept` | Own goals and `form` (goal status, self review) in the open cycle, appraisals (without recommendations) and probation reviews / accept the rating |
+| PUT / POST / PUT | `/api/performance/goals`, `/api/performance/goals/submit`, `/api/performance/self-review` | Write own goals (`goals`: `title`, `measure`, `weight`, adding to 100) / send them to the HOD / write the self review (`accomplishments`, `strengths`, `learning`, `certifications`) |
+| GET | `/api/team/performance` | Direct reports with probation dates, goals, `form` and appraisal in the open cycle |
+| POST / POST / POST | `/api/team/performance/:id/goals/decision`, `.../appraisal`, `.../probation-review` | Approve their goals, or send them back with a `note` / appraise (`rating`, `comments`, `recommendsPromotion`, `incrementPercent`, `goals`: `goalId`, `rating`, `comment`, `selfReviewComment`) / review probation (`outcome`, `extendedTo`, `comments`) |
 | GET / POST / POST | `/api/hr/performance`, `/api/hr/appraisal-cycles`, `/api/hr/appraisal-cycles/:id/close` | Cycles, the latest one's progress and every probation review / open a cycle (`name`, `dueOn`) / close it |
+| POST | `/api/hr/performance/:id/goals/decision` | HR's step on goals the HOD approved: `approved`, or `rejected` with a `note`. Never their own |
 | GET | `/api/insights`, `/api/insights/attendance?month=` | HR and super admins only: everyone (past staff too) with today's attendance, papers and record dates, this and last year's leave, balances, quota use and the latest appraisal cycle's ratings / everyone's days that month. The dashboard and reports count and group these in the browser |
 | GET / PUT | `/api/profile/record`, `/api/profile/bank-account` | Own record (bank shown as last 4) / enter bank details for HR to verify (`bankName`, `accountName`, `accountNumber`, `currency`) |
 | GET | `/api/hr/employees/:id/record` | One person's insurance, bank details (full number), education and experience |

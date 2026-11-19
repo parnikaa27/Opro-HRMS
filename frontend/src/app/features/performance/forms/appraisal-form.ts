@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { FormField, form, max, min, required, submit } from '@angular/forms/signals';
-import { Goal } from '../../../models/performance';
+import { Goal, SelfReview } from '../../../models/performance';
 import { FieldError } from '../../../shared/ui/field-error';
 import { ModalHeading } from '../../../shared/ui/modal-heading';
 import { serverReason } from '../../../shared/utils/form-submit';
 import { PerformanceApi, RATINGS } from '../performance-api';
+import { SelfReviewView } from '../self-review-view';
 
 const MAX_INCREMENT = 100;
 const MIDDLE = '3';
@@ -13,7 +14,7 @@ const FAILED = "That didn't save. Try again in a moment.";
 // The HOD rates each goal and the year overall, from 1 to 5. Final once saved.
 @Component({
   selector: 'app-appraisal-form',
-  imports: [FieldError, FormField, ModalHeading],
+  imports: [FieldError, FormField, ModalHeading, SelfReviewView],
   template: `
     <app-modal-heading eyebrow="PERFORMANCE" [heading]="'Appraise ' + name()" intro="Once saved it can't be changed, and they're told it's ready to read." />
     <form novalidate (submit)="save($event)">
@@ -44,6 +45,11 @@ const FAILED = "That didn't save. Try again in a moment.";
       @if (goalAverage(); as average) {
         <p class="weight-total" data-testid="goal-average">Weighted by goal, the ratings come to {{ average }}.</p>
       }
+      <fieldset class="goal-fields" data-testid="their-self-review">
+        <legend>Their self review</legend>
+        <app-self-review-view [review]="selfReview()" emptyText="They haven't written one." />
+        <label>Your comment on it <textarea rows="2" [formField]="appraisalForm.selfReviewComment" placeholder="Optional. The course is a good idea; book it for January." data-testid="self-review-comment"></textarea></label>
+      </fieldset>
       <label>Your comments <textarea rows="4" [formField]="appraisalForm.comments" placeholder="What went well this year, and what to work on next" data-testid="appraisal-comments" aria-describedby="appraisal-comments-error"></textarea></label>
       <app-field-error id="appraisal-comments-error" [errors]="appraisalForm.comments().errors()" [isTouched]="appraisalForm.comments().touched()" />
       <fieldset class="goal-fields">
@@ -69,6 +75,7 @@ export class AppraisalForm {
   readonly employeeId = input.required<string>();
   readonly name = input.required<string>();
   readonly goals = input<readonly Goal[]>([]);
+  readonly selfReview = input<SelfReview>();
   readonly saved = output();
   readonly cancelled = output();
 
@@ -80,6 +87,7 @@ export class AppraisalForm {
     comments: '',
     promotion: false,
     increment: 0,
+    selfReviewComment: '',
   }));
   protected readonly goalAverage = computed(() => {
     const goals = this.goals();
@@ -96,13 +104,14 @@ export class AppraisalForm {
     event.preventDefault();
     this.failure.set(undefined);
     return submit(this.appraisalForm, async () => {
-      const { goals, rating, comments, promotion, increment } = this.draft();
+      const { goals, rating, comments, promotion, increment, selfReviewComment } = this.draft();
       try {
         await this.api.appraise(this.employeeId(), {
           rating: Number(rating),
           comments: comments.trim(),
           recommendsPromotion: promotion,
           ...(Number(increment) > 0 && { incrementPercent: Number(increment) }),
+          ...(selfReviewComment.trim() && { selfReviewComment: selfReviewComment.trim() }),
           goals: this.goals().map(({ id }, index) => ({ goalId: id, rating: Number(goals[index].rating), ...(goals[index].comment.trim() && { comment: goals[index].comment.trim() }) })),
         });
         this.saved.emit();

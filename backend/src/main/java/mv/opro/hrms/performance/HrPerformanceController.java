@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.List;
@@ -15,6 +16,7 @@ import mv.opro.hrms.employee.Employee;
 import mv.opro.hrms.employee.People;
 import mv.opro.hrms.hr.HrAccess;
 import mv.opro.hrms.session.CurrentUser;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,11 +28,14 @@ import org.springframework.web.bind.annotation.RestController;
 class HrPerformanceController {
 
     // Someone appraised in the latest cycle, or still to be.
-    record Row(String employeeId, String fullName, String department, String managerName, int goalCount, AppraisalResponse appraisal) {}
+    record Row(String employeeId, String fullName, String department, String managerName, FormResponse form, List<GoalResponse> goals,
+            AppraisalResponse appraisal) {}
 
     record Overview(List<CycleResponse> cycles, List<Row> people, List<ProbationReviewResponse> probationReviews) {}
 
     record CycleBody(@NotBlank @Size(max = 60) String name, @NotNull LocalDate dueOn) {}
+
+    record DecisionBody(@NotNull @Pattern(regexp = "approved|rejected") String decision, @Size(max = 300) String note) {}
 
     private final HrAccess access;
     private final CurrentUser currentUser;
@@ -54,13 +59,17 @@ class HrPerformanceController {
                 reviews.stream().map(ProbationReview::getReviewedBy)).flatMap(ids -> ids).filter(Objects::nonNull).collect(Collectors.toSet()));
         List<Row> rows = performance.latestCycle().map(cycle -> {
             Map<String, List<Goal>> goals = performance.goalsOf(cycle.getId(), appraised.stream().map(Employee::getId).toList());
+            Map<String, AppraisalForm> forms = performance.formsOf(cycle.getId(), appraised.stream().map(Employee::getId).toList());
             Map<String, Appraisal> appraisals = performance.appraisalsIn(cycle.getId());
-            Map<String, String> appraisers = people.namesOf(appraisals.values().stream().map(Appraisal::getAppraisedBy).collect(Collectors.toSet()));
+            Map<String, String> deciders = people.namesOf(Stream.concat(appraisals.values().stream().map(Appraisal::getAppraisedBy),
+                    forms.values().stream().flatMap(form -> Stream.of(form.getHodApprovedBy(), form.getGoalsDecidedBy()))).filter(Objects::nonNull)
+                    .collect(Collectors.toSet()));
             return appraised.stream().map(person -> {
                 List<Goal> theirs = goals.getOrDefault(person.getId(), List.of());
                 Appraisal appraisal = appraisals.get(person.getId());
-                return new Row(person.getId(), person.getFullName(), person.getDepartment(), names.get(person.getManagerId()), theirs.size(),
-                        appraisal == null ? null : AppraisalResponse.of(appraisal, cycle.getName(), appraisers.get(appraisal.getAppraisedBy()), theirs));
+                return new Row(person.getId(), person.getFullName(), person.getDepartment(), names.get(person.getManagerId()),
+                        FormResponse.of(forms.get(person.getId()), deciders), theirs.stream().map(GoalResponse::of).toList(),
+                        appraisal == null ? null : AppraisalResponse.of(appraisal, cycle.getName(), deciders.get(appraisal.getAppraisedBy()), theirs));
             }).toList();
         }).orElse(List.of());
         return new Overview(performance.cycles().stream().map(CycleResponse::of).toList(), rows,
@@ -71,6 +80,13 @@ class HrPerformanceController {
     CycleResponse open(@Valid @RequestBody CycleBody body) {
         Employee me = access.require(currentUser.get());
         return CycleResponse.of(performance.open(me, body.name(), body.dueOn()));
+    }
+
+    // HR's step on goals the HOD approved: approve, or send back with a note.
+    @PostMapping("/api/hr/performance/{employeeId}/goals/decision")
+    ResponseEntity<Void> decideGoals(@PathVariable String employeeId, @Valid @RequestBody DecisionBody body) {
+        performance.decideGoalsAsHr(access.require(currentUser.get()), employeeId, "approved".equals(body.decision()), body.note());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/api/hr/appraisal-cycles/{id}/close")

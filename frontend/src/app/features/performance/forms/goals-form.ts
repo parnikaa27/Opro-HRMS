@@ -10,12 +10,13 @@ const MAX_GOALS = 10;
 const FULL_WEIGHT = 100;
 const FAILED = "That didn't save. Try again in a moment.";
 
-// The HOD sets one person's goals for the open cycle, weighted to 100%. Saving replaces what was there.
+// Someone writes their own goals and KPIs for the open cycle, weighted to 100%. Saving replaces what was there; sending
+// passes them to their HOD, then HR.
 @Component({
   selector: 'app-goals-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="PERFORMANCE" [heading]="'Goals for ' + name()" intro="Say how each goal will be measured, so the rating at the end of the year is easy to agree on." />
+    <app-modal-heading eyebrow="PERFORMANCE" heading="Your goals" intro="Say how each goal will be measured, so the rating at the end of the year is easy to agree on. Your HOD approves them, then HR." />
     <form novalidate (submit)="save($event)">
       @for (goal of goalsForm.goals; track $index; let index = $index) {
         <fieldset class="goal-fields" data-testid="goal-fields">
@@ -41,7 +42,8 @@ const FAILED = "That didn't save. Try again in a moment.";
       }
       <div class="modal-actions">
         <button type="button" class="secondary-button" (click)="cancelled.emit()">Cancel</button>
-        <button type="submit" class="primary-button" [disabled]="goalsForm().submitting()" data-testid="goals-submit">Save goals</button>
+        <button type="button" class="secondary-button" [disabled]="goalsForm().submitting()" (click)="save($event, false)" data-testid="goals-draft">Save draft</button>
+        <button type="submit" class="primary-button" [disabled]="goalsForm().submitting()" data-testid="goals-submit">Send to my HOD</button>
       </div>
     </form>
   `,
@@ -50,8 +52,6 @@ const FAILED = "That didn't save. Try again in a moment.";
 })
 export class GoalsForm {
   private readonly api = inject(PerformanceApi);
-  readonly employeeId = input.required<string>();
-  readonly name = input.required<string>();
   readonly goals = input<readonly Goal[]>([]);
   readonly saved = output();
   readonly cancelled = output();
@@ -80,7 +80,7 @@ export class GoalsForm {
     this.draft.update(({ goals }) => ({ goals: goals.filter((_, position) => position !== index) }));
   }
 
-  protected save(event: Event) {
+  protected save(event: Event, isSending = true) {
     event.preventDefault();
     this.failure.set(undefined);
     return submit(this.goalsForm, async () => {
@@ -89,7 +89,10 @@ export class GoalsForm {
         return undefined;
       }
       try {
-        await this.api.setGoals(this.employeeId(), this.draft().goals.map(({ title, measure, weight }) => ({ title: title.trim(), measure: measure.trim(), weight: Number(weight) })));
+        await this.api.writeGoals(this.draft().goals.map(({ title, measure, weight }) => ({ title: title.trim(), measure: measure.trim(), weight: Number(weight) })));
+        if (isSending) {
+          await this.api.submitGoals();
+        }
         this.saved.emit();
       } catch (error) {
         console.error('Saving goals failed', error);

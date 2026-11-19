@@ -1,17 +1,100 @@
 {
-  "cycles": [{ "id": "AY-2026", "name": "2026 appraisals", "dueOn": "2027-01-31", "openedOn": "2026-11-10" }],
+  "cycles": [
+    {
+      "id": "AY-2026",
+      "name": "2026 appraisals",
+      "dueOn": "2027-01-31",
+      "openedOn": "2026-11-10"
+    }
+  ],
   "goals": [
-    { "id": "GL-1", "cycleId": "AY-2026", "employeeId": "OPR-0018", "title": "Hand over phase 2 of the Hulhumalé site", "measure": "Snag list closed by 30 November", "weight": 60 },
-    { "id": "GL-2", "cycleId": "AY-2026", "employeeId": "OPR-0018", "title": "Fewer site incidents", "measure": "No lost time incidents this year", "weight": 40 },
-    { "id": "GL-3", "cycleId": "AY-2026", "employeeId": "OPR-0023", "title": "Faster replies to customers", "measure": "First reply within 4 working hours, every month", "weight": 70, "rating": 4, "comment": "Under 3 hours since August." },
-    { "id": "GL-4", "cycleId": "AY-2026", "employeeId": "OPR-0023", "title": "Train a second person on the complaints desk", "measure": "They cover a week alone", "weight": 30, "rating": 3 }
+    {
+      "id": "GL-1",
+      "cycleId": "AY-2026",
+      "employeeId": "OPR-0018",
+      "title": "Hand over phase 2 of the Hulhumalé site",
+      "measure": "Snag list closed by 30 November",
+      "weight": 60
+    },
+    {
+      "id": "GL-2",
+      "cycleId": "AY-2026",
+      "employeeId": "OPR-0018",
+      "title": "Fewer site incidents",
+      "measure": "No lost time incidents this year",
+      "weight": 40
+    },
+    {
+      "id": "GL-3",
+      "cycleId": "AY-2026",
+      "employeeId": "OPR-0023",
+      "title": "Faster replies to customers",
+      "measure": "First reply within 4 working hours, every month",
+      "weight": 70,
+      "rating": 4,
+      "comment": "Under 3 hours since August."
+    },
+    {
+      "id": "GL-4",
+      "cycleId": "AY-2026",
+      "employeeId": "OPR-0023",
+      "title": "Train a second person on the complaints desk",
+      "measure": "They cover a week alone",
+      "weight": 30,
+      "rating": 3
+    },
+    {
+      "id": "GL-5",
+      "cycleId": "AY-2026",
+      "employeeId": "OPR-0021",
+      "title": "Cut freight delays",
+      "measure": "Nine in ten shipments cleared within 3 days",
+      "weight": 70
+    },
+    {
+      "id": "GL-6",
+      "cycleId": "AY-2026",
+      "employeeId": "OPR-0021",
+      "title": "Tidy the warehouse records",
+      "measure": "Monthly stock count matches the system",
+      "weight": 30
+    }
   ],
   "appraisals": [
     {
-      "id": "AP-1", "cycleId": "AY-2026", "employeeId": "OPR-0023", "rating": 4,
+      "id": "AP-1",
+      "cycleId": "AY-2026",
+      "employeeId": "OPR-0023",
+      "rating": 4,
       "comments": "Karan brought reply times well under target and kept the team calm through the busy season. Next year, let's have him lead the service review.",
-      "recommendsPromotion": true, "incrementPercent": 8.0, "appraisedBy": "OPR-0004", "appraisedOn": "2026-11-11"
+      "recommendsPromotion": true,
+      "incrementPercent": 8.0,
+      "appraisedBy": "OPR-0004",
+      "appraisedOn": "2026-11-11"
     }
   ],
-  "probationReviews": []
+  "probationReviews": [],
+  "forms": [
+    {
+      "cycleId": "AY-2026",
+      "employeeId": "OPR-0018",
+      "goalsStatus": "approved",
+      "accomplishments": "Handed over phase 1 of the Hulhumalé site two weeks early.",
+      "strengths": "Keeping subcontractors on schedule.",
+      "learning": "A site safety course in Malé.",
+      "certifications": "NEBOSH International General Certificate by June.",
+      "selfReviewedOn": "2026-11-11"
+    },
+    {
+      "cycleId": "AY-2026",
+      "employeeId": "OPR-0023",
+      "goalsStatus": "approved"
+    },
+    {
+      "cycleId": "AY-2026",
+      "employeeId": "OPR-0021",
+      "goalsStatus": "submitted",
+      "goalsSubmittedOn": "2026-11-11"
+    }
+  ]
 }

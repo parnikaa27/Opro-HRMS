@@ -43,7 +43,7 @@ describe('Performance forms', () => {
 
   describe('GoalsForm', () => {
     it('starts with one goal at 100% and refuses weights that miss 100', async () => {
-      const { root } = await render(GoalsForm, { employeeId: 'OPR-0021', name: 'Rohit Verma' });
+      const { root } = await render(GoalsForm, {});
       fill(root, 'goal-title', 'Faster deliveries');
       fill(root, 'goal-measure', 'Same day for Malé');
       click(root, 'add-goal');
@@ -57,32 +57,34 @@ describe('Performance forms', () => {
       await submit(root);
 
       expect(text(root.querySelector('[data-testid=goals-error]') as HTMLElement)).toBe('Goal weights need to add up to 100%.');
-      http.expectNone('/api/team/performance/OPR-0021/goals');
+      http.expectNone('/api/performance/goals');
     });
 
     it('replaces the goals with what is on screen', async () => {
-      const { root, saved } = await render(GoalsForm, { employeeId: 'OPR-0018', name: 'Arjun Reddy', goals: GOALS });
+      const { root, saved } = await render(GoalsForm, { goals: GOALS });
       const [first] = byTestId(root, 'remove-goal');
       first.click();
       await settle();
       fill(root, 'goal-weight', '100');
       await submit(root);
 
-      const request = http.expectOne('/api/team/performance/OPR-0018/goals');
+      const request = http.expectOne('/api/performance/goals');
       expect(request.request.body).toEqual({ goals: [{ title: 'Fewer incidents', measure: 'No lost time', weight: 100 }] });
       request.flush([]);
+      await settle();
+      http.expectOne('/api/performance/goals/submit').flush({});
       await settle();
       expect(saved).toHaveBeenCalled();
     });
 
     it('shows why the server refused', async () => {
       vi.spyOn(console, 'error').mockImplementation(() => undefined);
-      const { root } = await render(GoalsForm, { employeeId: 'OPR-0018', name: 'Arjun Reddy', goals: GOALS });
+      const { root } = await render(GoalsForm, { goals: GOALS });
       await submit(root);
 
-      http.expectOne('/api/team/performance/OPR-0018/goals').flush({ message: "They've already been appraised in 2026 appraisals." }, { status: 409, statusText: 'Conflict' });
+      http.expectOne('/api/performance/goals').flush({ message: 'Your goals are with your HOD or HR, or already approved.' }, { status: 409, statusText: 'Conflict' });
       await settle();
-      expect(text(root.querySelector('[data-testid=goals-error]') as HTMLElement)).toBe("They've already been appraised in 2026 appraisals.");
+      expect(text(root.querySelector('[data-testid=goals-error]') as HTMLElement)).toBe('Your goals are with your HOD or HR, or already approved.');
     });
   });
 
@@ -100,12 +102,13 @@ describe('Performance forms', () => {
       expect(text(root)).toContain('Write a few lines so they know why.');
       fill(root, 'appraisal-comments', 'A strong year on site.');
       fill(root, 'overall-rating', '4');
+      fill(root, 'self-review-comment', ' Book the course in January. ');
       click(root, 'recommend-promotion');
       await submit(root);
 
       const request = http.expectOne('/api/team/performance/OPR-0018/appraisal');
       expect(request.request.body).toEqual({
-        rating: 4, comments: 'A strong year on site.', recommendsPromotion: true,
+        rating: 4, comments: 'A strong year on site.', recommendsPromotion: true, selfReviewComment: 'Book the course in January.',
         goals: [{ goalId: 'GL-1', rating: 5, comment: 'Handed over early' }, { goalId: 'GL-2', rating: 2 }],
       });
       request.flush({});
@@ -117,6 +120,7 @@ describe('Performance forms', () => {
       vi.spyOn(console, 'error').mockImplementation(() => undefined);
       const { root } = await render(AppraisalForm, { employeeId: 'OPR-0021', name: 'Rohit Verma', goals: [] });
       expect(root.querySelector('[data-testid=goal-average]')).toBeNull();
+      expect(text(root.querySelector('[data-testid=self-review-empty]') as HTMLElement)).toBe("They haven't written one.");
       fill(root, 'appraisal-comments', 'Steady.');
       fill(root, 'recommend-increment', '5');
       await submit(root);

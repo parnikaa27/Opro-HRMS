@@ -1,23 +1,27 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { Session } from '../../core/session';
 import { ConfirmButton } from '../../shared/ui/confirm-button';
 import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { formatFullDate, formatShortDate } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { CycleForm } from './forms/cycle-form';
-import { OUTCOMES, PerformanceApi, RATINGS } from './performance-api';
+import { GoalsDecisionForm } from './forms/goals-decision-form';
+import { Dialog } from '../../shared/ui/dialog';
+import { HrPerformanceRow, Appraisal } from '../../models/performance';
+import { GOALS_STATUS, OUTCOMES, PerformanceApi, RATINGS } from './performance-api';
 
 // HR opens and closes appraisal cycles, follows how far the latest one has got, and sees every probation review.
 @Component({
   selector: 'app-hr-performance-page',
-  imports: [ConfirmButton, CycleForm, ListSkeleton, RouterLink],
+  imports: [ConfirmButton, CycleForm, Dialog, GoalsDecisionForm, ListSkeleton, RouterLink],
   template: `
     <div class="page-view">
       <div class="page-title">
         <div>
           <span class="eyebrow">PEOPLE &amp; CULTURE</span>
           <h1>Performance</h1>
-          <p>HODs set goals and appraise their own people. Recommendations for promotions and increments land here for you to act on.</p>
+          <p>People write their goals, their HOD approves them and then you. HODs appraise their own people; recommendations for promotions and increments land here for you to act on.</p>
         </div>
       </div>
       @if (overview.error()) {
@@ -42,20 +46,34 @@ import { OUTCOMES, PerformanceApi, RATINGS } from './performance-api';
             <p class="row-error" role="alert">That didn't close. Try again in a moment.</p>
           }
         </section>
+        @if (goalsForHr().length) {
+          <section class="card all-requests" data-testid="goals-for-hr">
+            <div class="card-heading"><div><span class="eyebrow">GOALS</span><h2>Waiting for HR</h2></div></div>
+            @for (row of goalsForHr(); track row.employeeId) {
+              <div class="large-request" data-testid="goals-for-hr-row">
+                <div><strong>{{ row.fullName }}</strong><span>Approved by {{ row.form?.hodApprovedByName }}</span></div>
+                <div><small>GOALS</small><strong>{{ row.goals.length }}</strong></div>
+                <div class="request-actions labeled">
+                  <button type="button" class="approve" (click)="deciding.set(row)" data-testid="review-goals">Review goals</button>
+                </div>
+              </div>
+            }
+          </section>
+        }
         @if (rows().length) {
           <section class="card full-table">
             <div class="table-wrap">
               <table class="stacks">
-                <thead><tr><th scope="col">NAME</th><th scope="col">HOD</th><th scope="col">GOALS</th><th scope="col">RATING</th><th scope="col">RECOMMENDS</th><th scope="col">READ</th></tr></thead>
+                <thead><tr><th scope="col">NAME</th><th scope="col">HOD</th><th scope="col">GOALS</th><th scope="col">RATING</th><th scope="col">RECOMMENDS</th><th scope="col">ACCEPTED</th></tr></thead>
                 <tbody>
                   @for (row of rows(); track row.employeeId) {
                     <tr data-testid="hr-appraisal-row">
                       <td><a [routerLink]="['/hr/people', row.employeeId]" class="person-cell"><strong>{{ row.fullName }}</strong></a><small>{{ row.department }}</small></td>
                       <td data-label="HOD">{{ row.managerName }}</td>
-                      <td data-label="GOALS">{{ row.goalCount || 'None' }}</td>
+                      <td data-label="GOALS">{{ row.goals.length ? row.goals.length + ', ' + goalsStatus[row.form?.goalsStatus ?? 'draft'].toLowerCase() : 'None yet' }}</td>
                       <td data-label="RATING">{{ row.appraisal ? row.appraisal.rating + ', ' + ratings[row.appraisal.rating] : 'Not yet' }}</td>
                       <td data-label="RECOMMENDS">{{ recommends(row.appraisal?.recommendsPromotion, row.appraisal?.incrementPercent) }}</td>
-                      <td data-label="READ">{{ readOn(row.appraisal?.acknowledgedOn) }}</td>
+                      <td data-label="ACCEPTED">{{ acceptedOn(row.appraisal) }}</td>
                     </tr>
                   }
                 </tbody>
@@ -77,11 +95,18 @@ import { OUTCOMES, PerformanceApi, RATINGS } from './performance-api';
         </section>
       }
     </div>
+
+    <app-dialog heading="Goals" [isOpen]="deciding() !== undefined" (isOpenChange)="$event || deciding.set(undefined)">
+      @if (deciding(); as row) {
+        <app-goals-decision-form [employeeId]="row.employeeId" [name]="row.fullName" [goals]="row.goals" step="hr" (decided)="decided()" />
+      }
+    </app-dialog>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HrPerformancePage {
   private readonly api = inject(PerformanceApi);
+  private readonly session = inject(Session);
   protected readonly overview = this.api.hrOverview();
   protected readonly closeFailed = signal(false);
   protected readonly data = computed(() => valueOr(this.overview, undefined));
@@ -92,9 +117,19 @@ export class HrPerformancePage {
   protected readonly outcomes = OUTCOMES;
   protected readonly formatFullDate = formatFullDate;
   protected readonly formatShortDate = formatShortDate;
-  protected readonly readOn = (date?: string) => (date ? formatShortDate(date) : '');
+  protected readonly goalsStatus = GOALS_STATUS;
+  protected readonly deciding = signal<HrPerformanceRow | undefined>(undefined);
+  // Goals their HOD approved, for HR's step. Never HR's own: another HR person approves those.
+  protected readonly goalsForHr = computed(() => this.rows().filter(({ form, employeeId }) => form?.goalsStatus === 'hod-approved' && employeeId !== this.myId()));
+  private readonly myId = computed(() => this.session.user()?.id);
+  protected readonly acceptedOn = (appraisal?: Appraisal) => (!appraisal ? '' : appraisal.acceptedOn ? formatShortDate(appraisal.acceptedOn) : 'Not yet');
   protected readonly recommends = (promotion?: boolean, increment?: number) =>
     [promotion ? 'Promotion' : '', increment ? `${increment}% increment` : ''].filter(Boolean).join(', ');
+
+  protected decided() {
+    this.deciding.set(undefined);
+    this.overview.reload();
+  }
 
   protected async close() {
     const cycle = this.cycle();
