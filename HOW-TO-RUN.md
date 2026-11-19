@@ -39,6 +39,7 @@ HRMS/
           dashboard/       Overview: welcome banner, today's attendance, leave balance, visa, recent attendance, staff card, next holiday, latest request
           documents/       Documents page: status, download, and uploading the ones employees send. Its upload form also serves HR
           leave/           Balance rings, request history with cancel, request modal with day count preview
+          performance/     Own goals and appraisals, the HOD's goals, appraisal and probation forms, HR's cycles and progress
           attendance/      Summary cards, attendance log, punch in and out, punch fixes, CSV export
           calendar/        Company calendar: holidays, events, and who is away for HODs and super admins
           holidays/        API for holidays and company events
@@ -75,6 +76,7 @@ HRMS/
       files/               Stored files (in PostgreSQL for now), upload checks, and serving them safely
       document/            Document types HR keeps, everyone's copies, uploads and HR's checks (Documents service)
       approval/            HR's step after the HOD: which requests need it, what waits for HR and deciding it (/api/hr/approvals)
+      performance/         Probation reviews, appraisal cycles, goals and appraisals (/api/performance, /api/team/performance, /api/hr/performance)
       insight/             The facts behind the executive dashboard and reports, for HR and super admins (/api/insights)
       record/              Medical insurance, bank details (entered by the person, verified by HR), education and work experience (Records service)
       announcement/        Notes from HR on everyone's overview, and AnnouncementEditor for posting them

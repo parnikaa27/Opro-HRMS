@@ -60,7 +60,7 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 
 ### Pages (v1)
 
-The look of every page comes from the Figma Make file (see Design below). Sidebar nav for employees: Overview, Attendance, Leave, Calendar, Documents. For HODs: Overview, People, Attendance, Leave (with a count of what's waiting), Calendar. Profile is reached from the name menu at the top right.
+The look of every page comes from the Figma Make file (see Design below). Sidebar nav for employees: Overview, Attendance, Leave, Calendar, Documents, Performance. For HODs: Overview, People, Attendance, Leave (with a count of what's waiting), Calendar, Performance. Profile is reached from the name menu at the top right.
 
 **Employee view**
 
@@ -68,12 +68,13 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 |---|---|
 | `/login` | Mock user picker (dev only) |
 | `/` Overview | Welcome banner, today's attendance (time in, expected out, effective hours, punch in and out), leave balance, visa status, recent attendance table, dark staff card, next holiday and long weekend, latest leave request |
+| `/performance` | Their goals in the open appraisal cycle, their appraisals with each goal rated (acknowledge once read), and any probation review. Never the HOD's recommendations |
 | `/documents` | Every document on HR's list that applies to them, with its status (missing, waiting for HR, verified, sent back with HR's reason, expired) and download. Upload a copy of the ones employees send, with an expiry date where the type expires |
 | `/attendance` | My attendance: four summary cards (days present, work hours, on time, overtime), the attendance log for a chosen month, CSV export, punch fix requests and their status, and the punch button while today is on screen |
 | `/leave` | Leave and time off: balance rings, other leave types, request history with cancel (pending, or approved and not started), and the Request leave modal with a working day preview and a success screen |
 | `/calendar` | Company calendar: month grid with public holidays and company events, upcoming holidays, the holiday policy. Islamic holidays are marked **tentative** until confirmed after moon sighting. `/holidays` redirects here |
 | `/profile` | Virtual ID card (printable), personal and job details, emergency contact, visa and work permit details (with employment approval and the work permit medical), their record (bank details they enter for HR to verify, shown as the last 4 digits; insurance, education and experience HR keeps), request a change to personal details, and the flight allowance (used, waiting and left in USD, MVR or INR) with flight claims |
-| Notifications | Header panel, not a page: leave, punch fix, home working, compensatory off and flight claim decisions, visa reminders, announcements, every change HR makes to your record (punches, leave recorded for you, balance adjustments, visa, details, photo, a detail change request) changes to working hours, and on the day, birthdays and work anniversaries (theirs, and their reports' for HODs and HR). Each says what changed and why, in plain words. Marking someone as leaving sends nothing: HR tells people in person |
+| Notifications | Header panel, not a page: leave, punch fix, home working, compensatory off, overtime and flight claim decisions, goals set, an appraisal or probation review done, a cycle opened (HODs), visa reminders, announcements, every change HR makes to your record (punches, leave recorded for you, balance adjustments, visa, details, photo, a detail change request) changes to working hours, and on the day, birthdays and work anniversaries (theirs, and their reports' for HODs and HR). Each says what changed and why, in plain words. Marking someone as leaving sends nothing: HR tells people in person |
 | Search | Top bar, ⌘K or Ctrl K. Finds pages, and people for managers |
 
 **Team view (HODs only)**
@@ -84,6 +85,7 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 | `/team/people` | Card directory of direct reports with today's status and search |
 | `/team/approvals` | Leave requests in tabs (Pending, Approved, Declined, Punch fixes, Home working, Comp off, Overtime). Approve in one click. Declining opens a modal that needs a reason, so the employee can plan around it. Waiting leave shows who else is off on those dates |
 | `/team/attendance` | Team summary cards and a table with one row per report (days present, late, missed, hours, today), month picker, CSV export |
+| `/team/performance` | Reports on probation to review (confirm, extend with a new date, or don't confirm), and each report in the open cycle: set goals, appraise |
 | `/team/calendar` | The company calendar plus who on the team is away (approved filled, pending dashed) |
 | `/team/:employeeId` | One report's leave balances, attendance log with a month picker, leave requests, staff card and visa. Read only |
 
@@ -102,7 +104,7 @@ Sidebar: People, Dashboard, Attendance, Leave (count waiting across Opro), Calen
 
 **HR view (HR role only)**
 
-Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Announcements, Policies, Reports.
+Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Announcements, Performance, Policies, Reports.
 
 | Route | Contents |
 |---|---|
@@ -114,8 +116,9 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 | `/hr/visas` | Every expatriate, people with no record first, then soonest visa or passport expiry, and the expatriate quota: approvals by job category with slots used, expiry, and any job category with no quota |
 | `/hr/inbox` | Profile change requests in tabs (Open, Done, Declined), requests the HOD approved that HR approves too (approve, or decline with a reason), and documents and bank details to check, oldest first: verify, or send back with a reason. Declining needs a reason |
 | `/hr/announcements` | Post, edit and take down notes from HR. A new one notifies everyone |
-| `/hr/dashboard` | The executive dashboard: employees, joiners, leavers with attrition and retention, who's in today; locals and expatriates, gender, employment type, age, departments and nationalities; today's attendance and this month's; leave waiting, annual leave used, sick leave by month; papers expired or expiring within 60 days and quota use; birthdays and anniversaries this month, probation ending within 30 days, contracts within 60. Only what today's data supports: recruitment, payroll, performance, training and overtime appear when those modules exist |
+| `/hr/dashboard` | The executive dashboard: employees, joiners, leavers with attrition and retention, who's in today; locals and expatriates, gender, employment type, age, departments and nationalities; today's attendance and this month's; leave waiting, annual leave used, sick leave by month; papers expired or expiring within 60 days and quota use; birthdays and anniversaries this month, probation ending within 30 days, contracts within 60; performance (on probation, appraised so far, average rating, rated 4 or 5, recommended for promotion). Only what today's data supports: recruitment, payroll and training appear when those modules exist |
 | `/hr/reports` | Headcount, joiners and leavers, workforce mix, leave balances, leave taken, attendance and visa and permit expiry, each shown as a table and saved as CSV, Excel or PDF |
+| `/hr/performance` | Open and close appraisal cycles, how far the latest has got (goals, rating, the HOD's promotion and increment recommendations, whether the person has read it), and every probation review |
 | `/hr/policy` | Policies: add, edit and remove leave types (yearly days, half days, given to everyone or people HR picks, lapse or carry forward up to a cap; a new entitlement applies from the next leave year; approved by the HOD, or the HOD then HR), which other requests HR approves after the HOD, the work schedule as dated versions, the documents Opro keeps, and the exchange rates for flight allowances |
 
 ### Attendance rules (placeholders, confirm with HR)
@@ -190,6 +193,14 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 - Any HR person decides it from the Inbox, never their own. Declining at either step ends it, with a reason. An HOD who is HR covers both steps in one click. Super admins step in at the HOD step only.
 - The rule is read when the HOD approves, so changing it doesn't move requests already waiting for HR.
 - Known limit: if the only HR person asks for something that needs HR, nobody can give the second approval.
+
+### Performance
+
+- **Probation reviews:** an HOD reviews each report on probation (`probationEndsOn` set): **confirm** (clears the date), **extend** to a later date, or **don't confirm** (left for HR to act on). Comments are required. The person and HR are told.
+- **Appraisal cycles:** HR opens one cycle at a time ("2026 appraisals", with a due date), which asks every HOD to start. Closing it leaves anything not done undone. Everyone with an HOD is in it; super admins have none.
+- **Goals:** the HOD sets each report's goals in the open cycle, with how each is measured and a weight. Weights add up to 100%. Saving replaces them, until the person is appraised.
+- **Appraisals:** the HOD only (no self assessment, no 360° for now). Each goal and the year overall are rated **1 to 5**: Needs improvement, Below expectations, Meets expectations, Exceeds expectations, Outstanding. Comments are required. Final once saved. The person reads it and acknowledges it.
+- **Recommendations:** with the appraisal, the HOD can recommend a promotion and an increment percentage. They're advice for HR, shown on HR's page and the dashboard, never to the person. Nothing changes pay: payroll doesn't exist yet.
 
 ### Overtime
 
@@ -437,7 +448,11 @@ The full, generated reference is Swagger UI at `http://localhost:8080/swagger-ui
 | POST | `/api/hr/holidays/start-year` | Add the fixed civil holidays to a year (`year`) |
 | POST / PUT / DELETE | `/api/hr/events`, `/api/hr/events/:id` | Manage company events |
 | GET | `/api/hr/change-requests` | Profile change requests |
-| GET | `/api/insights`, `/api/insights/attendance?month=` | HR and super admins only: everyone (past staff too) with today's attendance, papers and record dates, this and last year's leave, balances and quota use / everyone's days that month. The dashboard and reports count and group these in the browser |
+| GET / POST | `/api/performance`, `/api/performance/appraisals/:id/acknowledge` | Own goals in the open cycle, appraisals (without recommendations) and probation reviews / acknowledge an appraisal |
+| GET | `/api/team/performance` | Direct reports with probation dates, goals and appraisal in the open cycle |
+| PUT / POST / POST | `/api/team/performance/:id/goals`, `.../appraisal`, `.../probation-review` | Set goals (`goals`: `title`, `measure`, `weight`, adding to 100) / appraise (`rating`, `comments`, `recommendsPromotion`, `incrementPercent`, `goals`: `goalId`, `rating`, `comment`) / review probation (`outcome`, `extendedTo`, `comments`) |
+| GET / POST / POST | `/api/hr/performance`, `/api/hr/appraisal-cycles`, `/api/hr/appraisal-cycles/:id/close` | Cycles, the latest one's progress and every probation review / open a cycle (`name`, `dueOn`) / close it |
+| GET | `/api/insights`, `/api/insights/attendance?month=` | HR and super admins only: everyone (past staff too) with today's attendance, papers and record dates, this and last year's leave, balances, quota use and the latest appraisal cycle's ratings / everyone's days that month. The dashboard and reports count and group these in the browser |
 | GET / PUT | `/api/profile/record`, `/api/profile/bank-account` | Own record (bank shown as last 4) / enter bank details for HR to verify (`bankName`, `accountName`, `accountNumber`, `currency`) |
 | GET | `/api/hr/employees/:id/record` | One person's insurance, bank details (full number), education and experience |
 | PUT / DELETE | `/api/hr/employees/:id/insurance` | Set (`provider`, `policyNumber`, `expiresOn`) or remove someone's medical insurance |

@@ -15,6 +15,7 @@ const FACTS: Insights = {
   ],
   balances: [{ employeeId: 'B', type: 'annual', entitled: 30, taken: 12, pending: 3 }],
   quotas: [],
+  appraisals: [],
 };
 const OPTIONS: ReportOptions = {
   year: 2026,

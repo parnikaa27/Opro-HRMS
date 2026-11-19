@@ -77,6 +77,15 @@ public class Employee {
         jobCategory = details.jobCategory();
     }
 
+    // After the HOD's probation review: confirmed clears the date, extended moves it.
+    public void confirm() {
+        probationEndsOn = null;
+    }
+
+    public void extendProbation(LocalDate to) {
+        probationEndsOn = to;
+    }
+
     public void leave(LocalDate day, String reason) {
         lastDay = day;
         leavingReason = reason;

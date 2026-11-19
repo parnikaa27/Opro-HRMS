@@ -42,7 +42,7 @@ describe('app shell', () => {
     session.user.set(employee());
     const page = await render('/');
 
-    expect(navLabels(page)).toEqual(['Overview', 'Attendance', 'Leave', 'Calendar', 'Documents']);
+    expect(navLabels(page)).toEqual(['Overview', 'Attendance', 'Leave', 'Calendar', 'Documents', 'Performance']);
     expect(page.querySelector('.role-switch')).toBeNull();
     expect(text(page.querySelector('footer') as HTMLElement)).toContain('Opro Pvt Ltd · Malé, Republic of Maldives');
     expect(text(page.querySelector('.location-card') as HTMLElement)).toBe('Current office Hulhumalé, Maldives');
@@ -58,7 +58,7 @@ describe('app shell', () => {
       '/api/team/comp-offs?status=pending': [{ id: 'CO-1' }],
     });
 
-    expect(navLabels(page)).toEqual(['Overview', 'People', 'Attendance', 'Leave 5', 'Calendar']);
+    expect(navLabels(page)).toEqual(['Overview', 'People', 'Attendance', 'Leave 5', 'Calendar', 'Performance']);
     expect(page.querySelector('[data-testid=view-team]')?.getAttribute('aria-pressed')).toBe('true');
     expect(text(page.querySelector('.profile-button small') as HTMLElement)).toBe('Operations Manager');
   });
@@ -70,7 +70,7 @@ describe('app shell', () => {
       '/api/hr/documents': [{ type: 'passport-copy', employeeId: 'OPR-0018' }],
     });
 
-    expect(navLabels(page)).toEqual(['Overview', 'Dashboard', 'People', 'Calendar', 'Visas', 'Inbox 2', 'Announcements', 'Policies', 'Reports']);
+    expect(navLabels(page)).toEqual(['Overview', 'Dashboard', 'People', 'Calendar', 'Visas', 'Inbox 2', 'Announcements', 'Performance', 'Policies', 'Reports']);
     expect([...page.querySelectorAll('.role-switch button')].map((button) => text(button))).toEqual(['Employee', 'HR']);
     expect(page.querySelector('[data-testid=view-hr]')?.getAttribute('aria-pressed')).toBe('true');
     http.expectNone((request) => request.url.includes('leave-requests') || request.url.includes('corrections'));

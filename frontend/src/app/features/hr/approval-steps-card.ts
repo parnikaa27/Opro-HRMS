@@ -24,10 +24,10 @@ const NONE: ApprovalRules = { punchFixes: false, homeDays: false, compOff: false
       } @else {
         <form novalidate (submit)="save($event)">
           <div class="step-checks">
-            <label><input type="checkbox" [formField]="rulesForm.punchFixes" data-testid="step-punch-fixes" /> Punch fixes</label>
-            <label><input type="checkbox" [formField]="rulesForm.homeDays" data-testid="step-home-days" /> Home working</label>
-            <label><input type="checkbox" [formField]="rulesForm.compOff" data-testid="step-comp-off" /> Comp off</label>
-            <label><input type="checkbox" [formField]="rulesForm.overtime" data-testid="step-overtime" /> Overtime</label>
+            <label class="check-label"><input type="checkbox" [formField]="rulesForm.punchFixes" data-testid="step-punch-fixes" /> Punch fixes</label>
+            <label class="check-label"><input type="checkbox" [formField]="rulesForm.homeDays" data-testid="step-home-days" /> Home working</label>
+            <label class="check-label"><input type="checkbox" [formField]="rulesForm.compOff" data-testid="step-comp-off" /> Comp off</label>
+            <label class="check-label"><input type="checkbox" [formField]="rulesForm.overtime" data-testid="step-overtime" /> Overtime</label>
           </div>
           <button type="submit" class="secondary-button" [disabled]="rulesForm().submitting() || rules.isLoading()" data-testid="steps-submit">Save</button>
         </form>

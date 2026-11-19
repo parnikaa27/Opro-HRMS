@@ -681,6 +681,9 @@
 :root[data-theme='dark'] a.insight-row:hover span {
   color: #5ac6ba;
 }
+:root[data-theme='dark'] .weight-total.is-off {
+  color: #ff8c75;
+}
 @media (max-width: 860px) {
 :root[data-theme='dark'] .mobile-menu {
   color: #deedf8;
@@ -1368,6 +1371,9 @@
 }
 :root:not([data-theme='light']) a.insight-row:hover span {
   color: #5ac6ba;
+}
+:root:not([data-theme='light']) .weight-total.is-off {
+  color: #ff8c75;
 }
 @media (max-width: 860px) {
 :root:not([data-theme='light']) .mobile-menu {

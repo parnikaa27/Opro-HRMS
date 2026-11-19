@@ -38,6 +38,7 @@ const db = {
   compOffs: [],
   // The two late days in Spring's dev seed, with the minutes Spring works out from its fixed punches.
   overtime: load('overtime'),
+  performance: load('performance'),
   // Which requests HR approves after the HOD. Leave types carry their own needsHrApproval.
   approvalRules: { punchFixes: false, homeDays: false, compOff: false, overtime: false },
   receipts: new Map(),
@@ -616,6 +617,44 @@ const raiseOvertime = (employeeId, date) => {
   db.overtime = [{ id: `OT-${employeeId}-${date}`, employeeId, date, status: 'pending' }, ...db.overtime];
   if (employee.managerId) {
     notify(employee.managerId, 'approval', `${employee.fullName} worked ${sayDuration(day.overtimeMinutes)} past the shift on ${sayDate(date)}. Approve the overtime from Leave requests.`);
+  }
+};
+
+// Performance: the open cycle, goals in a cycle, and an appraisal with the goals it rated, as Spring shapes them.
+const openCycle = () => db.performance.cycles.find(({ closedOn }) => !closedOn);
+const latestCycle = () => [...db.performance.cycles].sort((first, second) => second.openedOn.localeCompare(first.openedOn))[0];
+const goalsOf = (cycleId, employeeId) =>
+  db.performance.goals.filter((goal) => goal.cycleId === cycleId && goal.employeeId === employeeId).map(({ id, title, measure, weight, rating, comment }) => ({ id, title, measure, weight, rating, comment }));
+const appraisalView = (appraisal) => ({
+  ...appraisal,
+  cycleName: db.performance.cycles.find(({ id }) => id === appraisal.cycleId)?.name ?? '',
+  appraisedByName: nameOf(appraisal.appraisedBy),
+  goals: goalsOf(appraisal.cycleId, appraisal.employeeId),
+});
+// The recommendations are the HOD's advice to HR, so the person's own view leaves them out.
+const ownView = (appraisal) => {
+  const { recommendsPromotion: _promotion, incrementPercent: _increment, ...rest } = appraisalView(appraisal);
+  return rest;
+};
+const reviewView = (review) => ({ ...review, employeeName: nameOf(review.employeeId), reviewedByName: nameOf(review.reviewedBy) });
+const reportOf = (user, employeeId) => {
+  requireManager(user);
+  const person = reportsOf(user).find(({ id }) => id === employeeId);
+  if (!person) {
+    throw new HttpError(404, 'Not one of your reports');
+  }
+  return person;
+};
+const requireOpenCycle = () => {
+  const cycle = openCycle();
+  if (!cycle) {
+    throw new HttpError(409, 'No appraisal cycle is open. HR opens one.');
+  }
+  return cycle;
+};
+const refuseIfAppraised = (cycle, employeeId) => {
+  if (db.performance.appraisals.some((appraisal) => appraisal.cycleId === cycle.id && appraisal.employeeId === employeeId)) {
+    throw new HttpError(409, `They've already been appraised in ${cycle.name}.`);
   }
 };
 
@@ -1376,6 +1415,148 @@ const routes = [
     return undefined;
   }],
   // The dashboard's facts, for HR and super admins. The pages count and group them; the mock only gathers them.
+  ['GET', /^\/api\/performance$/, ({ user }) => {
+    const cycle = openCycle();
+    return {
+      ...(cycle && { cycle }),
+      goals: cycle ? goalsOf(cycle.id, user.id) : [],
+      appraisals: db.performance.appraisals.filter(({ employeeId }) => employeeId === user.id).sort((first, second) => second.appraisedOn.localeCompare(first.appraisedOn)).map(ownView),
+      probationReviews: db.performance.probationReviews.filter(({ employeeId }) => employeeId === user.id).map(reviewView),
+    };
+  }],
+  ['POST', /^\/api\/performance\/appraisals\/([\w-]+)\/acknowledge$/, ({ user, params: [id] }) => {
+    const appraisal = db.performance.appraisals.find((entry) => entry.id === id && entry.employeeId === user.id);
+    if (!appraisal) {
+      throw new HttpError(404, 'Appraisal not found');
+    }
+    const acknowledged = { ...appraisal, acknowledgedOn: appraisal.acknowledgedOn ?? today() };
+    db.performance.appraisals = db.performance.appraisals.map((entry) => (entry.id === id ? acknowledged : entry));
+    return ownView(acknowledged);
+  }],
+  ['GET', /^\/api\/team\/performance$/, ({ user }) => {
+    requireManager(user);
+    const cycle = openCycle();
+    return {
+      ...(cycle && { cycle }),
+      people: reportsOf(user).map(({ id, fullName, designation, probationEndsOn }) => {
+        const appraisal = cycle && db.performance.appraisals.find((entry) => entry.cycleId === cycle.id && entry.employeeId === id);
+        return { employeeId: id, fullName, designation, ...(probationEndsOn && { probationEndsOn }), goals: cycle ? goalsOf(cycle.id, id) : [], ...(appraisal && { appraisal: appraisalView(appraisal) }) };
+      }),
+    };
+  }],
+  ['PUT', /^\/api\/team\/performance\/([\w-]+)\/goals$/, ({ user, params: [id], body }) => {
+    const person = reportOf(user, id);
+    const cycle = requireOpenCycle();
+    refuseIfAppraised(cycle, person.id);
+    const plans = Array.isArray(body.goals) ? body.goals : [];
+    if (plans.length === 0 || plans.some(({ title, measure, weight }) => !String(title ?? '').trim() || !String(measure ?? '').trim() || !(weight >= 1 && weight <= 100))) {
+      throw new HttpError(400, 'Give each goal a title, a measure and a weight');
+    }
+    if (plans.reduce((total, { weight }) => total + weight, 0) !== 100) {
+      throw new HttpError(400, 'Goal weights need to add up to 100%.');
+    }
+    db.performance.goals = [
+      ...db.performance.goals.filter((goal) => !(goal.cycleId === cycle.id && goal.employeeId === person.id)),
+      ...plans.map(({ title, measure, weight }) => ({ id: `GL-${randomUUID().slice(0, 6)}`, cycleId: cycle.id, employeeId: person.id, title: title.trim(), measure: measure.trim(), weight })),
+    ];
+    notify(person.id, 'performance', `${user.fullName} set your goals for ${cycle.name}. See them on Performance.`);
+    return goalsOf(cycle.id, person.id);
+  }],
+  ['POST', /^\/api\/team\/performance\/([\w-]+)\/appraisal$/, ({ user, params: [id], body }) => {
+    const person = reportOf(user, id);
+    const cycle = requireOpenCycle();
+    refuseIfAppraised(cycle, person.id);
+    const given = new Map((body.goals ?? []).map((goal) => [goal.goalId, goal]));
+    const theirs = db.performance.goals.filter((goal) => goal.cycleId === cycle.id && goal.employeeId === person.id);
+    if (given.size !== theirs.length || theirs.some(({ id: goalId }) => !given.has(goalId))) {
+      throw new HttpError(400, 'Rate each of their goals.');
+    }
+    if (!(body.rating >= 1 && body.rating <= 5) || !String(body.comments ?? '').trim()) {
+      throw new HttpError(400, 'Give a rating from 1 to 5 and your comments');
+    }
+    db.performance.goals = db.performance.goals.map((goal) =>
+      given.has(goal.id) ? { ...goal, rating: given.get(goal.id).rating, ...(String(given.get(goal.id).comment ?? '').trim() && { comment: given.get(goal.id).comment.trim() }) } : goal,
+    );
+    const appraisal = {
+      id: `AP-${randomUUID().slice(0, 6)}`, cycleId: cycle.id, employeeId: person.id, rating: body.rating, comments: body.comments.trim(),
+      recommendsPromotion: Boolean(body.recommendsPromotion), ...(body.incrementPercent && { incrementPercent: Number(body.incrementPercent) }), appraisedBy: user.id, appraisedOn: today(),
+    };
+    db.performance.appraisals = [...db.performance.appraisals, appraisal];
+    notify(person.id, 'performance', `${user.fullName} finished your ${cycle.name}. Read it on Performance and let them know you've seen it.`);
+    return appraisalView(appraisal);
+  }],
+  ['POST', /^\/api\/team\/performance\/([\w-]+)\/probation-review$/, ({ user, params: [id], body }) => {
+    const person = reportOf(user, id);
+    if (!person.probationEndsOn) {
+      throw new HttpError(409, "They aren't on probation.");
+    }
+    if (!['confirmed', 'extended', 'not-confirmed'].includes(body.outcome) || !String(body.comments ?? '').trim()) {
+      throw new HttpError(400, 'Pick an outcome and add your comments');
+    }
+    const isExtended = body.outcome === 'extended';
+    if (isExtended && !(DATE.test(String(body.extendedTo)) && body.extendedTo > person.probationEndsOn)) {
+      throw new HttpError(400, `Pick a new end date after ${sayDateFromToday(person.probationEndsOn)}.`);
+    }
+    const review = {
+      id: `PR-${randomUUID().slice(0, 6)}`, employeeId: person.id, probationEnded: person.probationEndsOn, outcome: body.outcome,
+      ...(isExtended && { extendedTo: body.extendedTo }), comments: body.comments.trim(), reviewedBy: user.id, reviewedOn: today(),
+    };
+    db.performance.probationReviews = [review, ...db.performance.probationReviews];
+    const outcome = { confirmed: 'confirmed in their role', extended: `on probation until ${sayDateFromToday(body.extendedTo)}`, 'not-confirmed': 'not confirmed in their role' }[body.outcome];
+    if (body.outcome !== 'not-confirmed') {
+      db.employees = db.employees.map((employee) => {
+        if (employee.id !== person.id) {
+          return employee;
+        }
+        const { probationEndsOn: _ended, ...rest } = employee;
+        return isExtended ? { ...rest, probationEndsOn: body.extendedTo } : rest;
+      });
+    }
+    notify(person.id, 'performance', `${user.fullName} reviewed your probation: you're ${outcome.replace('their', 'your')}.`);
+    activeEmployees()
+      .filter((employee) => employee.roles.includes('HR') && employee.id !== person.id)
+      .forEach((hr) => notify(hr.id, 'performance', `${user.fullName} reviewed ${person.fullName}'s probation: ${outcome}.`));
+    return reviewView(review);
+  }],
+  ['GET', /^\/api\/hr\/performance$/, ({ user }) => {
+    requireHr(user);
+    const cycle = latestCycle();
+    return {
+      cycles: [...db.performance.cycles].sort((first, second) => second.openedOn.localeCompare(first.openedOn)),
+      people: cycle
+        ? activeEmployees().filter(({ managerId }) => managerId).map(({ id, fullName, department, managerId }) => {
+          const appraisal = db.performance.appraisals.find((entry) => entry.cycleId === cycle.id && entry.employeeId === id);
+          return { employeeId: id, fullName, department, managerName: nameOf(managerId), goalCount: goalsOf(cycle.id, id).length, ...(appraisal && { appraisal: appraisalView(appraisal) }) };
+        })
+        : [],
+      probationReviews: db.performance.probationReviews.map(reviewView),
+    };
+  }],
+  ['POST', /^\/api\/hr\/appraisal-cycles$/, ({ user, body }) => {
+    requireHr(user);
+    if (openCycle()) {
+      throw new HttpError(409, 'A cycle is already open. Close it before opening another.');
+    }
+    if (!String(body.name ?? '').trim() || !DATE.test(String(body.dueOn)) || body.dueOn <= today()) {
+      throw new HttpError(400, 'Pick a due date after today.');
+    }
+    const cycle = { id: `AY-${randomUUID().slice(0, 6)}`, name: body.name.trim(), dueOn: body.dueOn, openedOn: today() };
+    db.performance.cycles = [...db.performance.cycles, cycle];
+    activeEmployees()
+      .filter((employee) => reportsOf(employee).length > 0)
+      .forEach((hod) => notify(hod.id, 'performance', `HR opened ${cycle.name}, due ${sayDateFromToday(cycle.dueOn)}. Set your team's goals and appraise them from Performance.`));
+    return cycle;
+  }],
+  ['POST', /^\/api\/hr\/appraisal-cycles\/([\w-]+)\/close$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    const cycle = db.performance.cycles.find((entry) => entry.id === id && !entry.closedOn);
+    if (!cycle) {
+      throw new HttpError(404, 'No open cycle with that id');
+    }
+    const closed = { ...cycle, closedOn: today() };
+    db.performance.cycles = db.performance.cycles.map((entry) => (entry.id === id ? closed : entry));
+    return closed;
+  }],
   ['GET', /^\/api\/insights$/, ({ user }) => {
     requireInsights(user);
     const since = Number(today().slice(0, 4)) - 1;
@@ -1395,6 +1576,10 @@ const routes = [
       leave: db.leaveRequests.filter(({ from }) => Number(from.slice(0, 4)) >= since).map((request) => pick(request, ['employeeId', 'type', 'from', 'to', 'days', 'status', 'appliedOn'])),
       balances: activeEmployees().flatMap(({ id }) => balancesOf(id).map((balance) => ({ employeeId: id, ...pick(balance, ['type', 'entitled', 'taken', 'pending']) }))),
       quotas: [...db.records.quotas].sort((first, second) => first.jobCategory.localeCompare(second.jobCategory)).map(quotaView),
+      ...(latestCycle() && { cycle: latestCycle() }),
+      appraisals: db.performance.appraisals
+        .filter(({ cycleId }) => cycleId === latestCycle()?.id)
+        .map(({ employeeId, rating, recommendsPromotion, incrementPercent }) => ({ employeeId, rating, recommendsPromotion, ...(incrementPercent && { incrementPercent }) })),
     };
   }],
   ['GET', /^\/api\/insights\/attendance$/, ({ user, query }) => {

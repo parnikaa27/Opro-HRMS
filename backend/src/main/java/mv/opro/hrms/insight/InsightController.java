@@ -21,6 +21,8 @@ import mv.opro.hrms.employee.Visa;
 import mv.opro.hrms.employee.VisaRepository;
 import mv.opro.hrms.hr.Quotas;
 import mv.opro.hrms.leave.LeaveService;
+import mv.opro.hrms.performance.CycleResponse;
+import mv.opro.hrms.performance.Performance;
 import mv.opro.hrms.record.MedicalInsurance;
 import mv.opro.hrms.record.Records;
 import mv.opro.hrms.session.CurrentUser;
@@ -44,7 +46,11 @@ class InsightController {
 
     record Balance(String employeeId, String type, BigDecimal entitled, BigDecimal taken, BigDecimal pending) {}
 
-    record Insights(LocalDate today, List<Person> people, List<Leave> leave, List<Balance> balances, List<Quotas.QuotaResponse> quotas) {}
+    // An appraisal in the latest cycle.
+    record Rated(String employeeId, int rating, boolean recommendsPromotion, BigDecimal incrementPercent) {}
+
+    record Insights(LocalDate today, List<Person> people, List<Leave> leave, List<Balance> balances, List<Quotas.QuotaResponse> quotas,
+            CycleResponse cycle, List<Rated> appraisals) {}
 
     private final CurrentUser currentUser;
     private final EmployeeRepository employees;
@@ -53,10 +59,11 @@ class InsightController {
     private final AttendanceService attendance;
     private final LeaveService leave;
     private final Quotas quotas;
+    private final Performance performance;
     private final Clock clock;
 
     InsightController(CurrentUser currentUser, EmployeeRepository employees, VisaRepository visas, Records records, AttendanceService attendance,
-            LeaveService leave, Quotas quotas, Clock clock) {
+            LeaveService leave, Quotas quotas, Performance performance, Clock clock) {
         this.currentUser = currentUser;
         this.employees = employees;
         this.visas = visas;
@@ -64,6 +71,7 @@ class InsightController {
         this.attendance = attendance;
         this.leave = leave;
         this.quotas = quotas;
+        this.performance = performance;
         this.clock = clock;
     }
 
@@ -87,7 +95,11 @@ class InsightController {
                         .toList(),
                 active.stream().flatMap(employee -> leave.balancesOf(employee.getId()).stream()
                         .map(balance -> new Balance(employee.getId(), balance.type(), balance.entitled(), balance.taken(), balance.pending()))).toList(),
-                quotas.list());
+                quotas.list(),
+                performance.latestCycle().map(CycleResponse::of).orElse(null),
+                performance.latestCycle().map(cycle -> performance.appraisalsIn(cycle.getId()).values().stream()
+                        .map(appraisal -> new Rated(appraisal.getEmployeeId(), appraisal.getRating(), appraisal.recommendsPromotion(), appraisal.getIncrementPercent()))
+                        .toList()).orElse(List.of()));
     }
 
     // Everyone at Opro that month, worked out the same way as their own attendance page.

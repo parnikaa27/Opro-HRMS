@@ -1058,3 +1058,73 @@ a.insight-row:hover span {
   gap: 8px;
   margin-inline-start: auto;
 }
+
+/* Performance: goals in a form, a goal on a card, and the running weight total. The design has no performance pages. */
+.goal-fields {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+
+  legend {
+    padding: 0 6px;
+    font-weight: 700;
+
+    small {
+      color: var(--muted);
+      font-weight: 600;
+    }
+  }
+}
+
+.goal-line {
+  display: grid;
+  gap: 2px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+
+  span {
+    color: var(--muted);
+    font-size: 12px;
+  }
+}
+
+.weight-total {
+  margin: 4px 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+
+  &.is-off {
+    color: var(--coral);
+    font-weight: 600;
+  }
+}
+
+.card-note {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* A tick box with its words beside it, inside forms whose labels otherwise stack. */
+label.check-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+
+  input {
+    width: auto;
+    accent-color: var(--aqua);
+  }
+}
+
+.step-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin-bottom: 14px;
+}
