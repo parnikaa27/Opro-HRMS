@@ -313,6 +313,28 @@ public class LeaveService {
                 .forEach(type -> entitlements.open(employeeId, type.getCode(), year, type.getDefaultEntitlement()));
     }
 
+    // A holiday added, moved or removed changes what leave over it takes. Waiting and approved requests are counted
+    // again, and anyone whose count changed is told. Leave left with no working day in it is cancelled: it isn't needed.
+    @Transactional
+    public void recountOver(Collection<LocalDate> dates) {
+        dates.stream().distinct().flatMap(day -> requests.openOn(day).stream()).distinct().forEach(request -> {
+            BigDecimal counted = WorkingDays.count(request.getFromDate(), request.getToDate(), request.getHalfDay() != null,
+                    holidays.datesBetween(request.getFromDate(), request.getToDate()));
+            if (counted.compareTo(request.getDays()) == 0) {
+                return;
+            }
+            String what = "Your " + typeName(request.getType()) + " " + Wording.when(request.getFromDate(), request.getToDate());
+            if (counted.signum() == 0) {
+                request.cancel();
+                notifications.tell(request.getEmployeeId(), Notification.Kind.LEAVE, what + " is cancelled: it's a public holiday now, so you don't need it.");
+            } else {
+                notifications.tell(request.getEmployeeId(), Notification.Kind.LEAVE, what + " now takes " + Wording.days(counted) + ", not "
+                        + request.getDays().stripTrailingZeros().toPlainString() + ", because the public holidays changed.");
+                request.recount(counted);
+            }
+        });
+    }
+
     // Leave after someone's last day can't be taken, so it goes when they do.
     @Transactional
     public void cancelAfter(String employeeId, LocalDate lastDay) {

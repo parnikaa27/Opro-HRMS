@@ -72,6 +72,11 @@ public class LeaveRequest {
         status = CANCELLED;
     }
 
+    // A holiday moved in or out of the leave changes how many days it takes.
+    void recount(BigDecimal counted) {
+        days = counted;
+    }
+
     void decide(String decision, String by, LocalDate on, String note) {
         status = decision;
         decidedBy = by;

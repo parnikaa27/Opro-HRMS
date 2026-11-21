@@ -15,11 +15,6 @@ What's left before Opro HRMS can go live, and what's waiting on someone. Kept up
 
 Walked through by hand as Arjun (expatriate employee), Vikram (HOD), Ananya (HR) and Rajesh (super admin), against Spring on a fresh database, and every page at phone width. The 48 automated journeys pass on the mock and on Spring; these are what they don't catch.
 
-**Bugs**
-- [ ] Picking someone else on the sign in page without signing out keeps the first person's name and staff card on screen, while the data is the new person's. `Session.signIn` reuses the user it already has. Dev sign in only, but it muddles testing.
-- [ ] A holiday added inside leave already booked (or an Islamic holiday confirmed on a new date) doesn't give the day back. The request keeps its old day count, so the balance is a day short.
-- [ ] HR's overview says Inbox 1 (detail changes only) while the sidebar badge says 11 (everything waiting).
-
 **Rules that are missing**
 - [ ] Leave can be booked for past days, even days the person worked. Decide which types may be backdated (sick leave after the fact, say) and how far.
 - [ ] Sick leave over 2 days can be approved without its medical certificate, and the HOD isn't told one is missing.

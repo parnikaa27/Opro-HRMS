@@ -38,6 +38,8 @@ class LeaveApiTests {
         jdbc.update("delete from leave_request where length(id) > 7");
         jdbc.update("delete from leave_entitlement where employee_id = 'OPR-0018' and leave_year = 2026");
         jdbc.update("update leave_type set notice_days = null");
+        jdbc.update("delete from holiday where length(id) > 5");
+        jdbc.update("delete from notification where id > 7");
         jdbc.update("update leave_entitlement set entitled = 10, taken_before = 3 where employee_id = 'OPR-0018' and type = 'family'");
         jdbc.update("update leave_request set status = 'approved' where id = 'LR-1031'");
     }
@@ -216,5 +218,24 @@ class LeaveApiTests {
 
         assertThat(JsonPath.<List<String>>read(requests, "$[*].from")).containsExactly("2026-12-06", "2026-11-04");
         assertThat(JsonPath.<List<String>>read(requests, "$[?(@.id == 'LR-1031')].decidedByName")).containsExactly("Vikram Singh");
+    }
+
+    @Test
+    void aNewHolidayGivesBackTheDayAndCancelsLeaveItCoversWhole() throws Exception {
+        // Sunday 6 to Tuesday 8 December is three working days; Wednesday 9 is one.
+        String trip = JsonPath.read(apply("family", "2026-12-06", "2026-12-08", "").body(), "$.id");
+        String dayOff = JsonPath.read(apply("family", "2026-12-09", "2026-12-09", "").body(), "$.id");
+        ApiClient ananya = new ApiClient(port);
+        ananya.signIn("OPR-0002");
+
+        ananya.post("/api/hr/holidays", "{\"date\":\"2026-12-07\",\"name\":\"Extra holiday\",\"isTentative\":false}");
+        String moved = JsonPath.read(ananya.post("/api/hr/holidays", "{\"date\":\"2026-12-20\",\"name\":\"Moving one\",\"isTentative\":true}").body(), "$.id");
+        ananya.put("/api/hr/holidays/" + moved, "{\"date\":\"2026-12-09\",\"name\":\"Moving one\",\"isTentative\":false}");
+
+        assertThat(jdbc.queryForObject("select days from leave_request where id = ?", Double.class, trip)).isEqualTo(2.0);
+        assertThat(jdbc.queryForObject("select status from leave_request where id = ?", String.class, dayOff)).isEqualTo("cancelled");
+        List<String> told = JsonPath.read(arjun.get("/api/notifications").body(), "$[*].text");
+        assertThat(told).contains("Your family responsibility leave from 6 December now takes 2 days, not 3, because the public holidays changed.",
+                "Your family responsibility leave on 9 December is cancelled: it's a public holiday now, so you don't need it.");
     }
 }

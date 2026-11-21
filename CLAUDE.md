@@ -182,6 +182,7 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 - The backend owns day counts and balances. The frontend may preview a count but the server's number wins: Spring ignores any `days` the client sends.
 - Balances are never stored as totals. Taken is leave used before Opro HRMS (`taken_before`) plus approved requests in the year; pending is pending requests. Applying locks the person's record, so two requests sent at once can't spend the same days.
 - A request stays inside one leave year. Leave across the end of someone's leave year is two requests. Booking into next year opens that year's balance from the policy's default, plus anything carried forward, for types the person holds now.
+- **A holiday added, moved or removed** recounts the waiting and approved leave over it; the person is told the new count, and leave left with no working day in it is cancelled.
 - Overlapping pending or approved requests are refused. Cancelling works for pending requests, and approved ones that haven't started.
 
 ### Compensatory off

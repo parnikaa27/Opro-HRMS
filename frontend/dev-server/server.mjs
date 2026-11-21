@@ -192,6 +192,8 @@ const sayDate = (date) => longDate.format(new Date(`${date}T00:00:00Z`));
 const otherYearFormat = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 const sayDateFromToday = (date) => (date.slice(0, 4) === today().slice(0, 4) ? sayDate(date) : otherYearFormat.format(new Date(`${date}T00:00:00Z`)));
 const sayDates = ({ from, to }) => (from === to ? sayDate(from) : `${sayDate(from)} to ${sayDate(to)}`);
+// "6 December", the way Spring says when leave starts.
+const sayShortDate = (date) => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
 const sayDays = (days) => `${Math.abs(days)} ${Math.abs(days) === 1 ? 'day' : 'days'}`;
 const typeName = (code) => db.leaveTypes.find((type) => type.code === code)?.name.toLowerCase() ?? code;
 const sentence = (text) => (/[.!?]$/.test(text) ? text : `${text}.`);
@@ -447,6 +449,30 @@ const tickOnboarding = (reader, employeeId, itemId, isDone) => {
   }
   const { completedOn: _done, ...rest } = onboarding;
   return saveOnboarding({ ...rest, items, ...(isComplete && { completedOn: today() }) });
+};
+
+// A holiday added, moved or removed changes what leave over it takes, as on Spring: waiting and approved requests are
+// counted again, and leave left with no working day in it is cancelled.
+const recountLeaveOver = (dates) => {
+  const workingDays = ({ from, to, halfDay }) => {
+    const count = Array.from({ length: Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1 }, (_, index) => addDays(from, index))
+      .filter((date) => new Date(`${date}T00:00:00Z`).getUTCDay() !== FRIDAY && !db.holidays.some((holiday) => holiday.date === date)).length;
+    return halfDay && count > 0 ? 0.5 : count;
+  };
+  db.leaveRequests = db.leaveRequests.map((request) => {
+    const isAffected = ['pending', 'approved'].includes(request.status) && dates.some((date) => request.from <= date && request.to >= date);
+    const counted = isAffected ? workingDays(request) : request.days;
+    if (counted === request.days) {
+      return request;
+    }
+    const what = `Your ${typeName(request.type)} ${request.from === request.to ? 'on' : 'from'} ${sayShortDate(request.from)}`;
+    if (counted === 0) {
+      notify(request.employeeId, 'leave', `${what} is cancelled: it's a public holiday now, so you don't need it.`);
+      return { ...request, status: 'cancelled' };
+    }
+    notify(request.employeeId, 'leave', `${what} now takes ${sayDays(counted)}, not ${request.days}, because the public holidays changed.`);
+    return { ...request, days: counted };
+  });
 };
 
 // HR never handles their own documents.
@@ -1745,6 +1771,7 @@ const routes = [
     requireHr(user);
     const holiday = { id: `HD-${randomUUID().slice(0, 6)}`, date: body.date, name: body.name, isTentative: Boolean(body.isTentative) };
     db.holidays = [...db.holidays, holiday];
+    recountLeaveOver([holiday.date]);
     return holiday;
   }],
   ['POST', /^\/api\/hr\/holidays\/start-year$/, ({ user, body }) => {
@@ -1755,6 +1782,7 @@ const routes = [
       .map(([monthDay, name]) => ({ id: `HD-${randomUUID().slice(0, 6)}`, date: `${body.year}-${monthDay}`, name, isTentative: false }))
       .filter(({ date }) => !db.holidays.some((holiday) => holiday.date === date));
     db.holidays = [...db.holidays, ...added];
+    recountLeaveOver(added.map(({ date }) => date));
     return added;
   }],
   ['PUT', /^\/api\/hr\/holidays\/([\w-]+)$/, ({ user, params: [id], body }) => {
@@ -1764,11 +1792,16 @@ const routes = [
     if (holiday.isTentative && updated.isTentative === false) {
       notifyEveryone('holiday', `${updated.name} is confirmed for ${sayDate(updated.date)}`);
     }
-    return replaceIn('holidays', updated);
+    const saved = replaceIn('holidays', updated);
+    recountLeaveOver([holiday.date, updated.date]);
+    return saved;
   }],
   ['DELETE', /^\/api\/hr\/holidays\/([\w-]+)$/, ({ user, params: [id] }) => {
     requireHr(user);
-    return removeFrom('holidays', id, 'Holiday');
+    const { date } = findOr404('holidays', id, 'Holiday');
+    const removed = removeFrom('holidays', id, 'Holiday');
+    recountLeaveOver([date]);
+    return removed;
   }],
   ['POST', /^\/api\/hr\/events$/, ({ user, body }) => {
     requireHr(user);
