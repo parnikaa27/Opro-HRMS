@@ -75,7 +75,7 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 | `/calendar` | Company calendar: month grid with public holidays and company events, upcoming holidays, the holiday policy. Islamic holidays are marked **tentative** until confirmed after moon sighting. `/holidays` redirects here |
 | `/profile` | Virtual ID card (printable), personal and job details, emergency contact, visa and work permit details (with employment approval and the work permit medical), their record (bank details they enter for HR to verify, shown as the last 4 digits; insurance, education and experience HR keeps), request a change to personal details, the flight allowance (used, waiting and left in USD, MVR or INR) with flight claims, their allowances (monthly ones and one-off grants), and their resignation (resign, withdraw while it waits, then the exit date and what to hand back) |
 | Notifications | Header panel, not a page: leave, punch fix, home working, compensatory off, overtime and flight claim decisions, goals set, an appraisal or probation review done, a cycle opened (HODs), visa reminders, announcements, every change HR makes to your record (punches, leave recorded for you, balance adjustments, visa, details, photo, a detail change request) changes to working hours, and on the day, birthdays and work anniversaries (theirs, and their reports' for HODs and HR). Each says what changed and why, in plain words. Marking someone as leaving sends nothing: HR tells people in person |
-| Search | Top bar, ⌘K or Ctrl K. Finds pages, and people for managers |
+| Search | Top bar, ⌘K or Ctrl K. Finds pages, and colleagues in the employee view (name, role, department and work email to write to, nothing else). HODs, HR and super admins find people to open in their own views |
 
 **Team view (HODs only)**
 
@@ -433,6 +433,7 @@ The full, generated reference is Swagger UI at `http://localhost:8080/swagger-ui
 | POST | `/api/session/login` | Mock login, sets session cookie |
 | POST | `/api/session/logout` | Clears session |
 | GET | `/api/me` | Logged in employee profile, roles and visa (absent for nationals) |
+| GET | `/api/people` | Everyone working at Opro today, for search: `id`, `fullName`, `designation`, `department`, `email`, `photoUrl` only |
 | GET | `/api/attendance?month=YYYY-MM` | Own daily records. Each punch carries where it was made in `device` (an office, "Home", or an old device's name). Days punched from the portal carry `workMode`, and home days `homeStatus` |
 | POST | `/api/attendance/punch` | Punch now: `mode` (`office`, `resort` or `home`), plus `latitude`, `longitude` and `accuracy` for an office or resort. Returns today |
 | GET / POST | `/api/attendance/corrections` | Own correction requests / raise one (`date`, `kind`, `category`: resort, forgot, late or other, `requestedTime`, `reason` for late and other) |

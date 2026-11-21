@@ -56,3 +56,6 @@ export interface Employee {
 export type EmployeeDetails = Omit<Employee, 'id' | 'roles' | 'visa' | 'photoUrl' | 'lastDay' | 'leavingReason'>;
 
 export type EmployeeSummary = Pick<Employee, 'id' | 'fullName' | 'designation' | 'roles'>;
+
+// All anyone at Opro may see of a colleague.
+export type Colleague = Pick<Employee, 'id' | 'fullName' | 'designation' | 'department' | 'email' | 'photoUrl'>;

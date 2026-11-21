@@ -567,6 +567,9 @@
 :root[data-theme='dark'] .search-results {
   border: 1px solid #27333c;
 }
+:root[data-theme='dark'] .search-results .search-colleague a {
+  color: #5ac6ba;
+}
 :root[data-theme='dark'] .notification-popover .popover-action {
   color: #5ac6ba;
 }
@@ -1272,6 +1275,9 @@
 }
 :root:not([data-theme='light']) .search-results {
   border: 1px solid #27333c;
+}
+:root:not([data-theme='light']) .search-results .search-colleague a {
+  color: #5ac6ba;
 }
 :root:not([data-theme='light']) .notification-popover .popover-action {
   color: #5ac6ba;

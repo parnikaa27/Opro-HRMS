@@ -26,6 +26,16 @@ test('an employee sees their own dashboard and no team view', async ({ page }) =
   await expect(page).toHaveURL(/\/login$/);
 });
 
+test('an employee looks up a colleague from the top search', async ({ page }) => {
+  await signInAs(page, 'OPR-0018');
+
+  await page.getByTestId('search-input').fill('ananya');
+
+  const colleague = page.getByTestId('search-colleague');
+  await expect(colleague).toContainText('HR Manager, People & Culture');
+  await expect(colleague.getByRole('link')).toHaveAttribute('href', 'mailto:ananya.iyer@opro.mv');
+});
+
 test('a manager switches to team view and comes back to it next time', async ({ page }) => {
   await signInAs(page, 'OPR-0001');
 

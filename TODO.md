@@ -22,7 +22,6 @@ Walked through by hand as Arjun (expatriate employee), Vikram (HOD), Ananya (HR)
 
 **Wording and display**
 - [ ] The dev document list asks expatriates for a National ID. Goes away with the real list.
-- [ ] Employees can't look up a colleague: search finds people only for HODs, HR and super admins. Waiting on Parnika: what a colleague may see (name, role, department, work email?) and where a result opens.
 
 **Missing for go live**
 - [ ] Importing people in bulk, with leave already used this year, visas and bank details, from HR's current spreadsheets. Adding everyone one at a time isn't realistic.

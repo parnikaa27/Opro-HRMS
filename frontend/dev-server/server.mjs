@@ -1098,6 +1098,11 @@ const routes = [
 
   ['GET', /^\/api\/holidays$/, ({ query }) => db.holidays.filter(({ date }) => date.startsWith(query.get('year') ?? today().slice(0, 4)))],
   ['GET', /^\/api\/announcements$/, () => db.announcements],
+  // Only what a colleague may see, for search.
+  ['GET', /^\/api\/people$/, () => activeEmployees().map((employee) => {
+    const { id, fullName, designation, department, email, photoUrl } = profileOf(employee);
+    return { id, fullName, designation, department, email, photoUrl };
+  })],
   ['GET', /^\/api\/events$/, ({ query }) => db.events.filter(({ date }) => date.startsWith(query.get('year') ?? today().slice(0, 4)))],
   ['GET', /^\/api\/resignation$/, ({ user }) =>
     db.resignations.filter(({ employeeId }) => employeeId === user.id).sort((first, second) => second.submittedOn.localeCompare(first.submittedOn)).map(resignationView)],

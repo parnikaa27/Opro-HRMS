@@ -224,6 +224,25 @@ describe('app shell', () => {
     expect(page.querySelector('[data-testid=search-results] a')?.getAttribute('href')).toBe('/hr/people/OPR-0015');
   });
 
+  it('finds a colleague with their role and an email link, never the person searching', async () => {
+    session.user.set(employee({ id: 'OPR-0018', fullName: 'Arjun Reddy' }));
+    const page = await render('/');
+    const input = page.querySelector('[data-testid=search-input]') as HTMLInputElement;
+
+    input.value = 'r';
+    input.dispatchEvent(new Event('input'));
+    TestBed.tick();
+    await respond(http, {
+      '/api/people': [
+        { id: 'OPR-0018', fullName: 'Arjun Reddy', designation: 'Site Engineer', department: 'Operations', email: 'arjun.reddy@opro.mv' },
+        { id: 'OPR-0021', fullName: 'Rohit Verma', designation: 'Accountant', department: 'Finance', email: 'rohit.verma@opro.mv' },
+      ],
+    });
+
+    expect(texts(page, 'search-colleague')).toEqual(['RV Rohit Verma Accountant, Finance rohit.verma@opro.mv']);
+    expect(page.querySelector('[data-testid=search-colleague] a')?.getAttribute('href')).toBe('mailto:rohit.verma@opro.mv');
+  });
+
   it('says when nothing matches, and focuses search with ⌘K', async () => {
     session.user.set(employee());
     const page = await render('/');
@@ -232,6 +251,7 @@ describe('app shell', () => {
     input.value = 'zzz';
     input.dispatchEvent(new Event('input'));
     TestBed.tick();
+    await respond(http, { '/api/people': [] });
     expect(texts(page, 'search-results')).toEqual(['Nothing matches “zzz”.']);
 
     input.blur();
