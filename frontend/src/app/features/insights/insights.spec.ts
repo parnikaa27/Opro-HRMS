@@ -22,12 +22,14 @@ describe('insights', () => {
 
     const result = workforce(people, TODAY);
 
-    expect(result.total).toBe(4);
+    // E starts on 1 December, so isn't counted yet.
+    expect(result.total).toBe(3);
     expect(result.joiners.map(({ id }) => id)).toEqual(['D']);
     expect(result.leavers.map(({ id }) => id)).toEqual(['C']);
-    expect(result.growthPercent).toBe(33);
-    expect(result.attritionPercent).toBe(29);
+    expect(result.growthPercent).toBe(0);
+    expect(result.attritionPercent).toBe(33);
     expect(result.retentionPercent).toBe(67);
+    expect(isActive(person({ joinedOn: '2026-12-01' }), TODAY)).toBe(false);
     expect(isActive(person({ lastDay: TODAY }), TODAY)).toBe(true);
   });
 

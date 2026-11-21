@@ -356,6 +356,12 @@ public class LeaveService {
         if (to.isBefore(from)) {
             throw refused(HttpStatus.BAD_REQUEST, "The last day can't be before the first.");
         }
+        // Any day in the leave year they're in now, past or future. Earlier years are closed.
+        LocalDate yearStarted = LeaveYear.containing(employee.getJoinedOn(), today()).start();
+        if (from.isBefore(yearStarted)) {
+            throw refused(HttpStatus.BAD_REQUEST, "Your leave year started on " + Wording.date(yearStarted, today())
+                    + ". Leave before that can't be booked now; ask HR.");
+        }
         LeaveYear year = LeaveYear.containing(employee.getJoinedOn(), from);
         if (to.isAfter(year.end())) {
             throw refused(HttpStatus.BAD_REQUEST, "Your leave year ends on " + Wording.date(year.end(), today())

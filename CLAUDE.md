@@ -183,6 +183,8 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 - Balances are never stored as totals. Taken is leave used before Opro HRMS (`taken_before`) plus approved requests in the year; pending is pending requests. Applying locks the person's record, so two requests sent at once can't spend the same days.
 - A request stays inside one leave year. Leave across the end of someone's leave year is two requests. Booking into next year opens that year's balance from the policy's default, plus anything carried forward, for types the person holds now.
 - **A holiday added, moved or removed** recounts the waiting and approved leave over it; the person is told the new count, and leave left with no working day in it is cancelled.
+- **Any day in the person's current leave year** can be booked, past or future. Days before it started are refused; HR records anything older.
+- Sick leave longer than the certificate limit shows **"Medical certificate missing"** to the HOD and HR until one is attached. They can still approve it.
 - Overlapping pending or approved requests are refused. Cancelling works for pending requests, and approved ones that haven't started.
 
 ### Compensatory off
@@ -212,11 +214,11 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 - **What counts:** on a working day, time worked after the shift ends, but never more than the day's hours were exceeded by. Coming in early doesn't count, and neither does staying late to make up a late start. Under **30 minutes** (placeholder, `DayCalculator.MIN_OVERTIME_MINUTES`) is not overtime. Fridays and public holidays earn compensatory off instead, never both.
 - The backend works it out per day (`overtimeMinutes` on each attendance day). Once a day shows overtime, by punching out or through an approved punch fix, the HOD is asked once (Overtime tab). Super admins have nobody to ask, so they have none.
 - Approving keeps the minutes the punches show then, ready for payroll. It is refused if the punches no longer show 30 minutes. Declining needs a reason. Both tell the employee.
-- The attendance page's Overtime card shows the month's overtime from the punches, before the HOD decides.
+- The attendance page's Overtime card shows the month's approved and waiting overtime; declined days don't count (`GET /api/attendance/overtime`).
 
 ### Flight allowance
 
-- HR sets each person's **yearly allowance in USD** from their page. It can't go below what's already claimed that year.
+- HR sets each person's **yearly allowance in USD** from their page. It can't go below what's already claimed that year. A year HR hasn't set carries the last amount set, so nobody has to set everyone again each January.
 - Employees **claim a flight** from their profile: route, date, amount in USD, MVR or INR, and a receipt (PDF, JPG or PNG up to 5 MB, only they and HR can open it). A claim counts against the year of the flight, is converted to USD at **HR's rate on the day**, and can't go past what's left. **Claims need no approval for now**: one counts as soon as it's made, and they can cancel it to give the money back. HR sees claims and receipts on the person's page, and never sets their own allowance.
 - **Exchange rates** (MVR and INR per USD) are set by HR in Policies. The starting rates are placeholders. No outside rates service is used.
 - The profile shows allowance, used and left in USD, MVR or INR, remembered per browser.
@@ -289,6 +291,7 @@ Logo, "People first, always.", "© year Opro Pvt Ltd · Malé, Republic of Maldi
 - **Company events** on the calendar ("Office social", "Team review"), managed by HR.
 - **Leave policy:** leave types, yearly entitlements, who gets them and carry forward. See Leave rules.
 - **Work schedule**, see Attendance rules. Leave, punch fixes, home days, comp off and overtime are decided by the HOD. HR approves after the HOD only for what Policies say (see Approvals), from the Inbox.
+- **Before their first day** someone can't sign in and isn't counted: not in headcount, today's attendance, team lists or appraisal cycles. HR sees them in People as joining on that date, and prepares their photo, documents and onboarding. Anyone added must be **18 by their joining date** (placeholder, `HrPeople.MINIMUM_AGE`).
 - **People:** add someone (ID, roles and full annual, sick and family balances come from the server) with gender (male or female), date of birth, employment type (Permanent, Contract, Casual or Intern), when probation and a contract end, and an expatriate's quota job category; edit details and reporting manager (required, except for a super admin) (never themselves or anyone below them), and mark someone as leaving. Nobody is ever deleted: after their last day they can't sign in and drop out of live lists, their records stay, and leave booked after that day is cancelled. Someone with active reports can't leave until those reports have a new manager.
 - **Photos:** HR uploads them from the person's page. The browser crops to 4:5 and re-encodes a small JPEG, which also strips location data. They show on the ID card, the staff card and avatars.
 - **Balance adjustments:** add or remove days for one person with a required reason. Every change is logged with who, when and why. Adjusting a type they don't hold yet (paternity, say) creates that balance.

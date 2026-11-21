@@ -2,7 +2,7 @@ import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { Session } from '../../core/session';
-import { AttendanceDay } from '../../models/attendance';
+import { AttendanceDay, OvertimeClaim } from '../../models/attendance';
 import { click, employee, fail, fill, NOW, respond, setupHttp, settle, text, texts } from '../../../testing/fixtures';
 import { AttendancePage } from './attendance-page';
 import { CorrectionForm } from './correction-form';
@@ -19,6 +19,12 @@ const NOVEMBER = [
   day('2026-11-11', { status: 'on-leave', punches: [], workedMinutes: 0}),
   day('2026-11-06', { status: 'weekend', punches: [], workedMinutes: 0}),
   day('2026-11-13'),
+];
+
+const OVERTIME: OvertimeClaim[] = [
+  { id: 'OT-1', employeeId: 'OPR-0018', date: '2026-11-08', status: 'pending', minutes: 70 },
+  { id: 'OT-2', employeeId: 'OPR-0018', date: '2026-11-05', status: 'rejected', minutes: 45 },
+  { id: 'OT-3', employeeId: 'OPR-0018', date: '2026-10-20', status: 'approved', minutes: 60 },
 ];
 
 describe('AttendancePage', () => {
@@ -38,7 +44,7 @@ describe('AttendancePage', () => {
 
   const render = async () => {
     const fixture = TestBed.createComponent(AttendancePage);
-    await respond(http, { '/api/attendance?month=2026-11': NOVEMBER, '/api/attendance/corrections': [] });
+    await respond(http, { '/api/attendance?month=2026-11': NOVEMBER, '/api/attendance/corrections': [], '/api/attendance/overtime': OVERTIME });
     return fixture;
   };
 
@@ -65,7 +71,9 @@ describe('AttendancePage', () => {
     expect(metric(root, 'present')).toBe('2 / 3');
     expect(metric(root, 'hours')).toBe('16h 0m');
     expect(metric(root, 'on-time')).toBe('50%');
+    // The declined day in October and the declined one this month don't count; only the 8th, still waiting, does.
     expect(metric(root, 'overtime')).toBe('1h 10m');
+    expect(metric(root, 'overtime-line')).toBe('0m approved, 1h 10m waiting');
     expect(texts(root, 'attendance-row').map((row) => row.split(' ')[0])).toEqual(['Yesterday', 'Tuesday', 'Monday', 'Sunday']);
     expect(text(root)).toContain('NOVEMBER 2026 Attendance log');
   });

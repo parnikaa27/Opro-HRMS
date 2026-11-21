@@ -161,6 +161,6 @@ class HrLeaveController {
         if (employeeId.equals(me.getId())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Your own leave goes through your manager.");
         }
-        return people.findActive(employeeId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Employee not found"));
+        return people.findNotLeft(employeeId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Employee not found"));
     }
 }

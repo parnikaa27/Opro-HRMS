@@ -91,6 +91,16 @@ class FlightApiTests {
     }
 
     @Test
+    void aYearHrHasntSetCarriesTheLastAllowance() throws Exception {
+        // Arjun has $1,200 for 2026 and nothing set for 2027 yet.
+        HttpResponse<String> nextYear = arjun.post("/api/flights/claims", "{\"flightDate\":\"2027-02-10\",\"route\":\"Home\",\"amount\":1200,\"currency\":\"USD\"}");
+
+        assertThat(nextYear.statusCode()).isEqualTo(200);
+        assertThat(arjun.post("/api/flights/claims", "{\"flightDate\":\"2027-03-10\",\"route\":\"Home\",\"amount\":1,\"currency\":\"USD\"}").body())
+                .isEqualTo("{\"message\":\"That's $1.00, more than the $0.00 you have left for 2027.\"}");
+    }
+
+    @Test
     void theReceiptIsForThemAndHrOnly() throws Exception {
         String id = JsonPath.read(claim("300", "USD").body(), "$.id");
 

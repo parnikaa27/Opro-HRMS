@@ -20,7 +20,6 @@ import mv.opro.hrms.employee.EmployeeRepository;
 import mv.opro.hrms.employee.People;
 import mv.opro.hrms.hr.HrAccess;
 import mv.opro.hrms.session.CurrentUser;
-import mv.opro.hrms.team.TeamAccess;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -54,15 +53,13 @@ class OnboardingController {
 
     private final Onboardings onboardings;
     private final CurrentUser currentUser;
-    private final TeamAccess team;
     private final HrAccess hr;
     private final EmployeeRepository employees;
     private final People people;
 
-    OnboardingController(Onboardings onboardings, CurrentUser currentUser, TeamAccess team, HrAccess hr, EmployeeRepository employees, People people) {
+    OnboardingController(Onboardings onboardings, CurrentUser currentUser, HrAccess hr, EmployeeRepository employees, People people) {
         this.onboardings = onboardings;
         this.currentUser = currentUser;
-        this.team = team;
         this.hr = hr;
         this.employees = employees;
         this.people = people;
@@ -87,7 +84,7 @@ class OnboardingController {
 
     @GetMapping("/api/team/onboarding")
     List<OnboardingResponse> team() {
-        return views(onboardings.inProgress(team.reportsOf(currentUser.get()).stream().map(Employee::getId).toList()));
+        return views(onboardings.inProgressFor(currentUser.get()));
     }
 
     @PutMapping("/api/team/onboarding/{employeeId}/buddy")

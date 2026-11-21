@@ -269,4 +269,12 @@ describe('LeaveForm', () => {
     expect(texts(root, 'day-strip')[0].replace(/\s+/g, ' ')).toBe('Mo 30 AL Tu 1 PH We 2 AL Th 3 AL Fr 4 OFF');
     expect(text(root.querySelector('[data-testid=return-date]') as HTMLElement)).toContain('Back at work on 5 December 2026.');
   });
+
+  it('allows any day this leave year, but not before it started', async () => {
+    fill(root, 'leave-from', '2025-12-18');
+    fill(root, 'leave-to', '2025-12-18');
+    await submitForm();
+
+    expect(errors()).toContain("Your leave year started on 20 December 2025. Leave before that can't be booked now; ask HR.");
+  });
 });

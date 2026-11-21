@@ -16,14 +16,9 @@ What's left before Opro HRMS can go live, and what's waiting on someone. Kept up
 Walked through by hand as Arjun (expatriate employee), Vikram (HOD), Ananya (HR) and Rajesh (super admin), against Spring on a fresh database, and every page at phone width. The 48 automated journeys pass on the mock and on Spring; these are what they don't catch.
 
 **Rules that are missing**
-- [ ] Leave can be booked for past days, even days the person worked. Decide which types may be backdated (sick leave after the fact, say) and how far.
-- [ ] Sick leave over 2 days can be approved without its medical certificate, and the HOD isn't told one is missing.
-- [ ] No minimum working age: HR can add someone born in 2020.
-- [ ] People who haven't started yet count in today's headcount (11, "+22%") while New joiners says 0, show as "not in" on attendance, can sign in, and are in the appraisal cycle.
-- [ ] Waiting requests never expire or escalate. A leave day already past (Rohit, 18 November) still waits, and the HOD gets no reminder.
+- [ ] Leave can be booked on a day the person punched in, which counts that day twice. Parnika chose any day in the leave year; refusing days with punches is a small change if wanted.
+- [ ] Waiting requests never expire or escalate (Parnika: nothing for now). A leave day already past (Rohit, 18 November) still waits, and the HOD gets no reminder.
 - [ ] No cover when an HOD is away: only a super admin can step in. Consider an acting HOD for a date range.
-- [ ] Flight allowances don't roll into a new year. HR has to set each person's allowance again every January.
-- [ ] The Overtime card on the attendance page counts days the HOD declined, and doesn't split approved from waiting.
 
 **Wording and display**
 - [ ] When the server's own validation catches something, the message reads like code: `currency must match "MVR|USD"`, `dateOfBirth must be a past date`. The forms stop most of these first, but every message should be written for a person.
@@ -60,6 +55,7 @@ Being built in batches, one PR each. Leave, documents, exit, the performance cha
 - [ ] **Leaving without resigning** (a contract ending, a dismissal): today the return checklist only applies to someone who resigned. Should HR tick items off for everyone who leaves? And is there a minimum notice period between resigning and the last day?
 - [ ] **Allowances:** the real list of kinds and who gets how much, and whether any one-off grants HR makes directly (today only an HOD grants them).
 - [ ] **Onboarding:** the real task list, and whether tasks for IT (email, system access) should wait for Microsoft sign in. Today there's no IT role, so the HOD owns the laptop and desk.
+- [ ] **Minimum age:** 18 by the joining date is a placeholder. Confirm against the Employment Act.
 - [ ] **Comp off for super admins:** today they earn none for working a Friday or a holiday, because nobody is above them to approve it.
 
 ## Later, if needed

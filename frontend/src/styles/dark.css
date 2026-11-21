@@ -657,6 +657,9 @@
 :root[data-theme='dark'] .large-request .certificate-note {
   color: #5ac6ba;
 }
+:root[data-theme='dark'] .large-request .certificate-note.missing {
+  color: #fe8d75;
+}
 :root[data-theme='dark'] .punch-error {
   color: #ff8c75;
 }
@@ -1359,6 +1362,9 @@
 }
 :root:not([data-theme='light']) .large-request .certificate-note {
   color: #5ac6ba;
+}
+:root:not([data-theme='light']) .large-request .certificate-note.missing {
+  color: #fe8d75;
 }
 :root:not([data-theme='light']) .punch-error {
   color: #ff8c75;

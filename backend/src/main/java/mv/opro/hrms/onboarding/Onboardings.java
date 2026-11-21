@@ -2,7 +2,6 @@ package mv.opro.hrms.onboarding;
 
 import java.time.Clock;
 import java.time.LocalDate;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.IntStream;
@@ -56,8 +55,9 @@ public class Onboardings {
         return views(onboardings.findByCompletedOnIsNullOrderByStartsOn());
     }
 
-    public List<View> inProgress(Collection<String> employeeIds) {
-        return views(onboardings.findByEmployeeIdInAndCompletedOnIsNull(employeeIds));
+    // An HOD's joiners, including those who haven't started: the laptop is ready before day one.
+    public List<View> inProgressFor(Employee hod) {
+        return inProgress().stream().filter(view -> isTheirHod(hod, view.onboarding().getEmployeeId())).toList();
     }
 
     // Copies HR's list with dates from their joining day. Their HOD hears what's theirs to do.

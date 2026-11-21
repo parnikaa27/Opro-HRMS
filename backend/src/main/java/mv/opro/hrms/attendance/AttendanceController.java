@@ -9,6 +9,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Map;
 import mv.opro.hrms.common.ApiException;
 import mv.opro.hrms.employee.Employee;
 import mv.opro.hrms.session.CurrentUser;
@@ -39,11 +40,20 @@ class AttendanceController {
     private final AttendanceService attendance;
     private final PunchClock punchClock;
     private final CurrentUser currentUser;
+    private final Overtimes overtimes;
 
-    AttendanceController(AttendanceService attendance, PunchClock punchClock, CurrentUser currentUser) {
+    AttendanceController(AttendanceService attendance, PunchClock punchClock, CurrentUser currentUser, Overtimes overtimes) {
         this.attendance = attendance;
         this.punchClock = punchClock;
         this.currentUser = currentUser;
+        this.overtimes = overtimes;
+    }
+
+    // Own overtime and where each day stands with the HOD, so the attendance page can split approved from waiting.
+    @GetMapping("/api/attendance/overtime")
+    List<OvertimeResponse> overtime() {
+        Employee me = currentUser.get();
+        return overtimes.of(List.of(me.getId()), null).stream().map(claim -> OvertimeResponse.of(claim, Map.of(me.getId(), me.getFullName()))).toList();
     }
 
     @GetMapping("/api/attendance")

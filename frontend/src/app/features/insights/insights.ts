@@ -31,7 +31,8 @@ export const shares = <T>(items: readonly T[], labelOf: (item: T) => string): Sh
     .sort((first, second) => second.count - first.count || first.label.localeCompare(second.label));
 };
 
-export const isActive = ({ lastDay }: PersonFact, today: string) => !lastDay || lastDay >= today;
+// Joined by today and not left. Someone still to start isn't counted yet.
+export const isActive = ({ joinedOn, lastDay }: PersonFact, today: string) => joinedOn <= today && (!lastDay || lastDay >= today);
 export const isExpatriate = ({ nationality }: PersonFact) => nationality !== NATIONAL;
 
 // Whole years from a date to today.

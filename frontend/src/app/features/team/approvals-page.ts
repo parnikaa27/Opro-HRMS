@@ -11,7 +11,7 @@ import { isWaitingForHr } from '../../shared/utils/approval-step';
 import { formatDayShort } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { fixCategoryLabel } from '../attendance/fix-categories';
-import { LeaveApi } from '../leave/leave-api';
+import { LeaveApi, needsCertificate } from '../leave/leave-api';
 import { describeDates, describeExtras, describeLength } from '../leave/leave-format';
 import { CompOffList } from './comp-off-list';
 import { DecisionState } from './decision-state';
@@ -142,6 +142,8 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
                 }
                 @if (request.hasCertificate) {
                   <span class="certificate-note" data-testid="certificate">Medical certificate attached</span>
+                } @else if (isMissingCertificate(request)) {
+                  <span class="certificate-note missing" data-testid="certificate-missing">Medical certificate missing</span>
                 }
                 @if (describeExtras(request); as extras) {
                   <span class="certificate-note" data-testid="leave-extras">{{ extras }}</span>
@@ -252,6 +254,9 @@ export class ApprovalsPage {
     resignation: 'Your contract runs to the end of the project. Let’s talk about a later date.',
   };
 
+  // Sick leave long enough to need a certificate, without one yet. They can still approve it.
+  protected readonly isMissingCertificate = (request: LeaveRequest) =>
+    request.status === 'pending' && needsCertificate(valueOr(this.types, []).find(({ code }) => code === request.type), request.days);
   protected readonly typeName = (code: string) => valueOr(this.types, []).find((type) => type.code === code)?.name ?? code;
   protected readonly othersOff = (request: LeaveRequest) =>
     this.leaveList()

@@ -97,8 +97,9 @@ public class Employee {
     }
 
     // Someone past their last day keeps their records but can no longer sign in or show up in live lists.
+    // Joined by then and not left yet.
     public boolean isActiveOn(LocalDate day) {
-        return lastDay == null || !lastDay.isBefore(day);
+        return !joinedOn.isAfter(day) && (lastDay == null || !lastDay.isBefore(day));
     }
 
     public String getId() {

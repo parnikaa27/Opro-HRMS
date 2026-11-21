@@ -301,4 +301,24 @@ describe('ApprovalsPage', () => {
     click(root, 'confirm-reject');
     expect(http.expectOne('/api/team/resignations/RS-1/decision').request.body).toEqual({ decision: 'rejected', note: 'Let us talk about a later date' });
   });
+
+  it('tells the HOD when sick leave long enough to need a certificate has none', async () => {
+    const sick: LeaveRequest = {
+      id: 'LR-9', employeeId: 'OPR-0018', employeeName: 'Arjun Reddy', type: 'sick', from: '2026-11-15', to: '2026-11-18', days: 3, reason: 'Flu', status: 'pending', appliedOn: '2026-11-12',
+    };
+    const fixture = TestBed.createComponent(ApprovalsPage);
+    await respond(http, {
+      '/api/team/leave-requests': [sick],
+      '/api/team/corrections': [],
+      '/api/team/home-days?status=pending': [],
+      '/api/team/comp-offs?status=pending': [],
+      '/api/team/overtime?status=pending': [],
+      '/api/team/resignations?status=pending': [],
+      '/api/leave/types': [{ code: 'sick', name: 'Sick leave', allowsHalfDay: true, documentRequiredAfterDays: 2 }],
+    });
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(text(root.querySelector('[data-testid=certificate-missing]') as HTMLElement)).toBe('Medical certificate missing');
+    expect(root.querySelector('[data-testid=approve]')).not.toBeNull();
+  });
 });

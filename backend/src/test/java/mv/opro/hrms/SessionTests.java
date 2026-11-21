@@ -93,7 +93,7 @@ class SessionTests {
         HttpResponse<String> response = client.signIn("OPR-9999");
 
         assertThat(response.statusCode()).isEqualTo(400);
-        assertThat(response.body()).isEqualTo("{\"message\":\"Unknown employee\"}");
+        assertThat(response.body()).isEqualTo("{\"message\":\"Unknown employee, or someone who hasn't started or has left\"}");
     }
 
     @Test
@@ -105,6 +105,21 @@ class SessionTests {
             assertThat(new ApiClient(port).signIn("OPR-0027").statusCode()).isEqualTo(400);
         } finally {
             jdbc.update("update employee set last_day = null where id = 'OPR-0027'");
+        }
+    }
+
+    @Test
+    void someoneWhoHasntStartedCannotSignInAndIsntCountedButHrSeesThem() throws Exception {
+        jdbc.update("update employee set joined_on = date '2026-12-01' where id = 'OPR-0027'");
+        try {
+            assertThat(new ApiClient(port).signIn("OPR-0027").statusCode()).isEqualTo(400);
+            client.signIn("OPR-0004");
+            assertThat(JsonPath.<List<String>>read(client.get("/api/team").body(), "$[*].id")).doesNotContain("OPR-0027");
+            ApiClient ananya = new ApiClient(port);
+            ananya.signIn("OPR-0002");
+            assertThat(JsonPath.<List<String>>read(ananya.get("/api/hr/employees").body(), "$[*].id")).contains("OPR-0027");
+        } finally {
+            jdbc.update("update employee set joined_on = date '2024-03-30' where id = 'OPR-0027'");
         }
     }
 

@@ -245,8 +245,14 @@ export class LeaveForm {
 
   protected readonly plural = plural;
 
-  // A first request needs the type's notice. An extension starts straight after the leave it extends.
+  // Any day in their leave year, past or future. A first request needs the type's notice. An extension starts
+  // straight after the leave it extends.
   private fromProblem(from: string, kind: LeaveKind) {
+    const joinedOn = this.joinedOn();
+    const yearStarted = joinedOn && leaveYearOf(joinedOn, this.today).start;
+    if (from && yearStarted && from < yearStarted) {
+      return { kind: 'closed-year', message: `Your leave year started on ${formatFullDate(yearStarted)}. Leave before that can't be booked now; ask HR.` };
+    }
     const notice = this.selectedType()?.noticeDays;
     const earliest = notice ? addDays(this.today, notice) : undefined;
     if (from && kind === 'initial' && earliest && from < earliest) {

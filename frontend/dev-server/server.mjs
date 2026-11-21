@@ -128,7 +128,9 @@ const profileOf = (employee) => ({
   ...(db.photos.has(employee.id) && { photoUrl: `/api/employees/${employee.id}/photo?v=${db.photos.get(employee.id).version}` }),
 });
 // Someone past their last day keeps their records but drops out of every live list.
-const isActive = (employee) => !employee.lastDay || employee.lastDay >= today();
+// Active: joined by today and not left. Someone still to start can't sign in and isn't counted, as on Spring.
+const hasNotLeft = (employee) => !employee.lastDay || employee.lastDay >= today();
+const isActive = (employee) => employee.joinedOn <= today() && hasNotLeft(employee);
 const activeEmployees = () => db.employees.filter(isActive);
 const reportsOf = (user) => activeEmployees().filter(({ managerId }) => managerId === user.id);
 // Manager access follows from having reports, so changing a reporting line updates it.
@@ -475,6 +477,10 @@ const recountLeaveOver = (dates) => {
   });
 };
 
+// A year HR hasn't set yet carries the last amount they set, as on Spring.
+const allowanceFor = (employeeId, year) =>
+  db.flightAllowances.filter((entry) => entry.employeeId === employeeId && entry.year <= year).sort((first, second) => second.year - first.year)[0];
+
 // HR never handles their own documents.
 const someoneElseForDocuments = (user, id) => {
   if (id === user.id) {
@@ -817,7 +823,7 @@ const flightTotal = (employeeId, status, year) =>
   db.flightClaims.filter((claim) => claim.employeeId === employeeId && claim.status === status && claim.flightDate.startsWith(String(year))).reduce((sum, claim) => sum + claim.amountUsd, 0);
 const flightYearOf = (employeeId) => {
   const year = Number(today().slice(0, 4));
-  const allowance = db.flightAllowances.find((entry) => entry.employeeId === employeeId && entry.year === year);
+  const allowance = allowanceFor(employeeId, year);
   return {
     year,
     ...(allowance && { allowanceUsd: allowance.amountUsd }),
@@ -975,7 +981,7 @@ const routes = [
   ['GET', /^\/api\/session\/users$/, () => activeEmployees().map(withRoles).map(({ id, fullName, designation, roles }) => ({ id, fullName, designation, roles })), { isPublic: true }],
   ['POST', /^\/api\/session\/login$/, ({ body, res }) => {
     if (!activeEmployees().some(({ id }) => id === body.employeeId)) {
-      throw new HttpError(400, 'Unknown employee');
+      throw new HttpError(400, "Unknown employee, or someone who hasn't started or has left");
     }
     const token = `${body.employeeId}.${randomUUID()}`;
     sessions.set(token, body.employeeId);
@@ -1035,6 +1041,7 @@ const routes = [
     }
     return punched;
   }],
+  ['GET', /^\/api\/attendance\/overtime$/, ({ user }) => db.overtime.filter(({ employeeId }) => employeeId === user.id).map(overtimeView)],
   ['GET', /^\/api\/attendance\/corrections$/, ({ user }) => db.corrections.filter(({ employeeId }) => employeeId === user.id).map(withName)],
   ['POST', /^\/api\/attendance\/corrections$/, ({ user, body }) => {
     if (!DATE.test(String(body.date)) || body.date > today() || !TIME.test(String(body.requestedTime)) || !['missed-in', 'missed-out'].includes(body.kind) || !FIX_CATEGORIES.includes(body.category)) {
@@ -1059,6 +1066,12 @@ const routes = [
   ['GET', /^\/api\/leave\/balances$/, ({ user }) => balancesOf(user.id)],
   ['GET', /^\/api\/leave\/requests$/, ({ user }) => db.leaveRequests.filter(({ employeeId }) => employeeId === user.id).map(withName)],
   ['POST', /^\/api\/leave\/requests$/, ({ user, body }) => {
+    // Any day in the leave year they're in now, past or future. Earlier years are closed, as on Spring.
+    const anniversary = `${today().slice(0, 4)}${user.joinedOn.slice(4)}`;
+    const yearStarted = anniversary <= today() ? anniversary : `${Number(today().slice(0, 4)) - 1}${user.joinedOn.slice(4)}`;
+    if (String(body.from) < yearStarted) {
+      throw new HttpError(400, `Your leave year started on ${sayDate(yearStarted)}. Leave before that can't be booked now; ask HR.`);
+    }
     // The real backend counts days itself. The mock trusts the client to keep things simple.
     const kind = body.kind ?? 'initial';
     const request = {
@@ -1192,7 +1205,7 @@ const routes = [
   ['GET', /^\/api\/flights$/, ({ user }) => flightYearOf(user.id)],
   ['POST', /^\/api\/flights\/claims$/, ({ user, body }) => {
     const year = Number(String(body.flightDate).slice(0, 4));
-    const allowance = db.flightAllowances.find((entry) => entry.employeeId === user.id && entry.year === year);
+    const allowance = allowanceFor(user.id, year);
     if (!allowance) {
       throw new HttpError(409, `You don't have a flight allowance for ${year}. Ask HR about it.`);
     }
@@ -1293,7 +1306,7 @@ const routes = [
   ['POST', /^\/api\/(team|company)\/home-days\/([\w-]+)\/decision$/, ({ user, params: [scope, id], body }) => decide('homeDays', user, scope, id, body)],
   ['GET', /^\/api\/hr\/employees$/, ({ user, query }) => {
     requireHr(user);
-    const people = query.get('include') === 'former' ? db.employees : activeEmployees();
+    const people = query.get('include') === 'former' ? db.employees : db.employees.filter(hasNotLeft);
     return people.map((employee) => ({ ...profileOf(withRoles(employee)), today: db.attendance.find((record) => record.employeeId === employee.id && record.date === today()) }));
   }],
   ['POST', /^\/api\/hr\/employees$/, ({ user, body }) => {

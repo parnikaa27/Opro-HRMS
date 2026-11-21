@@ -25,6 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 class HrPeople {
 
+    // Nobody younger works at Opro. A placeholder until HR confirms it against the Employment Act.
+    private static final int MINIMUM_AGE = 18;
+
     private static final String ID_PREFIX = "OPR-";
     private static final int ID_DIGITS = 4;
 
@@ -47,9 +50,9 @@ class HrPeople {
         this.onboardings = onboardings;
     }
 
-    // Active people by default. Former staff only when HR asks for them.
+    // Everyone who hasn't left, people still to start included. Former staff only when HR asks for them.
     List<Employee> list(boolean includesFormer) {
-        return includesFormer ? employees.findAllByOrderByFullName() : people.active();
+        return includesFormer ? employees.findAllByOrderByFullName() : people.notLeft();
     }
 
     Employee find(String id) {
@@ -149,6 +152,9 @@ class HrPeople {
                 .anyMatch(end -> end != null && !end.isAfter(details.joinedOn()));
         if (isBadEnd) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Probation and contract end dates come after the joining date.");
+        }
+        if (details.dateOfBirth() != null && details.dateOfBirth().plusYears(MINIMUM_AGE).isAfter(details.joinedOn())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "They need to be " + MINIMUM_AGE + " by their joining date.");
         }
     }
 

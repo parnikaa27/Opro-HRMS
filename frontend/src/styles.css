@@ -627,6 +627,11 @@ app-work-schedule-card + app-exchange-rates-card > .card {
   color: var(--aqua-dark);
   font-weight: 600;
 
+  /* Missing reads as something to chase, in the design's coral. The words say it too. */
+  &.missing {
+    color: #b44a35;
+  }
+
   .text-link {
     display: inline;
     font-size: inherit;

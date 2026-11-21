@@ -387,6 +387,15 @@ describe('HR forms', () => {
       'employee-gender': 'female', 'employee-birth': '1994-05-02', 'employee-probation': '2027-02-15',
     };
 
+    it('needs them to be 18 by their joining date', async () => {
+      const { root } = await render(EmployeeForm, { people: PEOPLE });
+      fill(root, 'employee-joined', '2026-11-15');
+      fill(root, 'employee-birth', '2010-01-01');
+      await submit(root);
+
+      expect(errors(root)).toContain('They need to be 18 by their joining date.');
+    });
+
     it('names every missing field and needs a manager for a new person', async () => {
       const { root } = await render(EmployeeForm, { people: PEOPLE });
       await submit(root);

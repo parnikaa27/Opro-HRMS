@@ -238,4 +238,12 @@ class LeaveApiTests {
         assertThat(told).contains("Your family responsibility leave from 6 December now takes 2 days, not 3, because the public holidays changed.",
                 "Your family responsibility leave on 9 December is cancelled: it's a public holiday now, so you don't need it.");
     }
+
+    @Test
+    void leaveCanBeBookedForAnyDayInThisLeaveYearButNotBefore() throws Exception {
+        // Arjun's leave year started on 20 December 2025.
+        assertThat(apply("family", "2026-10-06", "2026-10-06", "").statusCode()).isEqualTo(200);
+        assertThat(apply("family", "2025-12-18", "2025-12-18", "").body())
+                .isEqualTo("{\"message\":\"Your leave year started on 20 December 2025. Leave before that can't be booked now; ask HR.\"}");
+    }
 }
