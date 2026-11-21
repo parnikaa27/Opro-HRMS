@@ -13,6 +13,7 @@ import { HolidaysApi } from '../holidays/holidays-api';
 import { visaAlertsFor } from '../team/visa-alerts';
 import { DocumentsToCollect } from './documents-to-collect';
 import { HrApi } from './hr-api';
+import { OnboardingProgressCard } from '../onboarding/onboarding-progress-card';
 
 const PREVIEW = 4;
 const CONFIRM_WINDOW_DAYS = 60;
@@ -20,7 +21,7 @@ const IN_OFFICE: readonly AttendanceStatus[] = ['present', 'late', 'half-day', '
 
 @Component({
   selector: 'app-hr-overview-page',
-  imports: [Avatar, DocumentsToCollect, Icon, RouterLink, WelcomeBanner],
+  imports: [Avatar, DocumentsToCollect, Icon, OnboardingProgressCard, RouterLink, WelcomeBanner],
   template: `
     <app-welcome-banner [dateLabel]="dateLabel" [heading]="greeting + ', ' + firstName() + '.'" [line]="line()" />
 
@@ -132,6 +133,7 @@ const IN_OFFICE: readonly AttendanceStatus[] = ['present', 'late', 'half-day', '
       }
     </section>
 
+    <app-onboarding-progress-card />
     <app-documents-to-collect />
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,

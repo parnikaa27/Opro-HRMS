@@ -12,6 +12,7 @@ import mv.opro.hrms.employee.People;
 import mv.opro.hrms.employee.Visa;
 import mv.opro.hrms.employee.VisaRepository;
 import mv.opro.hrms.exit.Exits;
+import mv.opro.hrms.onboarding.Onboardings;
 import mv.opro.hrms.leave.LeaveService;
 import mv.opro.hrms.notification.Notification;
 import mv.opro.hrms.notification.Notifications;
@@ -33,14 +34,17 @@ class HrPeople {
     private final LeaveService leave;
     private final Notifications notifications;
     private final Exits exits;
+    private final Onboardings onboardings;
 
-    HrPeople(EmployeeRepository employees, VisaRepository visas, People people, LeaveService leave, Notifications notifications, Exits exits) {
+    HrPeople(EmployeeRepository employees, VisaRepository visas, People people, LeaveService leave, Notifications notifications, Exits exits,
+            Onboardings onboardings) {
         this.employees = employees;
         this.visas = visas;
         this.people = people;
         this.leave = leave;
         this.notifications = notifications;
         this.exits = exits;
+        this.onboardings = onboardings;
     }
 
     // Active people by default. Former staff only when HR asks for them.
@@ -61,6 +65,7 @@ class HrPeople {
         checkManager(id, details.managerId(), false);
         Employee employee = employees.save(Employee.hire(id, details));
         leave.openYearFor(employee.getId());
+        onboardings.start(employee);
         return employee;
     }
 

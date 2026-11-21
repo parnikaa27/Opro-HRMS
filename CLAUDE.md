@@ -67,7 +67,7 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 | Route | Contents |
 |---|---|
 | `/login` | Mock user picker (dev only) |
-| `/` Overview | Welcome banner, today's attendance (time in, expected out, effective hours, punch in and out), leave balance, visa status, recent attendance table, dark staff card, next holiday and long weekend, latest leave request |
+| `/` Overview | Welcome banner, a welcome card for new joiners until onboarding is done (first day, HOD, buddy, tasks), today's attendance (time in, expected out, effective hours, punch in and out), leave balance, visa status, recent attendance table, dark staff card, next holiday and long weekend, latest leave request |
 | `/performance` | Their goals in the open appraisal cycle (write them, send them, see where they stand or why they came back), their self review, their appraisals with each goal rated and the HOD's comment on the self review (accept the rating), and any probation review. Never the HOD's recommendations |
 | `/documents` | Every document on HR's list that applies to them, with its status (missing, waiting for HR, verified, sent back with HR's reason, expired), its dates and each file to download. Upload one or more files of the ones employees send, with the start date and, where the type expires, the end date, and take a wrong file off until HR verifies it |
 | `/attendance` | My attendance: four summary cards (days present, work hours, on time, overtime), the attendance log for a chosen month, CSV export, punch fix requests and their status, and the punch button while today is on screen |
@@ -81,7 +81,7 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 
 | Route | Contents |
 |---|---|
-| `/team` | Manager overview: welcome banner, team members, pending requests, average attendance and out of office cards, waiting leave with one click approve, team today, a month attendance chart with CSV export, visa alerts |
+| `/team` | Manager overview: welcome banner, team members, pending requests, average attendance and out of office cards, waiting leave with one click approve, team today, a month attendance chart with CSV export, visa alerts, and reports still onboarding (the HOD's tasks, picking a buddy) |
 | `/team/people` | Card directory of direct reports with today's status and search |
 | `/team/approvals` | Leave requests in tabs (Pending, Approved, Declined, Punch fixes, Home working, Comp off, Overtime, Resignations). Approve in one click. Declining opens a modal that needs a reason, so the employee can plan around it. Waiting leave shows who else is off on those dates |
 | `/team/attendance` | Team summary cards and a table with one row per report (days present, late, missed, hours, today), month picker, CSV export |
@@ -108,7 +108,7 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 
 | Route | Contents |
 |---|---|
-| `/hr` | Welcome banner, people, on leave today, visas to act on and inbox counts, who is on leave today, visa alerts, tentative holidays in the next 60 days |
+| `/hr` | Welcome banner, people, on leave today, visas to act on and inbox counts, who is on leave today, visa alerts, tentative holidays in the next 60 days, new joiners still onboarding, and documents to collect |
 | `/hr/people` | The People page for everyone at Opro, with Add person and a toggle to include people who have left |
 | `/hr/people/new`, `/hr/people/:employeeId/edit` | Add a person, or edit their details and manager. A page, not a modal, because the form is long |
 | `/hr/people/:employeeId` | One person's balances, this month's log, requests (with any medical certificate to open), balance change log, staff card, visa and their record (insurance, bank details to verify, education, experience). Set their days of a type or give or take away a type (Leave days), adjust a balance, update visa, set their flight allowance. A More menu holds edit details, change photo and mark as leaving |
@@ -119,7 +119,7 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 | `/hr/dashboard` | The executive dashboard: employees, joiners, leavers with attrition and retention, who's in today; locals and expatriates, gender, employment type, age, departments and nationalities; today's attendance and this month's; leave waiting, annual leave used, sick leave by month; papers expired or expiring within 60 days and quota use; birthdays and anniversaries this month, probation ending within 30 days, contracts within 60; performance (on probation, appraised so far, average rating, rated 4 or 5, recommended for promotion). Only what today's data supports: recruitment, payroll and training appear when those modules exist |
 | `/hr/reports` | Headcount, joiners and leavers, workforce mix, leave balances, leave taken, attendance and visa and permit expiry, each shown as a table and saved as CSV, Excel or PDF |
 | `/hr/performance` | Open and close appraisal cycles, goals the HOD approved for HR to approve or send back, how far the latest cycle has got (goals and where they stand, rating, the HOD's promotion and increment recommendations, whether the person has accepted), and every probation review |
-| `/hr/policy` | Policies: add, edit and remove leave types (yearly days, half days, given to everyone or people HR picks, lapse or carry forward up to a cap; a new entitlement applies from the next leave year; approved by the HOD, or the HOD then HR), which other requests HR approves after the HOD, the work schedule as dated versions, the documents Opro keeps, what comes back when someone leaves, the kinds of allowance, and the exchange rates for flight allowances |
+| `/hr/policy` | Policies: add, edit and remove leave types (yearly days, half days, given to everyone or people HR picks, lapse or carry forward up to a cap; a new entitlement applies from the next leave year; approved by the HOD, or the HOD then HR), which other requests HR approves after the HOD, the work schedule as dated versions, the documents Opro keeps, what comes back when someone leaves, the kinds of allowance, the onboarding task list, and the exchange rates for flight allowances |
 
 ### Attendance rules (placeholders, confirm with HR)
 
@@ -232,6 +232,14 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 - HR can upload any type for someone (never for themselves). That copy counts as verified straight away, and the person is told.
 - Status is worked out on every read: **missing** without a copy, **expired** once a verified copy's date has passed.
 - Only the person and HR can see or open documents. HODs and super admins don't.
+
+### Onboarding
+
+- **HR keeps the task list** in Policies: each task's name, who does it (**HR**, the **HOD** or the **joiner**), and when it's due in days from the joining date (negative is before, up to 90 either way). To start: contract signed, photo and ID card, medical insurance (HR); laptop and desk, first week planned (HOD); upload documents, bank details, read the HR policies (joiner). Changes apply to people added from then on.
+- **Adding someone starts their onboarding**: their own copy of the list with real due dates. Their HOD is told what's theirs. HR can start it by hand for someone who joined in the last three months before it existed.
+- **Each task is ticked by its owner**: the joiner their own, their HOD the HOD's, any HR person but the joiner HR's (the server checks). Unticking is allowed. Once every task is done, onboarding is complete and the joiner is told.
+- **First day:** HR sets the time, place and who to ask for; the joiner is told. **Buddy:** the HOD picks someone from the team; both are told.
+- **Where it shows:** a welcome card on the joiner's Overview until it's complete; a "Joining your team" card on the HOD's team overview; a "New joiners" card on HR's overview with progress and what's overdue; and the first weeks card on the person's HR page.
 
 ### Allowances
 
@@ -498,6 +506,11 @@ The full, generated reference is Swagger UI at `http://localhost:8080/swagger-ui
 | POST | `/api/hr/employees` | Add a person. The server sets the ID and roles, and seeds balances |
 | PUT | `/api/hr/employees/:id` | Edit details and `managerId` |
 | POST / DELETE | `/api/hr/employees/:id/leaving` | Set a last day with a reason / take it back before it passes. Refused while someone who resigned still has an item out. `?include=former` on the list adds people who have left |
+| GET | `/api/onboarding` | Own onboarding (204 when not onboarding): first day, HOD, buddy and every task |
+| POST / DELETE | `/api/onboarding/:employeeId/items/:itemId/done` | Tick or untick a task. Only its owner: the joiner, their HOD, or HR (never their own) |
+| GET / PUT | `/api/team/onboarding`, `/api/team/onboarding/:employeeId/buddy` | Reports still onboarding / pick a buddy (`buddyId`) |
+| GET / GET / POST / PUT | `/api/hr/onboarding`, `/api/hr/employees/:id/onboarding`, same, `.../onboarding/first-day` | Everyone still onboarding / one person's (204 when none) / start it by hand / set the first day (`time` HH:MM, `place`, `contact`) |
+| GET / POST / DELETE | `/api/hr/onboarding-tasks`, `/api/hr/onboarding-tasks/:id` | HR's task list / add one (`name`, `owner`: hr, hod or joiner, `dueInDays`) / remove one |
 | GET / GET | `/api/allowances`, `/api/allowance-types` | Own monthly allowances and one-off grants / the kinds of allowance, retired ones with `retiredOn` |
 | GET / POST | `/api/team/allowance-grants` | One-off grants the HOD's reports have had / grant one (`employeeId`, `type`, `amount`, `currency`: MVR or USD, `reason`) |
 | GET / PUT / POST | `/api/hr/employees/:id/allowances`, `.../allowances/:type`, `.../allowances/:type/stop` | Someone's allowances / set a monthly one (`amount`, `currency`, `startsOn` on the 1st, `note`) / stop one after a month (`lastMonth`: YYYY-MM). Never their own |

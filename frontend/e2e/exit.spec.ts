@@ -17,7 +17,7 @@ test('someone resigns, the HOD then HR approve, and leaving waits until everythi
   await page.getByTestId('resign-date').fill('2027-03-31');
   await page.getByTestId('resign-reason').fill('Moving back home');
   await page.getByTestId('resign-submit').click();
-  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(page.getByTestId('resignation-status')).toContainText('It’s with your HOD.');
 
   await signOut(page);
@@ -50,6 +50,6 @@ test('someone resigns, the HOD then HR approve, and leaving waits until everythi
   await page.getByTestId('mark-leaving').click();
   await expect(page.getByTestId('leaving-date')).toHaveValue('2027-03-31');
   await page.getByTestId('leaving-submit').click();
-  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(page.getByTestId('leaving-note')).toBeVisible();
 });

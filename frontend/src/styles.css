@@ -1278,3 +1278,49 @@ label.check-label {
 .card.needs-you {
   border: 1px solid var(--aqua);
 }
+
+/* Onboarding tasks: the task and who does it by when, then the action or how late it is. */
+.onboarding-checklist {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  li > div {
+    display: grid;
+    gap: 2px;
+  }
+
+  strong {
+    font-size: 13px;
+  }
+
+  span {
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  li.done strong {
+    color: var(--muted);
+    text-decoration: line-through;
+  }
+}
+
+/* One joiner on the HOD's onboarding card, separated from the next. */
+.onboarding-joiner + .onboarding-joiner {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.first-day-form {
+  margin-bottom: 8px;
+}

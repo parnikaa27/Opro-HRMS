@@ -51,6 +51,8 @@ class HrApiTests {
         jdbc.update("delete from visa where employee_id > 'OPR-0027'");
         jdbc.update("delete from leave_entitlement where employee_id > 'OPR-0027'");
         jdbc.update("delete from notification where id > ? or employee_id > 'OPR-0027'", SEEDED_NOTIFICATIONS);
+        jdbc.update("delete from onboarding_item where employee_id > 'OPR-0027'");
+        jdbc.update("delete from onboarding where employee_id > 'OPR-0027'");
         jdbc.update("delete from employee where id > 'OPR-0027'");
         jdbc.update("delete from holiday where length(id) > 5");
         jdbc.update("update holiday set is_tentative = true where id = 'HD-19'");

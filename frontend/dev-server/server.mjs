@@ -42,6 +42,7 @@ const db = {
   overtime: load('overtime'),
   performance: load('performance'),
   allowances: load('allowances'),
+  onboarding: load('onboarding'),
   // Which requests HR approves after the HOD. Leave types carry their own needsHrApproval.
   approvalRules: { punchFixes: false, homeDays: false, compOff: false, overtime: false },
   receipts: new Map(),
@@ -387,6 +388,65 @@ const approveGrant = (user, grant) => {
   db.allowances.grants = db.allowances.grants.map((entry) => (entry.id === grant.id ? decided : entry));
   notify(grant.employeeId, 'record', `You've been granted ${sayMoney(grant.amount, grant.currency)} of ${allowanceTypeName(grant.typeCode).toLowerCase()} allowance: ${sentence(grant.reason)}`);
   return grantView(decided);
+};
+
+// Onboarding, as Spring shapes it: the joiner's name and HOD, the buddy's name, and who ticked each task.
+const onboardingView = ({ buddyId, items, ...onboarding }) => {
+  const joiner = db.employees.find(({ id }) => id === onboarding.employeeId);
+  return {
+    ...onboarding, employeeName: joiner.fullName, designation: joiner.designation, ...(joiner.managerId && { hodName: nameOf(joiner.managerId) }),
+    ...(buddyId && { buddyId, buddyName: nameOf(buddyId) }),
+    items: items.map(({ doneBy, ...item }) => ({ ...item, ...(doneBy && { doneByName: nameOf(doneBy) }) })),
+  };
+};
+const onboardingOf = (employeeId) => db.onboarding.onboardings.find((entry) => entry.employeeId === employeeId);
+const saveOnboarding = (changed) => {
+  db.onboarding.onboardings = [...db.onboarding.onboardings.filter((entry) => entry.employeeId !== changed.employeeId), changed];
+  return onboardingView(changed);
+};
+// Copies HR's list with dates from their joining day. Their HOD hears what's theirs.
+const startOnboarding = (joiner) => {
+  if (onboardingOf(joiner.id)) {
+    throw new HttpError(409, 'Their onboarding has already started.');
+  }
+  const items = db.onboarding.tasks.map(({ name, owner, dueInDays }) => ({ id: `OI-${randomUUID().slice(0, 6)}`, name, owner, dueOn: addDays(joiner.joinedOn, dueInDays) }));
+  const forHod = items.filter(({ owner }) => owner === 'hod').length;
+  if (joiner.managerId) {
+    notify(joiner.managerId, 'record', `${joiner.fullName} joins your team on ${sayDate(joiner.joinedOn)}.${forHod ? ` You have ${forHod} onboarding ${forHod === 1 ? 'task' : 'tasks'} on your Team overview.` : ''}`);
+  }
+  return saveOnboarding({ employeeId: joiner.id, startsOn: joiner.joinedOn, items });
+};
+const canSeeOnboarding = (reader, employeeId) =>
+  reader.id === employeeId || reader.roles.includes('HR') || db.employees.find(({ id }) => id === employeeId)?.managerId === reader.id;
+const ownsTask = (reader, employeeId, owner) =>
+  owner === 'hr' ? reader.roles.includes('HR') && reader.id !== employeeId
+    : owner === 'hod' ? db.employees.find(({ id }) => id === employeeId)?.managerId === reader.id
+      : reader.id === employeeId;
+const tickOnboarding = (reader, employeeId, itemId, isDone) => {
+  const onboarding = onboardingOf(employeeId);
+  if (!onboarding || !canSeeOnboarding(reader, employeeId)) {
+    throw new HttpError(404, 'No onboarding for them.');
+  }
+  const item = onboarding.items.find(({ id }) => id === itemId);
+  if (!item) {
+    throw new HttpError(404, 'Task not found');
+  }
+  if (!ownsTask(reader, employeeId, item.owner)) {
+    throw new HttpError(403, { hr: 'HR ticks this one.', hod: 'Their HOD ticks this one.', joiner: 'They tick this one themselves.' }[item.owner]);
+  }
+  const items = onboarding.items.map((entry) => {
+    if (entry.id !== itemId) {
+      return entry;
+    }
+    const { doneOn: _on, doneBy: _by, ...rest } = entry;
+    return isDone ? { ...rest, doneOn: today(), doneBy: reader.id } : rest;
+  });
+  const isComplete = items.every(({ doneOn }) => doneOn);
+  if (isComplete && !onboarding.completedOn) {
+    notify(employeeId, 'record', 'Your onboarding is done. Welcome to Opro.');
+  }
+  const { completedOn: _done, ...rest } = onboarding;
+  return saveOnboarding({ ...rest, items, ...(isComplete && { completedOn: today() }) });
 };
 
 // HR never handles their own documents.
@@ -1038,6 +1098,27 @@ const routes = [
     }
     return replaceResignation({ ...resignation, status: 'withdrawn', decidedOn: today() });
   }],
+  ['GET', /^\/api\/onboarding$/, ({ user }) => (onboardingOf(user.id) ? onboardingView(onboardingOf(user.id)) : undefined)],
+  ['POST', /^\/api\/onboarding\/([\w-]+)\/items\/([\w-]+)\/done$/, ({ user, params: [employeeId, itemId] }) => tickOnboarding(user, employeeId, itemId, true)],
+  ['DELETE', /^\/api\/onboarding\/([\w-]+)\/items\/([\w-]+)\/done$/, ({ user, params: [employeeId, itemId] }) => tickOnboarding(user, employeeId, itemId, false)],
+  ['GET', /^\/api\/team\/onboarding$/, ({ user }) => {
+    const ids = requireManager(user);
+    return db.onboarding.onboardings.filter(({ employeeId, completedOn }) => ids.has(employeeId) && !completedOn).map(onboardingView);
+  }],
+  // The HOD picks a colleague to show them around. Both are told.
+  ['PUT', /^\/api\/team\/onboarding\/([\w-]+)\/buddy$/, ({ user, params: [employeeId], body }) => {
+    const onboarding = onboardingOf(employeeId);
+    if (!onboarding || db.employees.find(({ id }) => id === employeeId)?.managerId !== user.id) {
+      throw new HttpError(404, 'Not one of your reports');
+    }
+    const buddy = activeEmployees().find(({ id }) => id === body.buddyId && id !== employeeId);
+    if (!buddy) {
+      throw new HttpError(400, 'Pick someone at Opro other than them.');
+    }
+    notify(buddy.id, 'record', `${user.fullName} asked you to be ${nameOf(employeeId)}'s buddy. Show them around in their first weeks.`);
+    notify(employeeId, 'record', `${buddy.fullName} is your buddy. Ask them anything in your first weeks.`);
+    return saveOnboarding({ ...onboarding, buddyId: buddy.id });
+  }],
   ['GET', /^\/api\/allowances$/, ({ user }) => allowancesOf(user.id)],
   ['GET', /^\/api\/allowance-types$/, () => [...db.allowances.types].sort((first, second) => first.sortOrder - second.sortOrder).map(({ sortOrder: _order, ...type }) => type)],
   ['GET', /^\/api\/team\/allowance-grants$/, ({ user }) => {
@@ -1196,6 +1277,7 @@ const routes = [
     const employee = { id: `${EMPLOYEE_ID_PREFIX}${String(next).padStart(EMPLOYEE_ID_DIGITS, '0')}`, ...details, roles: ['EMPLOYEE'] };
     checkManager(employee, details.managerId);
     db.employees = [...db.employees, employee];
+    startOnboarding(employee);
     // Spring works out every day from the joining date. The mock only needs today, so a new starter can punch in.
     if (employee.joinedOn <= today()) {
       db.attendance = [...db.attendance, { employeeId: employee.id, date: today(), status: 'not-in-yet', punches: [], workedMinutes: 0, overtimeMinutes: 0 }];
@@ -1219,6 +1301,59 @@ const routes = [
       notify(details.managerId, 'record', `${employee.fullName} now reports to you.`);
     }
     return withRoles(replaceIn('employees', { ...rest, ...details }));
+  }],
+  ['GET', /^\/api\/hr\/onboarding$/, ({ user }) => {
+    requireHr(user);
+    return db.onboarding.onboardings.filter(({ completedOn }) => !completedOn).sort((first, second) => first.startsOn.localeCompare(second.startsOn)).map(onboardingView);
+  }],
+  ['GET', /^\/api\/hr\/employees\/([\w-]+)\/onboarding$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    return onboardingOf(id) ? onboardingView(onboardingOf(id)) : undefined;
+  }],
+  ['POST', /^\/api\/hr\/employees\/([\w-]+)\/onboarding$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    if (id === user.id) {
+      throw new HttpError(403, 'Another HR person handles your own onboarding.');
+    }
+    return startOnboarding(findOr404('employees', id, 'Employee'));
+  }],
+  ['PUT', /^\/api\/hr\/employees\/([\w-]+)\/onboarding\/first-day$/, ({ user, params: [id], body }) => {
+    requireHr(user);
+    if (id === user.id) {
+      throw new HttpError(403, 'Another HR person handles your own onboarding.');
+    }
+    const onboarding = onboardingOf(id);
+    if (!onboarding) {
+      throw new HttpError(404, 'No onboarding for them.');
+    }
+    if (body.time && !TIME.test(String(body.time))) {
+      throw new HttpError(400, 'Use a time like 08:45.');
+    }
+    const text = (value) => String(value ?? '').trim() || undefined;
+    notify(id, 'record', 'Your first day is set. See it on your Overview.');
+    return saveOnboarding({ ...onboarding, firstDayTime: text(body.time), firstDayPlace: text(body.place), firstDayContact: text(body.contact) });
+  }],
+  ['GET', /^\/api\/hr\/onboarding-tasks$/, ({ user }) => {
+    requireHr(user);
+    return db.onboarding.tasks;
+  }],
+  ['POST', /^\/api\/hr\/onboarding-tasks$/, ({ user, body }) => {
+    requireHr(user);
+    const name = String(body.name ?? '').trim();
+    if (!name || !['hr', 'hod', 'joiner'].includes(body.owner) || !(Math.abs(Number(body.dueInDays)) <= 90)) {
+      throw new HttpError(400, 'Name the task, who does it, and a due date within 90 days of joining.');
+    }
+    const task = { id: `OT-${randomUUID().slice(0, 6)}`, name, owner: body.owner, dueInDays: Number(body.dueInDays) };
+    db.onboarding.tasks = [...db.onboarding.tasks, task];
+    return task;
+  }],
+  ['DELETE', /^\/api\/hr\/onboarding-tasks\/([\w-]+)$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    if (!db.onboarding.tasks.some((task) => task.id === id)) {
+      throw new HttpError(404, 'Task not found');
+    }
+    db.onboarding.tasks = db.onboarding.tasks.filter((task) => task.id !== id);
+    return undefined;
   }],
   ['GET', /^\/api\/hr\/employees\/([\w-]+)\/allowances$/, ({ user, params: [id] }) => {
     requireHr(user);

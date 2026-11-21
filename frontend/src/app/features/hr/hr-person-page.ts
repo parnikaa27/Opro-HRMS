@@ -7,7 +7,7 @@ import { Dialog } from '../../shared/ui/dialog';
 import { Icon } from '../../shared/ui/icon';
 import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { SuccessState } from '../../shared/ui/success-state';
-import { formatFullDate, formatShortDate, maldivesToday, monthOf } from '../../shared/utils/date-time';
+import { addDays, formatFullDate, formatShortDate, maldivesToday, monthOf } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { plural } from '../../shared/utils/text';
 import { toAttendanceRow } from '../attendance/attendance-rows';
@@ -31,9 +31,11 @@ import { HrFlightCard } from './hr-flight-card';
 import { HrRecordCard } from './hr-record-card';
 import { PersonMenu } from './person-menu';
 import { HrAllowancesCard } from '../allowance/hr-allowances-card';
+import { HrOnboardingCard } from '../onboarding/hr-onboarding-card';
 
 type Action = 'adjust' | 'visa' | 'leaving' | 'days';
 
+const RECENT_DAYS = 90;
 const SUCCESS: Record<Action, { heading: string; body: string }> = {
   adjust: { heading: 'Balance adjusted', body: 'The change and your reason are in their log below.' },
   days: { heading: 'Leave days saved', body: 'They’ve been told, and the change is in their log below.' },
@@ -43,7 +45,7 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
 
 @Component({
   selector: 'app-hr-person-page',
-  imports: [AdjustBalanceForm, AttendanceTable, ConfirmButton, Dialog, EmployeeCard, ExitCard, HrAllowancesCard, HrDocumentsCard, HrFlightCard, HrRecordCard, Icon, LeaveBalances, LeaveDaysForm, LeaveRequests, LeavingForm, ListSkeleton, PersonMenu, PhotoForm, RouterLink, SuccessState, VisaCard, VisaForm],
+  imports: [AdjustBalanceForm, AttendanceTable, ConfirmButton, Dialog, EmployeeCard, ExitCard, HrAllowancesCard, HrDocumentsCard, HrFlightCard, HrOnboardingCard, HrRecordCard, Icon, LeaveBalances, LeaveDaysForm, LeaveRequests, LeavingForm, ListSkeleton, PersonMenu, PhotoForm, RouterLink, SuccessState, VisaCard, VisaForm],
   template: `
     <div class="page-view">
       <a routerLink="/hr/people" class="text-link back-link"><app-icon name="chevronLeft" [size]="15" /> People</a>
@@ -109,6 +111,7 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
               }
             </section>
             <app-hr-record-card [employeeId]="employee.id" [name]="employee.fullName" [isOwn]="employee.id === myId()" />
+            <app-hr-onboarding-card [employeeId]="employee.id" [isRecent]="joinedRecently()" [isOwn]="employee.id === myId()" />
             @if (resignation(); as resigned) {
               <app-exit-card [employeeId]="employee.id" [resignation]="resigned" [isOwn]="employee.id === myId()" (changed)="exit.reload()" />
             }
@@ -178,6 +181,8 @@ export class HrPersonPage {
   protected readonly exit = inject(ExitApi).exitOf(this.employeeId);
   protected readonly resignation = computed(() => valueOr(this.exit, undefined) ?? undefined);
   protected readonly stillOut = computed(() => stillOut(this.resignation()));
+  // Joined in the last three months: onboarding can still be started for them.
+  protected readonly joinedRecently = computed(() => (this.employee()?.joinedOn ?? '') >= addDays(maldivesToday(), -RECENT_DAYS));
   protected readonly isNotFound = computed(() => {
     const error = this.person.error()?.cause ?? this.person.error();
     return error instanceof HttpErrorResponse && error.status === HttpStatusCode.NotFound;

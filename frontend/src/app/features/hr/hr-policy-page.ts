@@ -13,13 +13,14 @@ import { HrApi } from './hr-api';
 import { WorkScheduleCard } from './work-schedule-card';
 import { ExitItemsCard } from '../exit/exit-items-card';
 import { AllowanceTypesCard } from '../allowance/allowance-types-card';
+import { OnboardingTasksCard } from '../onboarding/onboarding-tasks-card';
 
 // Editing means a type is open in the form. "new" means adding one.
 type Editing = LeaveType | 'new' | undefined;
 
 @Component({
   selector: 'app-hr-policy-page',
-  imports: [AllowanceTypesCard, ApprovalStepsCard, ConfirmButton, Dialog, DocumentTypesCard, ExchangeRatesCard, ExitItemsCard, ListSkeleton, PolicyForm, WorkScheduleCard],
+  imports: [AllowanceTypesCard, ApprovalStepsCard, ConfirmButton, Dialog, DocumentTypesCard, ExchangeRatesCard, ExitItemsCard, ListSkeleton, OnboardingTasksCard, PolicyForm, WorkScheduleCard],
   template: `
     <div class="page-view">
       <div class="page-title">
@@ -77,6 +78,7 @@ type Editing = LeaveType | 'new' | undefined;
       <app-document-types-card />
       <app-exit-items-card />
       <app-allowance-types-card />
+      <app-onboarding-tasks-card />
       <app-exchange-rates-card />
     </div>
 

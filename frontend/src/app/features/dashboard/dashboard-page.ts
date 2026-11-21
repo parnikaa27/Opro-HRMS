@@ -16,6 +16,7 @@ import { LeaveBalanceCard } from './leave-balance-card';
 import { NextHolidayCard } from './next-holiday-card';
 import { TodayAttendanceCard } from './today-attendance-card';
 import { VisaCard } from './visa-card';
+import { WelcomeCard } from '../onboarding/welcome-card';
 
 const NOON = 12;
 const EVENING = 17;
@@ -35,12 +36,13 @@ const DEFAULT_LINE = 'Here’s everything you need for the day.';
 
 @Component({
   selector: 'app-dashboard-page',
-  imports: [AttendanceTable, EmployeeCard, Icon, LatestRequestCard, LeaveBalanceCard, ListSkeleton, NextHolidayCard, RouterLink, TodayAttendanceCard, VisaCard, WelcomeBanner],
+  imports: [AttendanceTable, EmployeeCard, Icon, LatestRequestCard, LeaveBalanceCard, ListSkeleton, NextHolidayCard, RouterLink, TodayAttendanceCard, VisaCard, WelcomeBanner, WelcomeCard],
   template: `
     @if (session.user(); as user) {
       <app-welcome-banner [dateLabel]="dateLabel" [heading]="greeting + ', ' + firstName() + '.'" [line]="line()" />
       <div class="employee-grid">
         <div class="main-column">
+          <app-welcome-card />
           <app-today-attendance-card [day]="today()" [isLoading]="thisMonth.isLoading()" [hasFailed]="!!thisMonth.error()" (punched)="thisMonth.reload()" />
           <div class="balance-grid">
             <app-leave-balance-card />

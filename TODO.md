@@ -42,8 +42,7 @@ Walked through by hand as Arjun (expatriate employee), Vikram (HOD), Ananya (HR)
 
 ## From the meeting with Madhu (19 November)
 
-Being built in batches, one PR each. Leave, documents, exit, the performance changes and allowances are done (see Leave below, and Documents, Leaving Opro, Performance and Allowances in CLAUDE.md). Still to come:
-- [ ] **Onboarding:** a proper process. Needs a conversation first: what's on the checklist and who ticks it.
+Being built in batches, one PR each. Leave, documents, exit, the performance changes, allowances and onboarding are done (see Leave below, and Documents, Leaving Opro, Performance, Allowances and Onboarding in CLAUDE.md). Still to come:
 - [ ] **Recruitment:** needs its own conversation first.
 
 ## Demo
@@ -65,6 +64,7 @@ Being built in batches, one PR each. Leave, documents, exit, the performance cha
 - [ ] **Flight entitlement and salary advance ticks on leave requests:** today they're shown to the HOD and HR only. Should ticking the flight box start a flight claim, and who acts on a salary advance before payroll exists?
 - [ ] **Leaving without resigning** (a contract ending, a dismissal): today the return checklist only applies to someone who resigned. Should HR tick items off for everyone who leaves? And is there a minimum notice period between resigning and the last day?
 - [ ] **Allowances:** the real list of kinds and who gets how much, and whether any one-off grants HR makes directly (today only an HOD grants them).
+- [ ] **Onboarding:** the real task list, and whether tasks for IT (email, system access) should wait for Microsoft sign in. Today there's no IT role, so the HOD owns the laptop and desk.
 - [ ] **Comp off for super admins:** today they earn none for working a Friday or a holiday, because nobody is above them to approve it.
 
 ## Later, if needed
@@ -96,7 +96,8 @@ What the document asks for, against what's built. "Done" means built and tested;
 
 **4. Onboarding**
 - Done: employee number generation, document collection.
-- Not yet: email creation and system access (needs Microsoft 365), welcome kit, orientation, induction training, probation tracking.
+- Done since: an onboarding checklist HR keeps, with tasks for HR, the HOD and the joiner, first-day details, a buddy, and progress for HR. Probation reviews are in Performance.
+- Not yet: email creation and system access (needs Microsoft 365), induction training (comes with learning and development).
 
 **5. Attendance**
 - Done: GPS punching from the office, a resort or home, mobile friendly, late arrivals, breaks.

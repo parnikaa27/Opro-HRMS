@@ -33,7 +33,7 @@ test('a super admin’s own leave is approved as it is sent', async ({ page }) =
   await page.getByTestId('leave-reason').fill('Board visit in Colombo');
   await page.getByTestId('leave-submit').click();
   await expect(page.getByTestId('success-state')).toContainText('Leave booked');
-  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
 
   await expect(page.getByTestId('leave-request').filter({ hasText: '20 Apr to 21 April 2027' })).toContainText('Approved');
 });
@@ -48,7 +48,7 @@ test('a super admin steps in on leave while the HOD is away', async ({ page }) =
   await page.getByTestId('leave-to').fill('2027-05-05');
   await page.getByTestId('leave-reason').fill('Cousin’s wedding in Kochi');
   await page.getByTestId('leave-submit').click();
-  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
 
   await page.getByTestId('sidebar-sign-out').click();
   await signInAs(page, 'OPR-0001');
