@@ -118,7 +118,7 @@ body {
 
   small {
     color: var(--muted);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
   }
 }
@@ -126,6 +126,14 @@ body {
 .search-empty {
   padding: 10px;
   color: var(--muted);
+}
+
+/* HR's ten links and the footer outgrow a 720px laptop screen. The design's fixed sidebar then scrolls on its own,
+   so Sign out is always reachable. */
+.sidebar {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 /* The design has no colleague lookup. A colleague isn't a page to open: their name and role, and their email to write to. */
@@ -149,7 +157,7 @@ body {
     display: block;
     padding: 0;
     color: var(--aqua-dark);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
     overflow-wrap: anywhere;
 
@@ -265,13 +273,13 @@ dialog.modal {
 
   .field-error {
     margin-top: -2px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
   }
 
   [role='alert'] {
     color: var(--coral);
-    font-size: 11px;
+    font-size: 12px;
   }
 }
 
@@ -300,7 +308,7 @@ dialog.modal {
   align-items: center;
   gap: 10px;
   margin-top: 4px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
 
   .text-link {
@@ -308,7 +316,7 @@ dialog.modal {
     padding: 0;
     border: 0;
     background: none;
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .danger {
@@ -318,7 +326,7 @@ dialog.modal {
 
 .history-row .row-error {
   color: var(--coral);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 /* Calendar chips for things the design's mock calendar doesn't have: holidays and team leave. */
@@ -357,21 +365,21 @@ dialog.modal {
   .overlap {
     margin-top: 3px;
     color: #bc7b12;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 600;
   }
 
   .row-error {
     grid-column: 1 / -1;
     color: var(--coral);
-    font-size: 10px;
+    font-size: 11px;
   }
 }
 
 .request-list .row-error {
   margin: -4px 0 6px;
   color: var(--coral);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 /* A person cell in the team attendance table, which the design shows as a single person's log. */
@@ -397,7 +405,7 @@ dialog.modal {
   .card-text {
     margin: 12px 0 16px;
     color: var(--muted);
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.5;
   }
 }
@@ -497,7 +505,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
   display: block;
   margin-top: 4px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
 }
 
@@ -531,7 +539,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
     display: grid;
     gap: 6px;
     color: #526972;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
   }
 
@@ -544,7 +552,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
     outline: 0;
     color: var(--ink);
     background: white;
-    font-size: 11px;
+    font-size: 12px;
 
     &:focus {
       border-color: var(--aqua);
@@ -560,7 +568,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
   gap: 8px;
   margin: -6px 0 16px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 
   input {
@@ -579,7 +587,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
   border-radius: 10px;
   background: #fff4dd;
   color: #7a5a1c;
-  font-size: 12px;
+  font-size: 13px;
 
   strong {
     color: #5c430f;
@@ -589,7 +597,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
     border: 0;
     background: none;
     padding: 0;
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .row-actions {
@@ -673,7 +681,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
 
 .history-row .row-actions label.text-link {
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
 
   &:has(:focus-visible) {
     outline: 2px solid var(--aqua);
@@ -692,7 +700,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
 
   > span {
     color: var(--muted);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
   }
 
@@ -719,7 +727,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
 .punch-error {
   max-inline-size: 260px;
   color: var(--coral);
-  font-size: 11px;
+  font-size: 12px;
   text-align: end;
 }
 
@@ -761,7 +769,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
 
     span {
       color: var(--muted);
-      font-size: 12px;
+      font-size: 13px;
       line-height: 1.45;
     }
   }
@@ -778,7 +786,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
   gap: 7px;
   margin-block: 2px 12px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
 
   app-icon {
     color: var(--aqua-dark);
@@ -799,7 +807,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
     border-radius: 6px;
     background: transparent;
     color: #7a8c94;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
   }
 
@@ -824,7 +832,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
 
   dt {
     color: var(--muted);
-    font-size: 11px;
+    font-size: 12px;
   }
 
   dd {
@@ -854,7 +862,7 @@ td.row-actions {
 .table-note {
   padding: 12px 20px 18px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 /* On phones a table turns into a stack of rows: the row's name across the top, then each value under its column's name,
@@ -903,7 +911,7 @@ td.row-actions {
       display: block;
       margin-bottom: 2px;
       color: var(--muted);
-      font-size: 9px;
+      font-size: 10px;
       font-weight: 700;
       letter-spacing: 0.06em;
     }
@@ -950,7 +958,7 @@ td.row-actions {
   padding: 0;
   border: 0;
   background: none;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 /* The inbox's documents and bank details to check sit under its detail changes, with the design's 19px gap between cards. */
@@ -992,7 +1000,7 @@ app-quota-card > .card {
 .insight-label {
   margin: 16px 0 8px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1011,7 +1019,7 @@ app-quota-card > .card {
     grid-template-columns: minmax(84px, 1fr) minmax(60px, 2fr) auto 34px;
     gap: 10px;
     align-items: center;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   i {
@@ -1053,7 +1061,7 @@ app-quota-card > .card {
 
   dt {
     color: var(--muted);
-    font-size: 10px;
+    font-size: 11px;
   }
 
   dd {
@@ -1071,7 +1079,7 @@ app-quota-card > .card {
   padding: 7px 0;
   border-top: 1px solid var(--line);
   color: inherit;
-  font-size: 11px;
+  font-size: 12px;
   text-decoration: none;
 
   span {
@@ -1130,14 +1138,14 @@ a.insight-row:hover span {
 
   span {
     color: var(--muted);
-    font-size: 12px;
+    font-size: 13px;
   }
 }
 
 .weight-total {
   margin: 4px 0 12px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
 
   &.is-off {
     color: var(--coral);
@@ -1147,7 +1155,7 @@ a.insight-row:hover span {
 
 .card-note {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 /* A tick box with its words beside it, inside forms whose labels otherwise stack. */
@@ -1156,7 +1164,7 @@ label.check-label {
   align-items: center;
   gap: 8px;
   color: var(--ink);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 
   input {
@@ -1176,7 +1184,7 @@ label.check-label {
 .cell-note {
   display: block;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 /* The leave form's day by day strip, like the grid on the paper leave form. */
@@ -1205,7 +1213,7 @@ label.check-label {
   }
 
   small {
-    font-size: 9px;
+    font-size: 10px;
   }
 
   strong {
@@ -1213,7 +1221,7 @@ label.check-label {
   }
 
   span {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
   }
 }
@@ -1248,7 +1256,7 @@ label.check-label {
   border-radius: 9px;
   background: white;
   color: var(--ink);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 /* HR's "To collect" card sits under the holiday card, with the same space the design leaves between cards. */
@@ -1281,7 +1289,7 @@ label.check-label {
   display: block;
   padding: 0 12px 8px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 /* A one line add form under a list, like HR's exit items. */
@@ -1303,7 +1311,7 @@ label.check-label {
 
   dt {
     color: var(--muted);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -1348,7 +1356,7 @@ label.check-label {
 
   span {
     color: var(--muted);
-    font-size: 11px;
+    font-size: 12px;
   }
 
   li.done strong {
