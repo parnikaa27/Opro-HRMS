@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { plural } from '../../shared/utils/text';
-import { Share } from './insights';
+import { Share } from '../../models/insights';
 
 // A short list of groups with their count, share and a bar, biggest first. Numbers always sit beside the bar.
 @Component({

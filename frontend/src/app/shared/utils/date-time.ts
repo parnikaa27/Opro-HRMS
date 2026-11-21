@@ -28,11 +28,6 @@ export const maldivesToday = (now = new Date()) => dayFormat.format(now);
 export const maldivesHour = (now = new Date()) => Number(hourFormat.format(now));
 export const yearOf = (date: string) => Number(date.slice(0, YEAR_LENGTH));
 export const monthOf = (date: string) => date.slice(0, MONTH_LENGTH);
-// "11-20" from "1992-11-20": the day of the year a birthday or anniversary falls on, and its month.
-export const monthDayOf = (date: string) => date.slice(YEAR_LENGTH + 1);
-export const monthNumberOf = (date: string) => date.slice(YEAR_LENGTH + 1, MONTH_LENGTH);
-// The same day and month in today's year.
-export const inYearOf = (date: string, today: string) => `${today.slice(0, YEAR_LENGTH)}${date.slice(YEAR_LENGTH)}`;
 export const weekdayOf = (date: string) => dateOnly(date).getUTCDay();
 export const dayOfMonth = (date: string) => dateOnly(date).getUTCDate();
 

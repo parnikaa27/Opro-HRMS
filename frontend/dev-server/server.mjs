@@ -18,6 +18,8 @@ const SESSIONS_SURVIVE_RESTARTS = process.env.MOCK_STATELESS_SESSIONS === 'true'
 
 const load = (name) => JSON.parse(readFileSync(new URL(`./data/${name}.json`, import.meta.url), 'utf8'));
 
+const DASHBOARD = load('dashboard');
+const REPORTS = load('reports');
 const db = {
   employees: load('employees'),
   visas: load('visas'),
@@ -2280,35 +2282,18 @@ const routes = [
     db.performance.cycles = db.performance.cycles.map((entry) => (entry.id === id ? closed : entry));
     return closed;
   }],
-  ['GET', /^\/api\/insights$/, ({ user }) => {
+  // Fixtures saved from Spring's dev profile. Spring counts these from the records; the mock only serves them.
+  ['GET', /^\/api\/insights\/dashboard$/, ({ user }) => {
     requireInsights(user);
-    const since = Number(today().slice(0, 4)) - 1;
-    const insuranceOf = db.records.insurance;
-    return {
-      today: today(),
-      people: [...db.employees].sort((first, second) => first.fullName.localeCompare(second.fullName)).map((employee) => {
-        const visa = db.visas.find(({ employeeId }) => employeeId === employee.id);
-        const isActive = !employee.lastDay || employee.lastDay >= today();
-        return {
-          ...pick(employee, ['id', 'fullName', 'department', 'designation', 'nationality', 'gender', 'dateOfBirth', 'joinedOn', 'lastDay', 'employmentType', 'jobCategory', 'managerId', 'probationEndsOn', 'contractEndsOn']),
-          ...(isActive && { today: db.attendance.find((record) => record.employeeId === employee.id && record.date === today()) }),
-          ...(visa && pick(visa, ['visaExpiry', 'passportExpiry', 'employmentApprovalExpiry', 'medicalDueOn'])),
-          ...(insuranceOf[employee.id] && { insuranceExpiry: insuranceOf[employee.id].expiresOn }),
-        };
-      }),
-      leave: db.leaveRequests.filter(({ from }) => Number(from.slice(0, 4)) >= since).map((request) => pick(request, ['employeeId', 'type', 'from', 'to', 'days', 'status', 'appliedOn'])),
-      balances: activeEmployees().flatMap(({ id }) => balancesOf(id).map((balance) => ({ employeeId: id, ...pick(balance, ['type', 'entitled', 'taken', 'pending']) }))),
-      quotas: [...db.records.quotas].sort((first, second) => first.jobCategory.localeCompare(second.jobCategory)).map(quotaView),
-      ...(latestCycle() && { cycle: latestCycle() }),
-      appraisals: db.performance.appraisals
-        .filter(({ cycleId }) => cycleId === latestCycle()?.id)
-        .map(({ employeeId, rating, recommendsPromotion, incrementPercent }) => ({ employeeId, rating, recommendsPromotion, ...(incrementPercent && { incrementPercent }) })),
-    };
+    return DASHBOARD;
   }],
-  ['GET', /^\/api\/insights\/attendance$/, ({ user, query }) => {
+  ['GET', /^\/api\/insights\/reports\/([\w-]+)$/, ({ user, params: [kind], query }) => {
     requireInsights(user);
-    const ids = new Set(activeEmployees().map(({ id }) => id));
-    return db.attendance.filter((record) => ids.has(record.employeeId)).filter(inMonth(query.get('month'))).map(withName);
+    const report = REPORTS[kind === 'mix' ? `mix-${query.get('by') ?? 'department'}` : kind];
+    if (!report) {
+      throw new HttpError(404, `There's no report called ${kind}.`);
+    }
+    return report;
   }],
   ['GET', /^\/api\/hr\/schedules$/, ({ user }) => {
     requireHr(user);

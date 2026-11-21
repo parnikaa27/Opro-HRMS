@@ -1,0 +1,152 @@
+{
+  "headcount": {
+    "title": "Headcount",
+    "fileName": "headcount-2026-11-21",
+    "columns": ["Name", "Employee ID", "Department", "Designation", "Nationality", "Gender", "Age", "Employment", "Joined"],
+    "rows": [
+      ["Ananya Iyer", "OPR-0002", "People & Culture", "HR Manager", "Indian", "Female", 41, "Permanent", "2016-01-10"],
+      ["Arjun Reddy", "OPR-0018", "Operations", "Site Engineer", "Indian", "Male", 30, "Contract", "2023-12-20"],
+      ["Karan Mehta", "OPR-0023", "Operations", "Customer Service Lead", "Maldivian", "Male", 35, "Permanent", "2019-05-05"],
+      ["Kavya Menon", "OPR-0027", "Operations", "Operations Analyst", "Indian", "Female", 28, "Permanent", "2024-03-30"],
+      ["Priya Nair", "OPR-0015", "Operations", "Procurement Officer", "Indian", "Female", 34, "Permanent", "2022-08-14"],
+      ["Rajesh Sharma", "OPR-0001", "Operations", "Director of Operations", "Indian", "Male", 48, "Permanent", "2015-03-01"],
+      ["Rohit Verma", "OPR-0021", "Operations", "Logistics Coordinator", "Indian", "Male", 38, "Permanent", "2020-11-02"],
+      ["Sneha Kulkarni", "OPR-0011", "Operations", "Operations Executive", "Maldivian", "Female", 30, "Permanent", "2021-02-01"],
+      ["Vikram Singh", "OPR-0004", "Operations", "Operations Manager", "Indian", "Male", 43, "Permanent", "2018-07-15"]
+    ]
+  },
+  "movement": {
+    "title": "Joiners and leavers, 2026",
+    "fileName": "joiners-and-leavers-2026",
+    "columns": ["Name", "Department", "Change", "Date"],
+    "rows": []
+  },
+  "balances": {
+    "title": "Leave balances, 2026",
+    "fileName": "leave-balances-2026",
+    "columns": ["Name", "Leave type", "Entitled", "Taken", "Waiting", "Left"],
+    "rows": [
+      ["Ananya Iyer", "Annual leave", 30.0, 8.0, 0, 22.0],
+      ["Ananya Iyer", "Sick leave", 30.0, 1.0, 0, 29.0],
+      ["Ananya Iyer", "Family responsibility leave", 10.0, 0.0, 0, 10.0],
+      ["Arjun Reddy", "Annual leave", 30.0, 18.0, 0, 12.0],
+      ["Arjun Reddy", "Sick leave", 30.0, 6.0, 0, 24.0],
+      ["Arjun Reddy", "Family responsibility leave", 10.0, 3.0, 0, 7.0],
+      ["Arjun Reddy", "Paternity leave", 3.0, 0.0, 0, 3.0],
+      ["Karan Mehta", "Annual leave", 30.0, 20.0, 6.0, 4.0],
+      ["Karan Mehta", "Sick leave", 30.0, 0.0, 0, 30.0],
+      ["Karan Mehta", "Family responsibility leave", 10.0, 1.0, 0, 9.0],
+      ["Kavya Menon", "Annual leave", 30.0, 6.0, 0, 24.0],
+      ["Kavya Menon", "Sick leave", 30.0, 1.0, 0, 29.0],
+      ["Kavya Menon", "Family responsibility leave", 10.0, 0.0, 0, 10.0],
+      ["Priya Nair", "Annual leave", 30.0, 9.0, 8.0, 13.0],
+      ["Priya Nair", "Sick leave", 30.0, 1.0, 0, 29.0],
+      ["Priya Nair", "Family responsibility leave", 10.0, 0.0, 0, 10.0],
+      ["Rajesh Sharma", "Annual leave", 30.0, 14.0, 0, 16.0],
+      ["Rajesh Sharma", "Sick leave", 30.0, 2.0, 0, 28.0],
+      ["Rajesh Sharma", "Family responsibility leave", 10.0, 0.0, 0, 10.0],
+      ["Rohit Verma", "Annual leave", 32.0, 22.0, 0, 10.0],
+      ["Rohit Verma", "Sick leave", 30.0, 2.0, 0, 28.0],
+      ["Rohit Verma", "Family responsibility leave", 10.0, 4.0, 0.5, 5.5],
+      ["Sneha Kulkarni", "Annual leave", 30.0, 15.0, 3.0, 12.0],
+      ["Sneha Kulkarni", "Sick leave", 30.0, 4.0, 0, 26.0],
+      ["Sneha Kulkarni", "Family responsibility leave", 10.0, 2.0, 0, 8.0],
+      ["Vikram Singh", "Annual leave", 30.0, 11.0, 5.0, 14.0],
+      ["Vikram Singh", "Sick leave", 30.0, 3.0, 0, 27.0],
+      ["Vikram Singh", "Family responsibility leave", 10.0, 1.0, 0, 9.0]
+    ]
+  },
+  "leave": {
+    "title": "Leave taken, 2026",
+    "fileName": "leave-2026",
+    "columns": ["Name", "Leave type", "From", "To", "Days", "Status"],
+    "rows": [
+      ["Karan Mehta", "Annual leave", "2026-10-12", "2026-10-15", 4.0, "approved"],
+      ["Sneha Kulkarni", "Sick leave", "2026-10-21", "2026-10-21", 1.0, "approved"],
+      ["Vikram Singh", "Sick leave", "2026-11-02", "2026-11-02", 1.0, "cancelled"],
+      ["Arjun Reddy", "Sick leave", "2026-11-04", "2026-11-04", 1.0, "approved"],
+      ["Karan Mehta", "Annual leave", "2026-11-18", "2026-11-24", 6.0, "pending"],
+      ["Rohit Verma", "Family responsibility leave", "2026-11-18", "2026-11-18", 0.5, "pending"],
+      ["Sneha Kulkarni", "Annual leave", "2026-11-22", "2026-11-24", 3.0, "pending"],
+      ["Kavya Menon", "Annual leave", "2026-11-26", "2026-11-26", 1.0, "rejected"],
+      ["Vikram Singh", "Annual leave", "2026-12-06", "2026-12-10", 5.0, "pending"],
+      ["Priya Nair", "Annual leave", "2026-12-20", "2026-12-31", 8.0, "pending"]
+    ]
+  },
+  "attendance": {
+    "title": "Attendance, 2026-11",
+    "fileName": "attendance-2026-11",
+    "columns": ["Name", "Days present", "Working days", "Late", "Missed", "Hours", "On time"],
+    "rows": [
+      ["Ananya Iyer", 16, 16, 3, 2, "103h 09m", "81%"],
+      ["Arjun Reddy", 15, 15, 5, 1, "93h 36m", "67%"],
+      ["Karan Mehta", 16, 16, 1, 1, "109h 07m", "94%"],
+      ["Kavya Menon", 16, 16, 2, 2, "102h 00m", "88%"],
+      ["Priya Nair", 16, 16, 3, 1, "113h 37m", "81%"],
+      ["Rajesh Sharma", 16, 16, 2, 4, "86h 59m", "88%"],
+      ["Rohit Verma", 13, 16, 3, 4, "79h 18m", "77%"],
+      ["Sneha Kulkarni", 16, 16, 2, 1, "108h 52m", "88%"],
+      ["Vikram Singh", 16, 16, 3, 2, "105h 23m", "81%"]
+    ]
+  },
+  "papers": {
+    "title": "Visa and permit expiry",
+    "fileName": "visa-and-permit-expiry-2026-11-21",
+    "columns": ["Name", "Visa", "Passport", "Employment approval", "Work permit medical", "Medical insurance", "Soonest, days"],
+    "rows": [
+      ["Rohit Verma", "2026-11-02", "2029-09-04", "2027-11-02", "2027-03-02", "2027-05-31", -19],
+      ["Arjun Reddy", "2026-12-20", "2028-02-11", "2027-12-20", "2027-04-19", "2027-04-30", 29],
+      ["Kavya Menon", "2027-03-30", "2027-01-10", "2028-03-29", "2027-07-28", "2027-03-31", 50],
+      ["Priya Nair", "2027-08-14", "2031-06-30", "2028-08-13", "2027-12-12", "2027-06-30", 221],
+      ["Rajesh Sharma", "2028-02-19", "2032-04-18", "2029-02-18", "2028-06-18", "None", 455],
+      ["Ananya Iyer", "2028-05-31", "2031-09-09", "2029-05-31", "2028-09-28", "None", 557],
+      ["Vikram Singh", "2028-09-09", "2030-12-12", "2029-09-09", "2029-01-07", "None", 658]
+    ]
+  },
+  "mix-department": {
+    "title": "Workforce by department",
+    "fileName": "workforce-by-department-2026-11-21",
+    "columns": ["Department", "People", "Share"],
+    "rows": [
+      ["Operations", 8, "89%"],
+      ["People & Culture", 1, "11%"]
+    ]
+  },
+  "mix-nationality": {
+    "title": "Workforce by nationality",
+    "fileName": "workforce-by-nationality-2026-11-21",
+    "columns": ["Nationality", "People", "Share"],
+    "rows": [
+      ["Indian", 7, "78%"],
+      ["Maldivian", 2, "22%"]
+    ]
+  },
+  "mix-gender": {
+    "title": "Workforce by gender",
+    "fileName": "workforce-by-gender-2026-11-21",
+    "columns": ["Gender", "People", "Share"],
+    "rows": [
+      ["Male", 5, "56%"],
+      ["Female", 4, "44%"]
+    ]
+  },
+  "mix-age": {
+    "title": "Workforce by age",
+    "fileName": "workforce-by-age-2026-11-21",
+    "columns": ["Age", "People", "Share"],
+    "rows": [
+      ["25 to 34", 4, "44%"],
+      ["35 to 44", 4, "44%"],
+      ["45 to 54", 1, "11%"]
+    ]
+  },
+  "mix-employmentType": {
+    "title": "Workforce by employment type",
+    "fileName": "workforce-by-employmentType-2026-11-21",
+    "columns": ["Employment type", "People", "Share"],
+    "rows": [
+      ["Permanent", 8, "89%"],
+      ["Contract", 1, "11%"]
+    ]
+  }
+}

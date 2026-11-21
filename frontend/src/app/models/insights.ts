@@ -1,58 +1,35 @@
-import { AttendanceDay } from './attendance';
-import { EmploymentType, Gender } from './employee';
-import { LeaveRequest } from './leave';
-import { AppraisalCycle } from './performance';
-import { Quota } from './record';
+// The executive dashboard as Spring counts it (InsightController). The browser only shows these figures.
 
-// One person as the dashboard and reports see them, past staff included. Field names match Spring's InsightController.
-export interface PersonFact {
+// A group with its count and its share of the whole, biggest first.
+export interface Share {
+  label: string;
+  count: number;
+  percent: number;
+}
+
+export interface PaperFigures {
+  kind: 'visa' | 'passport' | 'approval' | 'medical' | 'insurance';
+  label: string;
+  expired: number;
+  expiring: number;
+}
+
+// On is the day it falls this year: a birthday, a work anniversary, or when probation or a contract ends.
+export interface PersonEvent {
   id: string;
   fullName: string;
-  department: string;
-  designation: string;
-  nationality: string;
-  gender?: Gender;
-  dateOfBirth?: string;
-  joinedOn: string;
-  lastDay?: string;
-  employmentType: EmploymentType;
-  jobCategory?: string;
-  managerId?: string;
-  // Missing for people who have left.
-  today?: AttendanceDay;
-  visaExpiry?: string;
-  passportExpiry?: string;
-  employmentApprovalExpiry?: string;
-  medicalDueOn?: string;
-  insuranceExpiry?: string;
-  probationEndsOn?: string;
-  contractEndsOn?: string;
+  on: string;
+  years?: number;
 }
 
-export type LeaveFact = Pick<LeaveRequest, 'employeeId' | 'type' | 'from' | 'to' | 'days' | 'status' | 'appliedOn'>;
-
-export interface BalanceFact {
-  employeeId: string;
-  type: string;
-  entitled: number;
-  taken: number;
-  pending: number;
-}
-
-export interface Insights {
+export interface Dashboard {
   today: string;
-  people: PersonFact[];
-  leave: LeaveFact[];
-  balances: BalanceFact[];
-  quotas: Quota[];
-  // The open appraisal cycle, or the last one closed, with its appraisals so far.
-  cycle?: AppraisalCycle;
-  appraisals: AppraisalFact[];
-}
-
-export interface AppraisalFact {
-  employeeId: string;
-  rating: number;
-  recommendsPromotion: boolean;
-  incrementPercent?: number;
+  workforce: { total: number; joiners: number; leavers: number; growthPercent: number; attritionPercent: number; retentionPercent: number };
+  presence: { present: number; late: number; absent: number; onLeave: number; fromHome: number; atResort: number };
+  month: { month: string; attendancePercent: number; lateCount: number; onTimePercent: number };
+  mix: Record<'origin' | 'gender' | 'employmentType' | 'age' | 'department' | 'nationality', Share[]>;
+  leave: { pending: number; annualUsedPercent: number; sickByMonth: { month: string; days: number }[] };
+  compliance: { papers: PaperFigures[]; quotaUsed: number; quotaSlots: number; quotasFull: string[]; missingVisa: number };
+  events: Record<'birthdays' | 'anniversaries' | 'probation' | 'contracts', PersonEvent[]>;
+  performance: { cycleName?: string; onProbation: number; due: number; done: number; averageRating?: string; highPerformers: number; promotions: number };
 }

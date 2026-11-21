@@ -1,16 +1,22 @@
 import { httpResource } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { AttendanceDay } from '../../models/attendance';
-import { Insights } from '../../models/insights';
+import { Dashboard } from '../../models/insights';
+import { ReportTable } from '../../shared/utils/export';
 
-// The facts behind the dashboard and reports. HR and super admins only; the server checks.
+export interface ReportQuery {
+  kind: string;
+  year: number;
+  month: string;
+  by: string;
+}
+
+// The dashboard's figures and each report's rows, counted by the server. HR and super admins only; the server checks.
 @Injectable({ providedIn: 'root' })
 export class InsightsApi {
-  insights = () => httpResource<Insights>(() => '/api/insights');
-  // Waits until there's a month to ask for.
-  attendance = (month: () => string | undefined) =>
-    httpResource<AttendanceDay[]>(() => {
-      const chosen = month();
-      return chosen ? { url: '/api/insights/attendance', params: { month: chosen } } : undefined;
-    }, { defaultValue: [] });
+  dashboard = () => httpResource<Dashboard>(() => '/api/insights/dashboard');
+  report = (query: () => ReportQuery) =>
+    httpResource<ReportTable>(() => {
+      const { kind, year, month, by } = query();
+      return { url: `/api/insights/reports/${encodeURIComponent(kind)}`, params: { year, month, by } };
+    });
 }

@@ -303,7 +303,7 @@ Logo, "People first, always.", "© year Opro Pvt Ltd · Malé, Republic of Maldi
 
 ### Exports
 
-- Reports save as **CSV, Excel or PDF**, all built in the browser from the same rows shown on screen (`shared/utils/export.ts`). Excel and PDF use exceljs and jspdf with jspdf-autotable, loaded only when someone exports. Excel keeps every value as plain data, never a formula.
+- Reports save as **CSV, Excel or PDF**. Spring builds the rows; the browser shows them and saves the same rows (`shared/utils/export.ts`). Excel and PDF use exceljs and jspdf with jspdf-autotable, loaded only when someone exports. Excel keeps every value as plain data, never a formula.
 - "Export report" downloads a CSV built in the browser. Every cell is quoted, and cells starting with `=`, `+`, `-` or `@` get a leading apostrophe so a spreadsheet never runs them as formulas.
 
 ### Non functional
@@ -346,6 +346,7 @@ This is a daily work tool. People open it to check a punch, apply for leave or a
 
 ### Typography
 - Manrope for headings and big numbers, DM Sans for everything else, as the design specifies. Both self hosted.
+- Every text size of 12px and under is 1px larger than the Figma file (Parnika's call, for reading). Headings and big numbers keep the design's sizes.
 - Times use the design's 12 hour clock ("08:56 AM"). Durations read "6h 14m", table hours "08h 54m".
 - Times, dates and numbers use tabular figures so columns line up.
 
@@ -412,7 +413,7 @@ Production: browser → /api/... → Spring Boot (served behind the same domain)
 ```
 
 - The browser only ever calls relative `/api/...` URLs. No backend host, key or secret exists in frontend code or `environment` files, since everything shipped to the browser is public.
-- Spring Boot is the only layer between the browser and the data. Do not add a separate BFF.
+- Spring Boot is the only layer between the browser and the data. Do not add a separate BFF: Spring is it. Each screen gets what it shows, counted and grouped on the server, never a pile of records for the browser to add up (the dashboard and reports are the model).
 
 ### Mock server
 
@@ -491,7 +492,7 @@ The full, generated reference is Swagger UI at `http://localhost:8080/swagger-ui
 | POST / POST / POST | `/api/team/performance/:id/goals/decision`, `.../appraisal`, `.../probation-review` | Approve their goals, or send them back with a `note` / appraise (`rating`, `comments`, `recommendsPromotion`, `incrementPercent`, `goals`: `goalId`, `rating`, `comment`, `selfReviewComment`) / review probation (`outcome`, `extendedTo`, `comments`) |
 | GET / POST / POST | `/api/hr/performance`, `/api/hr/appraisal-cycles`, `/api/hr/appraisal-cycles/:id/close` | Cycles, the latest one's progress and every probation review / open a cycle (`name`, `dueOn`) / close it |
 | POST | `/api/hr/performance/:id/goals/decision` | HR's step on goals the HOD approved: `approved`, or `rejected` with a `note`. Never their own |
-| GET | `/api/insights`, `/api/insights/attendance?month=` | HR and super admins only: everyone (past staff too) with today's attendance, papers and record dates, this and last year's leave, balances, quota use and the latest appraisal cycle's ratings / everyone's days that month. The dashboard and reports count and group these in the browser |
+| GET | `/api/insights/dashboard`, `/api/insights/reports/:kind?year=&month=&by=` | HR and super admins only: the executive dashboard's figures / one report's `title`, `fileName`, `columns` and `rows` (`kind`: headcount, movement, mix, balances, leave, attendance or papers; `by` groups the mix). Spring counts and groups them, so the browser gets only what the page shows |
 | GET / PUT | `/api/profile/record`, `/api/profile/bank-account` | Own record (bank shown as last 4) / enter bank details for HR to verify (`bankName`, `accountName`, `accountNumber`, `currency`) |
 | GET | `/api/hr/employees/:id/record` | One person's insurance, bank details (full number), education and experience |
 | PUT / DELETE | `/api/hr/employees/:id/insurance` | Set (`provider`, `policyNumber`, `expiresOn`) or remove someone's medical insurance |

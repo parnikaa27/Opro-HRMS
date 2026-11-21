@@ -55,7 +55,7 @@ HRMS/
     dev-server/            Mock API that stands in for Spring
       server.mjs           Routes, sessions, XSRF check. Node built ins only
       attendance.mjs       Generates the last 62 days of punches relative to today, and works a day out again after an approved punch fix, using the schedule in force
-      data/                JSON fixtures: employees, visas, leave, flight allowances and claims, exchange rates, holidays, events, corrections, announcements, notifications, change requests, balance adjustments, work schedules, document types, records (insurance, bank details, education, experience, expatriate quota). Uploaded files stay in memory until restart
+      data/                JSON fixtures: employees, visas, leave, flight allowances and claims, exchange rates, holidays, events, corrections, announcements, notifications, change requests, balance adjustments, work schedules, document types, records (insurance, bank details, education, experience, expatriate quota), and the dashboard and reports as Spring's dev profile served them (`dashboard.json`, `reports.json`; save them again from Spring if their shape changes). Uploaded files stay in memory until restart
     proxy.conf.mjs         Sends /api to the mock or to Spring
     scripts/
       build-dark-theme.mjs Writes src/styles/dark.css from portal.css and styles.css (see theme:dark)
