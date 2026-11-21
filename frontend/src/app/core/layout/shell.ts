@@ -3,7 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { valueOr } from '../../shared/utils/resource';
-import { HrApi, NOTHING_WAITING } from '../../features/hr/hr-api';
+import { inboxCount } from '../../features/hr/inbox-count';
 import { isWaitingForHr } from '../../shared/utils/approval-step';
 import { TeamApi, ViewScope } from '../../features/team/team-api';
 import { SavedChanges } from '../saved-changes';
@@ -37,7 +37,6 @@ export class Shell {
   private readonly router = inject(Router);
   private readonly session = inject(Session);
   private readonly team = inject(TeamApi);
-  private readonly hr = inject(HrApi);
 
   private readonly url = toSignal(
     this.router.events.pipe(
@@ -59,17 +58,14 @@ export class Shell {
   private readonly pendingHomeDays = this.team.homeDays({ status: 'pending', isEnabled: this.countsWaiting, scope: this.scope });
   private readonly pendingCompOffs = this.team.compOffs({ status: 'pending', isEnabled: this.countsWaiting, scope: this.scope });
   private readonly pendingOvertime = this.team.overtime({ status: 'pending', isEnabled: this.countsWaiting, scope: this.scope });
-  private readonly changeRequests = this.hr.changeRequests({ isEnabled: () => this.view() === 'hr' && this.session.isHr() });
-  private readonly waitingDocuments = this.hr.waitingDocuments({ isEnabled: () => this.view() === 'hr' && this.session.isHr() });
-  private readonly waitingBanks = this.hr.waitingBanks({ isEnabled: () => this.view() === 'hr' && this.session.isHr() });
-  private readonly waitingApprovals = this.hr.approvals({ isEnabled: () => this.view() === 'hr' && this.session.isHr() });
+  private readonly pendingResignations = this.team.resignations({ status: 'pending', isEnabled: this.countsWaiting, scope: this.scope });
+  private readonly inbox = inboxCount(() => this.view() === 'hr' && this.session.isHr());
   protected readonly badges = computed<Partial<Record<BadgeKey, number>>>(() => ({
-    approvals: [valueOr(this.pendingLeave, []), valueOr(this.pendingFixes, []), valueOr(this.pendingHomeDays, []), valueOr(this.pendingCompOffs, []), valueOr(this.pendingOvertime, [])].reduce(
+    approvals: [valueOr(this.pendingLeave, []), valueOr(this.pendingFixes, []), valueOr(this.pendingHomeDays, []), valueOr(this.pendingCompOffs, []), valueOr(this.pendingOvertime, []), valueOr(this.pendingResignations, [])].reduce(
       (total, list) => total + list.filter((item) => !isWaitingForHr(item)).length,
       0,
     ),
-    inbox: valueOr(this.changeRequests, []).filter(({ status }) => status === 'open').length + valueOr(this.waitingDocuments, []).length + valueOr(this.waitingBanks, []).length +
-      Object.values(valueOr(this.waitingApprovals, NOTHING_WAITING)).reduce((total, list) => total + list.length, 0),
+    inbox: this.inbox.count(),
   }));
 
   constructor() {
@@ -77,7 +73,10 @@ export class Shell {
     const seen = saves();
     effect(() => {
       if (saves() !== seen) {
-        untracked(() => [this.pendingLeave, this.pendingFixes, this.pendingHomeDays, this.pendingCompOffs, this.pendingOvertime, this.changeRequests, this.waitingDocuments, this.waitingBanks, this.waitingApprovals].forEach((counts) => counts.reload()));
+        untracked(() => {
+          [this.pendingLeave, this.pendingFixes, this.pendingHomeDays, this.pendingCompOffs, this.pendingOvertime, this.pendingResignations].forEach((counts) => counts.reload());
+          this.inbox.reload();
+        });
       }
     });
   }

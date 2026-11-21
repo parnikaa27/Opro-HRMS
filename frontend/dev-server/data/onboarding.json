@@ -1,0 +1,25 @@
+{
+  "tasks": [
+    { "id": "OT-1", "name": "Contract signed and on file", "owner": "hr", "dueInDays": -7 },
+    { "id": "OT-2", "name": "Photo taken and ID card printed", "owner": "hr", "dueInDays": 0 },
+    { "id": "OT-3", "name": "Medical insurance in place", "owner": "hr", "dueInDays": 7 },
+    { "id": "OT-4", "name": "Laptop and desk ready", "owner": "hod", "dueInDays": -1 },
+    { "id": "OT-5", "name": "First week planned", "owner": "hod", "dueInDays": 0 },
+    { "id": "OT-6", "name": "Upload your documents", "owner": "joiner", "dueInDays": 3 },
+    { "id": "OT-7", "name": "Enter your bank details", "owner": "joiner", "dueInDays": 7 },
+    { "id": "OT-8", "name": "Read the HR policies", "owner": "joiner", "dueInDays": 7 }
+  ],
+  "onboardings": [
+    {
+      "employeeId": "OPR-0027", "startsOn": "2026-11-01", "firstDayTime": "08:45", "firstDayPlace": "Malé office, 3rd floor reception", "firstDayContact": "Ananya Iyer",
+      "items": [
+        { "id": "OI-1", "name": "Contract signed and on file", "owner": "hr", "dueOn": "2026-10-25", "doneOn": "2026-10-24", "doneBy": "OPR-0002" },
+        { "id": "OI-2", "name": "Photo taken and ID card printed", "owner": "hr", "dueOn": "2026-11-01" },
+        { "id": "OI-3", "name": "Laptop and desk ready", "owner": "hod", "dueOn": "2026-10-31", "doneOn": "2026-10-30", "doneBy": "OPR-0004" },
+        { "id": "OI-4", "name": "First week planned", "owner": "hod", "dueOn": "2026-11-01" },
+        { "id": "OI-5", "name": "Upload your documents", "owner": "joiner", "dueOn": "2026-11-04" },
+        { "id": "OI-6", "name": "Read the HR policies", "owner": "joiner", "dueOn": "2026-11-08" }
+      ]
+    }
+  ]
+}

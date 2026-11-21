@@ -3,10 +3,12 @@ import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
-import { buildAttendance, clockNow, decideHomeDay, maldivesNow, punchNow, rebuildDay, toMinutes } from './attendance.mjs';
+import { addDays, buildAttendance, clockNow, decideHomeDay, maldivesNow, punchNow, rebuildDay, toMinutes } from './attendance.mjs';
 
 const PORT = Number(process.env.MOCK_PORT ?? 4300);
 const MAX_BODY_BYTES = 10_000;
+// Compensatory off is taken within this many days of the day worked.
+const COMP_OFF_VALID_DAYS = 14;
 const SESSION_COOKIE = 'opro_session';
 const XSRF_COOKIE = 'XSRF-TOKEN';
 // The Netlify demo runs this file as a function that can restart at any time, losing every session in memory.
@@ -38,6 +40,9 @@ const db = {
   compOffs: [],
   // The two late days in Spring's dev seed, with the minutes Spring works out from its fixed punches.
   overtime: load('overtime'),
+  performance: load('performance'),
+  allowances: load('allowances'),
+  onboarding: load('onboarding'),
   // Which requests HR approves after the HOD. Leave types carry their own needsHrApproval.
   approvalRules: { punchFixes: false, homeDays: false, compOff: false, overtime: false },
   receipts: new Map(),
@@ -81,17 +86,24 @@ const samplePdf = (line) => {
 };
 
 // The same people's documents Spring seeds: their contract, visa or national ID papers, and insurance waiting for HR.
+// Each has one file, served as a sample PDF.
 const seedDocuments = (employees, visas) => employees.flatMap((employee) => {
   const visa = visas.find(({ employeeId }) => employeeId === employee.id);
-  const verified = { employeeId: employee.id, status: 'verified', hasFile: true };
+  const copy = (type, fields) => ({
+    employeeId: employee.id, type, status: 'verified', issuedOn: employee.joinedOn, files: [{ id: `DF-${employee.id}-${type}`, uploadedOn: employee.joinedOn }], ...fields,
+  });
   return [
-    { ...verified, type: 'employment-contract', updatedOn: employee.joinedOn },
-    ...(visa ? [{ ...verified, type: 'visa-copy', expiresOn: visa.visaExpiry }, { ...verified, type: 'passport-copy', expiresOn: visa.passportExpiry }] : []),
-    ...(employee.nationality === 'Maldivian' ? [{ ...verified, type: 'national-id' }] : []),
-    { ...verified, type: 'health-insurance', updatedOn: '2026-02-05', status: 'pending' },
+    copy('employment-contract', { updatedOn: employee.joinedOn }),
+    ...(visa ? [copy('visa-copy', { issuedOn: visa.visaIssuedOn, expiresOn: visa.visaExpiry }), copy('passport-copy', { expiresOn: visa.passportExpiry })] : []),
+    ...(employee.nationality === 'Maldivian' ? [copy('national-id', {})] : []),
   ];
 });
 db.documents = seedDocuments(db.employees, db.visas);
+// Types not for everyone reach only the people HR asks.
+db.askedFor = [{ type: 'marriage-certificate', employeeId: 'OPR-0015' }];
+// What HR collects back before someone leaves, and resignations with what's been ticked off.
+db.exitItems = [{ id: 'EI-1', name: 'Laptop' }, { id: 'EI-2', name: 'ID card' }, { id: 'EI-3', name: 'Bus travel card' }, { id: 'EI-4', name: 'Accommodation keys' }];
+db.resignations = [];
 
 class HttpError extends Error {
   constructor(status, message) {
@@ -115,7 +127,9 @@ const profileOf = (employee) => ({
   ...(db.photos.has(employee.id) && { photoUrl: `/api/employees/${employee.id}/photo?v=${db.photos.get(employee.id).version}` }),
 });
 // Someone past their last day keeps their records but drops out of every live list.
-const isActive = (employee) => !employee.lastDay || employee.lastDay >= today();
+// Active: joined by today and not left. Someone still to start can't sign in and isn't counted, as on Spring.
+const hasNotLeft = (employee) => !employee.lastDay || employee.lastDay >= today();
+const isActive = (employee) => employee.joinedOn <= today() && hasNotLeft(employee);
 const activeEmployees = () => db.employees.filter(isActive);
 const reportsOf = (user) => activeEmployees().filter(({ managerId }) => managerId === user.id);
 // Manager access follows from having reports, so changing a reporting line updates it.
@@ -179,6 +193,8 @@ const sayDate = (date) => longDate.format(new Date(`${date}T00:00:00Z`));
 const otherYearFormat = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 const sayDateFromToday = (date) => (date.slice(0, 4) === today().slice(0, 4) ? sayDate(date) : otherYearFormat.format(new Date(`${date}T00:00:00Z`)));
 const sayDates = ({ from, to }) => (from === to ? sayDate(from) : `${sayDate(from)} to ${sayDate(to)}`);
+// "6 December", the way Spring says when leave starts.
+const sayShortDate = (date) => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
 const sayDays = (days) => `${Math.abs(days)} ${Math.abs(days) === 1 ? 'day' : 'days'}`;
 const typeName = (code) => db.leaveTypes.find((type) => type.code === code)?.name.toLowerCase() ?? code;
 const sentence = (text) => (/[.!?]$/.test(text) ? text : `${text}.`);
@@ -202,18 +218,22 @@ const removeFrom = (collection, id, what) => {
   return undefined;
 };
 
+const appliesTo = (type, employee) =>
+  !type.retiredOn && (type.isForEveryone
+    ? employee.nationality !== 'Maldivian' || !type.isForExpatriatesOnly
+    : db.askedFor.some((entry) => entry.type === type.code && entry.employeeId === employee.id));
+
 // Every type that applies to them, plus anything they hold of a retired one, with missing and expired worked out.
 const documentEntries = (employee) => {
   const held = db.documents.filter(({ employeeId }) => employeeId === employee.id);
-  const isExpatriate = employee.nationality !== 'Maldivian';
   return [...db.documentTypes]
     .sort((first, second) => first.sortOrder - second.sortOrder || first.name.localeCompare(second.name))
     .map((type) => ({ type, document: held.find((entry) => entry.type === type.code) }))
-    .filter(({ type, document }) => document || (!type.retiredOn && (isExpatriate || !type.isForExpatriatesOnly)))
+    .filter(({ type, document }) => document || appliesTo(type, employee))
     .map(({ type, document }) => documentView(type, document));
 };
 const documentView = (type, document) => ({
-  type: type.code, name: type.name, uploadedBy: type.uploadedBy, hasExpiry: type.hasExpiry, hasFile: false,
+  type: type.code, name: type.name, uploadedBy: type.uploadedBy, hasExpiry: type.hasExpiry, isForEveryone: type.isForEveryone, files: [],
   ...(document && { ...document, employeeName: nameOf(document.employeeId) }),
   status: !document ? 'missing' : document.status === 'verified' && document.expiresOn && document.expiresOn < today() ? 'expired' : document.status,
 });
@@ -231,30 +251,54 @@ const heldDocument = (employeeId, code) => {
   }
   return document;
 };
+// One file at a time. Same dates add a page to the copy on file; new ones make a new copy that replaces its files.
 // An employee's own upload waits for HR. HR's counts as verified, and the person is told.
-const uploadDocument = ({ by, owner, code, file, expiresOn }) => {
+const uploadDocument = ({ by, owner, code, file, issuedOn, expiresOn }) => {
   const type = activeDocumentType(code);
   const isOwn = by.id === owner.id;
-  if (isOwn && type.uploadedBy !== 'employee') {
+  if (isOwn && (type.uploadedBy !== 'employee' || !appliesTo(type, owner))) {
     throw new HttpError(403, `HR adds your ${type.name.toLowerCase()}.`);
+  }
+  if (!DATE.test(String(issuedOn)) || issuedOn > today()) {
+    throw new HttpError(400, "Enter the date it starts. It can't be after today.");
   }
   if (type.hasExpiry && !(DATE.test(String(expiresOn)) && expiresOn > today())) {
     throw new HttpError(400, 'Enter the date it expires. It has to be after today.');
   }
+  const expires = type.hasExpiry ? expiresOn : undefined;
+  const held = db.documents.find((entry) => entry.employeeId === owner.id && entry.type === code);
+  const isSameCopy = held && held.issuedOn === issuedOn && held.expiresOn === expires;
+  const added = { id: `DF-${randomUUID().slice(0, 8)}`, uploadedOn: today() };
   const document = {
-    employeeId: owner.id, type: code, status: isOwn ? 'pending' : 'verified', updatedOn: today(), hasFile: true, ...(type.hasExpiry && { expiresOn }),
+    employeeId: owner.id, type: code, status: isOwn ? 'pending' : 'verified', updatedOn: today(), issuedOn, ...(expires && { expiresOn: expires }),
+    files: [...(isSameCopy ? held.files : []), added],
   };
-  db.documents = [...db.documents.filter((entry) => !(entry.employeeId === owner.id && entry.type === code)), document];
-  db.documentFiles.set(`${owner.id}/${code}`, file);
+  db.documents = [...db.documents.filter((entry) => entry !== held), document];
+  db.documentFiles.set(added.id, file);
   if (!isOwn) {
     notify(owner.id, 'record', `HR added your ${type.name.toLowerCase()}.`);
   }
   return documentView(type, document);
 };
-const sendDocument = (res, employee, code) => {
+// Someone takes their own file off until HR verifies the copy; HR takes any off. The last one takes the copy with it.
+const removeDocumentFile = ({ by, owner, code, fileId }) => {
+  const document = heldDocument(owner.id, code);
+  if (!document.files.some(({ id }) => id === fileId)) {
+    throw new HttpError(404, 'File not found');
+  }
+  if (by.id === owner.id && document.status === 'verified') {
+    throw new HttpError(409, 'HR has verified this, so ask HR to take a file off.');
+  }
+  const kept = { ...document, files: document.files.filter(({ id }) => id !== fileId) };
+  db.documents = db.documents.filter((entry) => entry !== document).concat(kept.files.length ? [kept] : []);
+  return documentView(db.documentTypes.find((type) => type.code === code), kept.files.length ? kept : undefined);
+};
+const sendDocument = (res, employee, code, fileId) => {
   const type = db.documentTypes.find((entry) => entry.code === code);
-  heldDocument(employee.id, code);
-  const uploaded = db.documentFiles.get(`${employee.id}/${code}`);
+  if (!heldDocument(employee.id, code).files.some(({ id }) => id === fileId)) {
+    throw new HttpError(404, 'File not found');
+  }
+  const uploaded = db.documentFiles.get(fileId);
   if (uploaded) {
     return sendFile(res, uploaded, type.name);
   }
@@ -263,12 +307,195 @@ const sendDocument = (res, employee, code) => {
   res.end(samplePdf(`${type.name} for ${employee.fullName}`));
   return SENT;
 };
+// A resignation as the portal shows it: names filled in, and the checklist once it's approved.
+const resignationView = (resignation) => ({
+  ...resignation,
+  employeeName: nameOf(resignation.employeeId),
+  ...(resignation.hodApprovedBy && { hodApprovedByName: nameOf(resignation.hodApprovedBy) }),
+  ...(resignation.decidedBy && { decidedByName: nameOf(resignation.decidedBy) }),
+  checklist: resignation.status === 'approved'
+    ? db.exitItems.map(({ id, name }) => ({ itemId: id, name, ...(resignation.ticks?.[id] && { outcome: resignation.ticks[id].outcome, tickedOn: resignation.ticks[id].tickedOn }) }))
+    : [],
+});
+// Ticks an item off (returned or not-given), or unticks it. HR never on their own.
+const tickExitItem = (user, employeeId, itemId, outcome) => {
+  requireHr(user);
+  if (employeeId === user.id) {
+    throw new HttpError(403, 'Another HR person handles your own exit.');
+  }
+  const resignation = approvedResignationOf(employeeId);
+  if (!resignation) {
+    throw new HttpError(404, "They haven't resigned.");
+  }
+  if (!db.exitItems.some(({ id }) => id === itemId) || (outcome !== undefined && !['returned', 'not-given'].includes(outcome))) {
+    throw new HttpError(404, 'Item not found');
+  }
+  const { [itemId]: _dropped, ...kept } = resignation.ticks ?? {};
+  return replaceResignation({ ...resignation, ticks: outcome ? { ...kept, [itemId]: { outcome, tickedOn: today() } } : kept });
+};
+const approvedResignationOf = (employeeId) => db.resignations.find((entry) => entry.employeeId === employeeId && entry.status === 'approved');
+const stillOutFor = (employeeId) => {
+  const resignation = approvedResignationOf(employeeId);
+  return resignation ? resignationView(resignation).checklist.filter(({ outcome }) => !outcome).map(({ name }) => name) : [];
+};
+const hrBut = (employeeId) => activeEmployees().filter((employee) => employee.roles.includes('HR') && employee.id !== employeeId);
+const replaceResignation = (changed) => {
+  db.resignations = db.resignations.map((entry) => (entry.id === changed.id ? changed : entry));
+  return resignationView(changed);
+};
+const rejectResignation = (user, resignation, note) => {
+  const clean = String(note ?? '').trim();
+  if (!clean) {
+    throw new HttpError(400, 'Give a short reason so they know where they stand.');
+  }
+  notify(resignation.employeeId, 'record', `${user.fullName} didn't accept your resignation: ${sentence(clean)} Talk to them about what happens next.`);
+  return replaceResignation({ ...resignation, status: 'rejected', decidedBy: user.id, decidedOn: today(), decisionNote: clean });
+};
+// They hear the exit date and what to bring back; their HOD hears the date.
+const approveResignation = (user, resignation, exitOn) => {
+  const bring = db.exitItems.map(({ name }) => name.toLowerCase()).join(', ');
+  notify(resignation.employeeId, 'record', `Your resignation was accepted. Your exit date is ${sayDate(exitOn)}.${bring ? ` Before you go, return your ${bring} to HR.` : ''}`);
+  const managerId = db.employees.find(({ id }) => id === resignation.employeeId)?.managerId;
+  if (managerId && managerId !== user.id) {
+    notify(managerId, 'record', `${nameOf(resignation.employeeId)}'s exit date is ${sayDate(exitOn)}.`);
+  }
+  return replaceResignation({ ...resignation, status: 'approved', decidedBy: user.id, decidedOn: today(), exitOn });
+};
+
+// Allowances, shaped as Spring sends them: type names filled in, and people's names on grants.
+const allowanceTypeName = (code) => db.allowances.types.find((type) => type.code === code)?.name ?? code;
+const monthlyView = ({ employeeId: _employee, ...allowance }) => ({ ...allowance, typeName: allowanceTypeName(allowance.typeCode) });
+const grantView = ({ grantedBy, decidedBy, ...grant }) => ({
+  ...grant, employeeName: nameOf(grant.employeeId), typeName: allowanceTypeName(grant.typeCode), grantedByName: nameOf(grantedBy), ...(decidedBy && { decidedByName: nameOf(decidedBy) }),
+});
+const allowancesOf = (employeeId) => ({
+  monthly: db.allowances.monthly.filter((entry) => entry.employeeId === employeeId).sort((first, second) => second.startsOn.localeCompare(first.startsOn)).map(monthlyView),
+  grants: db.allowances.grants.filter((entry) => entry.employeeId === employeeId).sort((first, second) => second.grantedOn.localeCompare(first.grantedOn)).map(grantView),
+});
+const sayMoney = (amount, currency) => `${currency} ${new Intl.NumberFormat('en-GB', { maximumFractionDigits: 2 }).format(amount)}`;
+const sayMonth = (date) => new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${date.slice(0, 7)}-01T00:00:00Z`));
+const activeAllowanceType = (code) => {
+  const type = db.allowances.types.find((entry) => entry.code === code && !entry.retiredOn);
+  if (!type) {
+    throw new HttpError(400, 'Pick a kind of allowance from the list.');
+  }
+  return type;
+};
+const validMoney = ({ amount, currency }) => {
+  if (!(Number(amount) > 0 && Number(amount) <= 1_000_000) || !['MVR', 'USD'].includes(currency)) {
+    throw new HttpError(400, 'Give an amount and MVR or USD.');
+  }
+};
+const approveGrant = (user, grant) => {
+  const decided = { ...grant, status: 'approved', decidedBy: user.id, decidedOn: today() };
+  db.allowances.grants = db.allowances.grants.map((entry) => (entry.id === grant.id ? decided : entry));
+  notify(grant.employeeId, 'record', `You've been granted ${sayMoney(grant.amount, grant.currency)} of ${allowanceTypeName(grant.typeCode).toLowerCase()} allowance: ${sentence(grant.reason)}`);
+  return grantView(decided);
+};
+
+// Onboarding, as Spring shapes it: the joiner's name and HOD, the buddy's name, and who ticked each task.
+const onboardingView = ({ buddyId, items, ...onboarding }) => {
+  const joiner = db.employees.find(({ id }) => id === onboarding.employeeId);
+  return {
+    ...onboarding, employeeName: joiner.fullName, designation: joiner.designation, ...(joiner.managerId && { hodName: nameOf(joiner.managerId) }),
+    ...(buddyId && { buddyId, buddyName: nameOf(buddyId) }),
+    items: items.map(({ doneBy, ...item }) => ({ ...item, ...(doneBy && { doneByName: nameOf(doneBy) }) })),
+  };
+};
+const onboardingOf = (employeeId) => db.onboarding.onboardings.find((entry) => entry.employeeId === employeeId);
+const saveOnboarding = (changed) => {
+  db.onboarding.onboardings = [...db.onboarding.onboardings.filter((entry) => entry.employeeId !== changed.employeeId), changed];
+  return onboardingView(changed);
+};
+// Copies HR's list with dates from their joining day. Their HOD hears what's theirs.
+const startOnboarding = (joiner) => {
+  if (onboardingOf(joiner.id)) {
+    throw new HttpError(409, 'Their onboarding has already started.');
+  }
+  const items = db.onboarding.tasks.map(({ name, owner, dueInDays }) => ({ id: `OI-${randomUUID().slice(0, 6)}`, name, owner, dueOn: addDays(joiner.joinedOn, dueInDays) }));
+  const forHod = items.filter(({ owner }) => owner === 'hod').length;
+  if (joiner.managerId) {
+    notify(joiner.managerId, 'record', `${joiner.fullName} joins your team on ${sayDate(joiner.joinedOn)}.${forHod ? ` You have ${forHod} onboarding ${forHod === 1 ? 'task' : 'tasks'} on your Team overview.` : ''}`);
+  }
+  return saveOnboarding({ employeeId: joiner.id, startsOn: joiner.joinedOn, items });
+};
+const canSeeOnboarding = (reader, employeeId) =>
+  reader.id === employeeId || reader.roles.includes('HR') || db.employees.find(({ id }) => id === employeeId)?.managerId === reader.id;
+const ownsTask = (reader, employeeId, owner) =>
+  owner === 'hr' ? reader.roles.includes('HR') && reader.id !== employeeId
+    : owner === 'hod' ? db.employees.find(({ id }) => id === employeeId)?.managerId === reader.id
+      : reader.id === employeeId;
+const tickOnboarding = (reader, employeeId, itemId, isDone) => {
+  const onboarding = onboardingOf(employeeId);
+  if (!onboarding || !canSeeOnboarding(reader, employeeId)) {
+    throw new HttpError(404, 'No onboarding for them.');
+  }
+  const item = onboarding.items.find(({ id }) => id === itemId);
+  if (!item) {
+    throw new HttpError(404, 'Task not found');
+  }
+  if (!ownsTask(reader, employeeId, item.owner)) {
+    throw new HttpError(403, { hr: 'HR ticks this one.', hod: 'Their HOD ticks this one.', joiner: 'They tick this one themselves.' }[item.owner]);
+  }
+  const items = onboarding.items.map((entry) => {
+    if (entry.id !== itemId) {
+      return entry;
+    }
+    const { doneOn: _on, doneBy: _by, ...rest } = entry;
+    return isDone ? { ...rest, doneOn: today(), doneBy: reader.id } : rest;
+  });
+  const isComplete = items.every(({ doneOn }) => doneOn);
+  if (isComplete && !onboarding.completedOn) {
+    notify(employeeId, 'record', 'Your onboarding is done. Welcome to Opro.');
+  }
+  const { completedOn: _done, ...rest } = onboarding;
+  return saveOnboarding({ ...rest, items, ...(isComplete && { completedOn: today() }) });
+};
+
+// A holiday added, moved or removed changes what leave over it takes, as on Spring: waiting and approved requests are
+// counted again, and leave left with no working day in it is cancelled.
+const recountLeaveOver = (dates) => {
+  const workingDays = ({ from, to, halfDay }) => {
+    const count = Array.from({ length: Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1 }, (_, index) => addDays(from, index))
+      .filter((date) => new Date(`${date}T00:00:00Z`).getUTCDay() !== FRIDAY && !db.holidays.some((holiday) => holiday.date === date)).length;
+    return halfDay && count > 0 ? 0.5 : count;
+  };
+  db.leaveRequests = db.leaveRequests.map((request) => {
+    const isAffected = ['pending', 'approved'].includes(request.status) && dates.some((date) => request.from <= date && request.to >= date);
+    const counted = isAffected ? workingDays(request) : request.days;
+    if (counted === request.days) {
+      return request;
+    }
+    const what = `Your ${typeName(request.type)} ${request.from === request.to ? 'on' : 'from'} ${sayShortDate(request.from)}`;
+    if (counted === 0) {
+      notify(request.employeeId, 'leave', `${what} is cancelled: it's a public holiday now, so you don't need it.`);
+      return { ...request, status: 'cancelled' };
+    }
+    notify(request.employeeId, 'leave', `${what} now takes ${sayDays(counted)}, not ${request.days}, because the public holidays changed.`);
+    return { ...request, days: counted };
+  });
+};
+
+// A year HR hasn't set yet carries the last amount they set, as on Spring.
+const allowanceFor = (employeeId, year) =>
+  db.flightAllowances.filter((entry) => entry.employeeId === employeeId && entry.year <= year).sort((first, second) => second.year - first.year)[0];
+
+// HR never handles their own documents.
+const someoneElseForDocuments = (user, id) => {
+  if (id === user.id) {
+    throw new HttpError(403, 'Another HR person handles your own documents.');
+  }
+  return findOr404('employees', id, 'Employee');
+};
 const validDocumentType = (body) => {
   const name = String(body.name ?? '').trim();
   if (!name || !['employee', 'hr'].includes(body.uploadedBy) || typeof body.hasExpiry !== 'boolean' || typeof body.isForExpatriatesOnly !== 'boolean') {
     throw new HttpError(400, 'Give it a name, who uploads it, and whether it expires');
   }
-  return { name, uploadedBy: body.uploadedBy, hasExpiry: body.hasExpiry, isForExpatriatesOnly: body.isForExpatriatesOnly };
+  return {
+    name, uploadedBy: body.uploadedBy, hasExpiry: body.hasExpiry, isForExpatriatesOnly: body.isForExpatriatesOnly,
+    remindDaysBefore: Number(body.remindDaysBefore ?? 30), isForEveryone: body.isForEveryone !== false,
+  };
 };
 const checkDocumentName = (name, code) => {
   if (db.documentTypes.some((type) => !type.retiredOn && type.code !== code && type.name.toLowerCase() === name.toLowerCase())) {
@@ -522,16 +749,19 @@ const finishDecision = (collection, user, item, { decision, note }) => {
   }
   const decided = { ...item, status: decision, decidedBy: user.id, decidedOn: today(), ...(note && { decisionNote: String(note) }) };
   db[collection] = db[collection].map((entry) => (entry.id === id ? decided : entry));
+  if (collection === 'leaveRequests' && decision === 'approved') {
+    replaceAmended(item);
+  }
   if (collection === 'compOffs') {
     if (decision === 'approved') {
       const earned = compOffView(item).days;
       const held = (db.leaveBalances[item.employeeId] ?? []).find(({ type }) => type === 'comp-off');
-      setEntitled(item.employeeId, 'comp-off', (held?.entitled ?? 0) + earned);
+      setEntitled(item.employeeId, 'comp-off', (held?.entitled ?? 0) + earned, addDays(item.date, COMP_OFF_VALID_DAYS));
       logAdjustment(item.employeeId, 'comp-off', earned, `Worked on ${sayDate(item.date)}`, user.id);
       db.compOffs = db.compOffs.map((entry) => (entry.id === id ? { ...entry, days: earned } : entry));
     }
     notify(item.employeeId, 'leave', decision === 'approved'
-      ? `${user.fullName} approved ${sayDays(compOffView(decided).days)} of compensatory off for working on ${sayDate(item.date)}.`
+      ? `${user.fullName} approved ${sayDays(compOffView(decided).days)} of compensatory off for working on ${sayDate(item.date)}. Take it by ${sayDate(addDays(item.date, COMP_OFF_VALID_DAYS))}, or it's gone.`
       : `${user.fullName} didn't give compensatory off for working on ${sayDate(item.date)}: ${sentence(String(note ?? 'no reason given'))}`);
     return compOffView(db.compOffs.find((entry) => entry.id === id));
   }
@@ -554,17 +784,30 @@ const finishDecision = (collection, user, item, { decision, note }) => {
   return withName(decided);
 };
 
+// An approved amendment replaces the request it amends.
+const replaceAmended = ({ kind, relatedRequestId }) => {
+  if (kind === 'amended') {
+    db.leaveRequests = db.leaveRequests.map((entry) => (entry.id === relatedRequestId && ['pending', 'approved'].includes(entry.status) ? { ...entry, status: 'cancelled' } : entry));
+  }
+};
+
+// Approved days still to come aren't taken yet.
+const takenToDate = (employeeId, { type, taken }) =>
+  taken - db.leaveRequests.filter((entry) => entry.employeeId === employeeId && entry.type === type && entry.status === 'approved' && entry.from > today()).reduce((sum, { days }) => sum + days, 0);
+
 // Retired types drop out of everyone's balances. Their history stays.
 const balancesOf = (employeeId) =>
-  (db.leaveBalances[employeeId] ?? []).filter(({ type }) => !db.leaveTypes.find((entry) => entry.code === type)?.retiredOn).map((balance) => ({ carriedOver: 0, ...balance }));
+  (db.leaveBalances[employeeId] ?? [])
+    .filter(({ type }) => !db.leaveTypes.find((entry) => entry.code === type)?.retiredOn)
+    .map((balance) => ({ carriedOver: 0, takenToDate: takenToDate(employeeId, balance), ...balance }));
 
-const setEntitled = (employeeId, type, entitled) => {
+const setEntitled = (employeeId, type, entitled, expiresOn) => {
   const balances = db.leaveBalances[employeeId] ?? [];
   db.leaveBalances = {
     ...db.leaveBalances,
     [employeeId]: balances.some((balance) => balance.type === type)
-      ? balances.map((balance) => (balance.type === type ? { ...balance, entitled } : balance))
-      : [...balances, { type, entitled, taken: 0, pending: 0 }],
+      ? balances.map((balance) => (balance.type === type ? { ...balance, entitled, ...(expiresOn && { expiresOn }) } : balance))
+      : [...balances, { type, entitled, taken: 0, pending: 0, ...(expiresOn && { expiresOn }) }],
   };
 };
 
@@ -579,7 +822,7 @@ const flightTotal = (employeeId, status, year) =>
   db.flightClaims.filter((claim) => claim.employeeId === employeeId && claim.status === status && claim.flightDate.startsWith(String(year))).reduce((sum, claim) => sum + claim.amountUsd, 0);
 const flightYearOf = (employeeId) => {
   const year = Number(today().slice(0, 4));
-  const allowance = db.flightAllowances.find((entry) => entry.employeeId === employeeId && entry.year === year);
+  const allowance = allowanceFor(employeeId, year);
   return {
     year,
     ...(allowance && { allowanceUsd: allowance.amountUsd }),
@@ -616,6 +859,76 @@ const raiseOvertime = (employeeId, date) => {
   db.overtime = [{ id: `OT-${employeeId}-${date}`, employeeId, date, status: 'pending' }, ...db.overtime];
   if (employee.managerId) {
     notify(employee.managerId, 'approval', `${employee.fullName} worked ${sayDuration(day.overtimeMinutes)} past the shift on ${sayDate(date)}. Approve the overtime from Leave requests.`);
+  }
+};
+
+// Performance: the open cycle, goals in a cycle, and an appraisal with the goals it rated, as Spring shapes them.
+const openCycle = () => db.performance.cycles.find(({ closedOn }) => !closedOn);
+const latestCycle = () => [...db.performance.cycles].sort((first, second) => second.openedOn.localeCompare(first.openedOn))[0];
+const goalsOf = (cycleId, employeeId) =>
+  db.performance.goals.filter((goal) => goal.cycleId === cycleId && goal.employeeId === employeeId).map(({ id, title, measure, weight, rating, comment }) => ({ id, title, measure, weight, rating, comment }));
+const appraisalView = (appraisal) => ({
+  ...appraisal,
+  cycleName: db.performance.cycles.find(({ id }) => id === appraisal.cycleId)?.name ?? '',
+  appraisedByName: nameOf(appraisal.appraisedBy),
+  goals: goalsOf(appraisal.cycleId, appraisal.employeeId),
+});
+// The recommendations are the HOD's advice to HR, so the person's own view leaves them out.
+// Someone's part of a cycle: where their goals stand, and their self review.
+const formOf = (cycleId, employeeId) => db.performance.forms.find((form) => form.cycleId === cycleId && form.employeeId === employeeId);
+const formView = (cycleId, employeeId) => {
+  const { cycleId: _cycle, employeeId: _employee, hodApprovedBy, goalsDecidedBy, ...form } = formOf(cycleId, employeeId) ?? { goalsStatus: 'draft' };
+  return { ...form, ...(hodApprovedBy && { hodApprovedByName: nameOf(hodApprovedBy) }), ...(goalsDecidedBy && { goalsDecidedByName: nameOf(goalsDecidedBy) }) };
+};
+const saveForm = (cycleId, employeeId, changes) => {
+  const form = { goalsStatus: 'draft', ...formOf(cycleId, employeeId), cycleId, employeeId, ...changes };
+  db.performance.forms = [...db.performance.forms.filter((entry) => !(entry.cycleId === cycleId && entry.employeeId === employeeId)), form];
+  return form;
+};
+const requireOwnForm = (user) => {
+  if (!user.managerId) {
+    throw new HttpError(409, 'You have no HOD to appraise you.');
+  }
+  const cycle = requireOpenCycle();
+  return { cycle, form: formOf(cycle.id, user.id) ?? { goalsStatus: 'draft' } };
+};
+const finishGoals = (user, cycle, employeeId, body) => {
+  if (body.decision !== 'approved') {
+    const note = String(body.note ?? '').trim();
+    if (!note) {
+      throw new HttpError(400, 'Say what to change, so they can fix it.');
+    }
+    saveForm(cycle.id, employeeId, { goalsStatus: 'rejected', goalsDecidedBy: user.id, goalsDecidedOn: today(), goalsNote: note });
+    notify(employeeId, 'performance', `${user.fullName} sent back your goals for ${cycle.name}: ${sentence(note)} Change them on Performance and send them again.`);
+    return undefined;
+  }
+  saveForm(cycle.id, employeeId, { goalsStatus: 'approved', goalsDecidedBy: user.id, goalsDecidedOn: today() });
+  notify(employeeId, 'performance', `Your goals for ${cycle.name} are approved.`);
+  return undefined;
+};
+const ownView = (appraisal) => {
+  const { recommendsPromotion: _promotion, incrementPercent: _increment, ...rest } = appraisalView(appraisal);
+  return rest;
+};
+const reviewView = (review) => ({ ...review, employeeName: nameOf(review.employeeId), reviewedByName: nameOf(review.reviewedBy) });
+const reportOf = (user, employeeId) => {
+  requireManager(user);
+  const person = reportsOf(user).find(({ id }) => id === employeeId);
+  if (!person) {
+    throw new HttpError(404, 'Not one of your reports');
+  }
+  return person;
+};
+const requireOpenCycle = () => {
+  const cycle = openCycle();
+  if (!cycle) {
+    throw new HttpError(409, 'No appraisal cycle is open. HR opens one.');
+  }
+  return cycle;
+};
+const refuseIfAppraised = (cycle, employeeId) => {
+  if (db.performance.appraisals.some((appraisal) => appraisal.cycleId === cycle.id && appraisal.employeeId === employeeId)) {
+    throw new HttpError(409, `They've already been appraised in ${cycle.name}.`);
   }
 };
 
@@ -667,7 +980,7 @@ const routes = [
   ['GET', /^\/api\/session\/users$/, () => activeEmployees().map(withRoles).map(({ id, fullName, designation, roles }) => ({ id, fullName, designation, roles })), { isPublic: true }],
   ['POST', /^\/api\/session\/login$/, ({ body, res }) => {
     if (!activeEmployees().some(({ id }) => id === body.employeeId)) {
-      throw new HttpError(400, 'Unknown employee');
+      throw new HttpError(400, "Unknown employee, or someone who hasn't started or has left");
     }
     const token = `${body.employeeId}.${randomUUID()}`;
     sessions.set(token, body.employeeId);
@@ -727,6 +1040,7 @@ const routes = [
     }
     return punched;
   }],
+  ['GET', /^\/api\/attendance\/overtime$/, ({ user }) => db.overtime.filter(({ employeeId }) => employeeId === user.id).map(overtimeView)],
   ['GET', /^\/api\/attendance\/corrections$/, ({ user }) => db.corrections.filter(({ employeeId }) => employeeId === user.id).map(withName)],
   ['POST', /^\/api\/attendance\/corrections$/, ({ user, body }) => {
     if (!DATE.test(String(body.date)) || body.date > today() || !TIME.test(String(body.requestedTime)) || !['missed-in', 'missed-out'].includes(body.kind) || !FIX_CATEGORIES.includes(body.category)) {
@@ -751,10 +1065,25 @@ const routes = [
   ['GET', /^\/api\/leave\/balances$/, ({ user }) => balancesOf(user.id)],
   ['GET', /^\/api\/leave\/requests$/, ({ user }) => db.leaveRequests.filter(({ employeeId }) => employeeId === user.id).map(withName)],
   ['POST', /^\/api\/leave\/requests$/, ({ user, body }) => {
+    // Any day in the leave year they're in now, past or future. Earlier years are closed, as on Spring.
+    const anniversary = `${today().slice(0, 4)}${user.joinedOn.slice(4)}`;
+    const yearStarted = anniversary <= today() ? anniversary : `${Number(today().slice(0, 4)) - 1}${user.joinedOn.slice(4)}`;
+    if (String(body.from) < yearStarted) {
+      throw new HttpError(400, `Your leave year started on ${sayDate(yearStarted)}. Leave before that can't be booked now; ask HR.`);
+    }
     // The real backend counts days itself. The mock trusts the client to keep things simple.
-    const request = { id: `LR-${randomUUID().slice(0, 6)}`, employeeId: user.id, type: body.type, from: body.from, to: body.to, ...(body.halfDay && { halfDay: body.halfDay }), days: body.days, reason: body.reason, status: 'pending', appliedOn: today() };
+    const kind = body.kind ?? 'initial';
+    const request = {
+      id: `LR-${randomUUID().slice(0, 6)}`, employeeId: user.id, type: body.type, from: body.from, to: body.to, ...(body.halfDay && { halfDay: body.halfDay }), days: body.days, reason: body.reason,
+      status: 'pending', appliedOn: today(), kind, ...(kind !== 'initial' && { relatedRequestId: body.relatedRequestId }),
+      usesFlightEntitlement: Boolean(body.usesFlightEntitlement), wantsSalaryAdvance: Boolean(body.wantsSalaryAdvance),
+    };
     // A super admin's leave needs nobody's approval.
-    db.leaveRequests = [user.roles.includes('SUPER_ADMIN') ? { ...request, status: 'approved', decidedBy: user.id, decidedOn: today() } : request, ...db.leaveRequests];
+    const isApproved = user.roles.includes('SUPER_ADMIN');
+    db.leaveRequests = [isApproved ? { ...request, status: 'approved', decidedBy: user.id, decidedOn: today() } : request, ...db.leaveRequests];
+    if (isApproved) {
+      replaceAmended(request);
+    }
     return db.leaveRequests[0];
   }],
   ['POST', /^\/api\/leave\/requests\/([\w-]+)\/cancel$/, ({ user, params: [id] }) => {
@@ -769,11 +1098,101 @@ const routes = [
 
   ['GET', /^\/api\/holidays$/, ({ query }) => db.holidays.filter(({ date }) => date.startsWith(query.get('year') ?? today().slice(0, 4)))],
   ['GET', /^\/api\/announcements$/, () => db.announcements],
+  // Only what a colleague may see, for search.
+  ['GET', /^\/api\/people$/, () => activeEmployees().map((employee) => {
+    const { id, fullName, designation, department, email, photoUrl } = profileOf(employee);
+    return { id, fullName, designation, department, email, photoUrl };
+  })],
   ['GET', /^\/api\/events$/, ({ query }) => db.events.filter(({ date }) => date.startsWith(query.get('year') ?? today().slice(0, 4)))],
+  ['GET', /^\/api\/resignation$/, ({ user }) =>
+    db.resignations.filter(({ employeeId }) => employeeId === user.id).sort((first, second) => second.submittedOn.localeCompare(first.submittedOn)).map(resignationView)],
+  // Their HOD hears. Someone with no HOD goes straight to HR.
+  ['POST', /^\/api\/resignation$/, ({ user, body }) => {
+    if (user.lastDay) {
+      throw new HttpError(409, 'HR has already set your last day.');
+    }
+    if (db.resignations.some((entry) => entry.employeeId === user.id && ['pending', 'approved'].includes(entry.status))) {
+      throw new HttpError(409, "You've already resigned. Withdraw that one first if the dates have changed.");
+    }
+    const reason = String(body.reason ?? '').trim();
+    if (!DATE.test(String(body.releaseOn)) || body.releaseOn <= today() || !reason) {
+      throw new HttpError(400, 'Pick a last day after today.');
+    }
+    const asked = `${user.fullName} resigned, asking for ${sayDate(body.releaseOn)} as their last day.`;
+    const resignation = {
+      id: `RS-${randomUUID().slice(0, 6)}`, employeeId: user.id, submittedOn: today(), reason, releaseOn: body.releaseOn, status: 'pending',
+      ...(!user.managerId && { hodApprovedOn: today() }),
+    };
+    db.resignations = [resignation, ...db.resignations];
+    if (user.managerId) {
+      notify(user.managerId, 'approval', `${asked} Decide it from Leave requests.`);
+    } else {
+      hrBut(user.id).forEach((hr) => notify(hr.id, 'approval', `${asked} Decide it from Inbox.`));
+    }
+    return resignationView(resignation);
+  }],
+  ['POST', /^\/api\/resignation\/([\w-]+)\/withdraw$/, ({ user, params: [id] }) => {
+    const resignation = db.resignations.find((entry) => entry.id === id && entry.employeeId === user.id);
+    if (!resignation) {
+      throw new HttpError(404, 'Resignation not found');
+    }
+    if (resignation.status !== 'pending') {
+      throw new HttpError(409, "It's been decided, so talk to HR about it.");
+    }
+    return replaceResignation({ ...resignation, status: 'withdrawn', decidedOn: today() });
+  }],
+  ['GET', /^\/api\/onboarding$/, ({ user }) => (onboardingOf(user.id) ? onboardingView(onboardingOf(user.id)) : undefined)],
+  ['POST', /^\/api\/onboarding\/([\w-]+)\/items\/([\w-]+)\/done$/, ({ user, params: [employeeId, itemId] }) => tickOnboarding(user, employeeId, itemId, true)],
+  ['DELETE', /^\/api\/onboarding\/([\w-]+)\/items\/([\w-]+)\/done$/, ({ user, params: [employeeId, itemId] }) => tickOnboarding(user, employeeId, itemId, false)],
+  ['GET', /^\/api\/team\/onboarding$/, ({ user }) => {
+    const ids = requireManager(user);
+    return db.onboarding.onboardings.filter(({ employeeId, completedOn }) => ids.has(employeeId) && !completedOn).map(onboardingView);
+  }],
+  // The HOD picks a colleague to show them around. Both are told.
+  ['PUT', /^\/api\/team\/onboarding\/([\w-]+)\/buddy$/, ({ user, params: [employeeId], body }) => {
+    const onboarding = onboardingOf(employeeId);
+    if (!onboarding || db.employees.find(({ id }) => id === employeeId)?.managerId !== user.id) {
+      throw new HttpError(404, 'Not one of your reports');
+    }
+    const buddy = activeEmployees().find(({ id }) => id === body.buddyId && id !== employeeId);
+    if (!buddy) {
+      throw new HttpError(400, 'Pick someone at Opro other than them.');
+    }
+    notify(buddy.id, 'record', `${user.fullName} asked you to be ${nameOf(employeeId)}'s buddy. Show them around in their first weeks.`);
+    notify(employeeId, 'record', `${buddy.fullName} is your buddy. Ask them anything in your first weeks.`);
+    return saveOnboarding({ ...onboarding, buddyId: buddy.id });
+  }],
+  ['GET', /^\/api\/allowances$/, ({ user }) => allowancesOf(user.id)],
+  ['GET', /^\/api\/allowance-types$/, () => [...db.allowances.types].sort((first, second) => first.sortOrder - second.sortOrder).map(({ sortOrder: _order, ...type }) => type)],
+  ['GET', /^\/api\/team\/allowance-grants$/, ({ user }) => {
+    const ids = requireManager(user);
+    return db.allowances.grants.filter((grant) => ids.has(grant.employeeId)).sort((first, second) => second.grantedOn.localeCompare(first.grantedOn)).map(grantView);
+  }],
+  // An HOD grants a report a one-off amount. HR approves it, unless the HOD is HR.
+  ['POST', /^\/api\/team\/allowance-grants$/, ({ user, body }) => {
+    const ids = requireManager(user);
+    if (!ids.has(body.employeeId)) {
+      throw new HttpError(404, 'Not one of your reports');
+    }
+    const type = activeAllowanceType(body.type);
+    validMoney(body);
+    const reason = String(body.reason ?? '').trim();
+    if (!reason) {
+      throw new HttpError(400, 'Say why, for HR and for them.');
+    }
+    const grant = { id: `AG-${randomUUID().slice(0, 6)}`, employeeId: body.employeeId, typeCode: type.code, amount: Number(body.amount), currency: body.currency, reason, status: 'pending', grantedBy: user.id, grantedOn: today() };
+    db.allowances.grants = [grant, ...db.allowances.grants];
+    if (user.roles.includes('HR')) {
+      return approveGrant(user, grant);
+    }
+    hrBut(body.employeeId).forEach((hr) => notify(hr.id, 'approval', `${user.fullName} granted ${nameOf(body.employeeId)} ${sayMoney(grant.amount, grant.currency)} of ${type.name.toLowerCase()} allowance. Decide it from Inbox.`));
+    return grantView(grant);
+  }],
   ['GET', /^\/api\/documents$/, ({ user }) => documentEntries(user)],
   ['PUT', /^\/api\/documents\/([\w-]+)\/file$/, ({ user, params: [code], query, body }) =>
-    uploadDocument({ by: user, owner: user, code, file: body, expiresOn: query.get('expiresOn') }), { upload: CERTIFICATE_UPLOAD }],
-  ['GET', /^\/api\/documents\/([\w-]+)\/file$/, ({ user, params: [code], res }) => sendDocument(res, user, code)],
+    uploadDocument({ by: user, owner: user, code, file: body, issuedOn: query.get('issuedOn'), expiresOn: query.get('expiresOn') }), { upload: CERTIFICATE_UPLOAD }],
+  ['GET', /^\/api\/documents\/([\w-]+)\/files\/([\w-]+)$/, ({ user, params: [code, fileId], res }) => sendDocument(res, user, code, fileId)],
+  ['DELETE', /^\/api\/documents\/([\w-]+)\/files\/([\w-]+)$/, ({ user, params: [code, fileId] }) => removeDocumentFile({ by: user, owner: user, code, fileId })],
   ['GET', /^\/api\/profile\/record$/, ({ user }) => recordOf(user.id, false)],
   // New details wait for HR to verify them before payroll uses them.
   ['PUT', /^\/api\/profile\/bank-account$/, ({ user, body }) => {
@@ -790,7 +1209,7 @@ const routes = [
   ['GET', /^\/api\/flights$/, ({ user }) => flightYearOf(user.id)],
   ['POST', /^\/api\/flights\/claims$/, ({ user, body }) => {
     const year = Number(String(body.flightDate).slice(0, 4));
-    const allowance = db.flightAllowances.find((entry) => entry.employeeId === user.id && entry.year === year);
+    const allowance = allowanceFor(user.id, year);
     if (!allowance) {
       throw new HttpError(409, `You don't have a flight allowance for ${year}. Ask HR about it.`);
     }
@@ -857,6 +1276,33 @@ const routes = [
     return db.overtime.filter((entry) => ids.has(entry.employeeId)).filter(byStatus(query.get('status'))).map(overtimeView);
   }],
   ['POST', /^\/api\/(team|company)\/overtime\/([\w-]+)\/decision$/, ({ user, params: [scope, id], body }) => decide('overtime', user, scope, id, body)],
+  ['GET', /^\/api\/(team|company)\/resignations$/, ({ user, params: [scope], query }) => {
+    const ids = idsIn(user, scope);
+    return db.resignations.filter((entry) => ids.has(entry.employeeId)).filter(byStatus(query.get('status'))).map(resignationView);
+  }],
+  // The HOD step. Approving passes it to HR, unless the HOD is HR.
+  ['POST', /^\/api\/(team|company)\/resignations\/([\w-]+)\/decision$/, ({ user, params: [scope, id], body }) => {
+    const ids = idsIn(user, scope);
+    const resignation = db.resignations.find((entry) => entry.id === id && entry.employeeId !== user.id && ids.has(entry.employeeId));
+    if (!resignation) {
+      throw new HttpError(404, 'Resignation not found');
+    }
+    if (resignation.status !== 'pending') {
+      throw new HttpError(409, 'This resignation has already been decided.');
+    }
+    if (resignation.hodApprovedOn) {
+      throw new HttpError(409, 'Their HOD approved this. It now waits for HR.');
+    }
+    if (body.decision !== 'approved') {
+      return rejectResignation(user, resignation, body.note);
+    }
+    if (user.roles.includes('HR')) {
+      return approveResignation(user, resignation, resignation.releaseOn);
+    }
+    notify(resignation.employeeId, 'record', `${user.fullName} approved your resignation. It now waits for HR.`);
+    hrBut(resignation.employeeId).forEach((hr) => notify(hr.id, 'approval', `${user.fullName} approved ${nameOf(resignation.employeeId)}'s resignation. It needs HR too. Decide it from Inbox.`));
+    return replaceResignation({ ...resignation, hodApprovedBy: user.id, hodApprovedOn: today() });
+  }],
   ['GET', /^\/api\/(team|company)\/home-days$/, ({ user, params: [scope], query }) => {
     const ids = idsIn(user, scope);
     return db.homeDays.filter((entry) => ids.has(entry.employeeId)).filter(byStatus(query.get('status'))).map(withName);
@@ -864,7 +1310,7 @@ const routes = [
   ['POST', /^\/api\/(team|company)\/home-days\/([\w-]+)\/decision$/, ({ user, params: [scope, id], body }) => decide('homeDays', user, scope, id, body)],
   ['GET', /^\/api\/hr\/employees$/, ({ user, query }) => {
     requireHr(user);
-    const people = query.get('include') === 'former' ? db.employees : activeEmployees();
+    const people = query.get('include') === 'former' ? db.employees : db.employees.filter(hasNotLeft);
     return people.map((employee) => ({ ...profileOf(withRoles(employee)), today: db.attendance.find((record) => record.employeeId === employee.id && record.date === today()) }));
   }],
   ['POST', /^\/api\/hr\/employees$/, ({ user, body }) => {
@@ -874,6 +1320,7 @@ const routes = [
     const employee = { id: `${EMPLOYEE_ID_PREFIX}${String(next).padStart(EMPLOYEE_ID_DIGITS, '0')}`, ...details, roles: ['EMPLOYEE'] };
     checkManager(employee, details.managerId);
     db.employees = [...db.employees, employee];
+    startOnboarding(employee);
     // Spring works out every day from the joining date. The mock only needs today, so a new starter can punch in.
     if (employee.joinedOn <= today()) {
       db.attendance = [...db.attendance, { employeeId: employee.id, date: today(), status: 'not-in-yet', punches: [], workedMinutes: 0, overtimeMinutes: 0 }];
@@ -898,6 +1345,209 @@ const routes = [
     }
     return withRoles(replaceIn('employees', { ...rest, ...details }));
   }],
+  ['GET', /^\/api\/hr\/onboarding$/, ({ user }) => {
+    requireHr(user);
+    return db.onboarding.onboardings.filter(({ completedOn }) => !completedOn).sort((first, second) => first.startsOn.localeCompare(second.startsOn)).map(onboardingView);
+  }],
+  ['GET', /^\/api\/hr\/employees\/([\w-]+)\/onboarding$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    return onboardingOf(id) ? onboardingView(onboardingOf(id)) : undefined;
+  }],
+  ['POST', /^\/api\/hr\/employees\/([\w-]+)\/onboarding$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    if (id === user.id) {
+      throw new HttpError(403, 'Another HR person handles your own onboarding.');
+    }
+    return startOnboarding(findOr404('employees', id, 'Employee'));
+  }],
+  ['PUT', /^\/api\/hr\/employees\/([\w-]+)\/onboarding\/first-day$/, ({ user, params: [id], body }) => {
+    requireHr(user);
+    if (id === user.id) {
+      throw new HttpError(403, 'Another HR person handles your own onboarding.');
+    }
+    const onboarding = onboardingOf(id);
+    if (!onboarding) {
+      throw new HttpError(404, 'No onboarding for them.');
+    }
+    if (body.time && !TIME.test(String(body.time))) {
+      throw new HttpError(400, 'Use a time like 08:45.');
+    }
+    const text = (value) => String(value ?? '').trim() || undefined;
+    notify(id, 'record', 'Your first day is set. See it on your Overview.');
+    return saveOnboarding({ ...onboarding, firstDayTime: text(body.time), firstDayPlace: text(body.place), firstDayContact: text(body.contact) });
+  }],
+  ['GET', /^\/api\/hr\/onboarding-tasks$/, ({ user }) => {
+    requireHr(user);
+    return db.onboarding.tasks;
+  }],
+  ['POST', /^\/api\/hr\/onboarding-tasks$/, ({ user, body }) => {
+    requireHr(user);
+    const name = String(body.name ?? '').trim();
+    if (!name || !['hr', 'hod', 'joiner'].includes(body.owner) || !(Math.abs(Number(body.dueInDays)) <= 90)) {
+      throw new HttpError(400, 'Name the task, who does it, and a due date within 90 days of joining.');
+    }
+    const task = { id: `OT-${randomUUID().slice(0, 6)}`, name, owner: body.owner, dueInDays: Number(body.dueInDays) };
+    db.onboarding.tasks = [...db.onboarding.tasks, task];
+    return task;
+  }],
+  ['DELETE', /^\/api\/hr\/onboarding-tasks\/([\w-]+)$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    if (!db.onboarding.tasks.some((task) => task.id === id)) {
+      throw new HttpError(404, 'Task not found');
+    }
+    db.onboarding.tasks = db.onboarding.tasks.filter((task) => task.id !== id);
+    return undefined;
+  }],
+  ['GET', /^\/api\/hr\/employees\/([\w-]+)\/allowances$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    return allowancesOf(id);
+  }],
+  // An amount already running ends the month before; one not started by then is replaced.
+  ['PUT', /^\/api\/hr\/employees\/([\w-]+)\/allowances\/([\w-]+)$/, ({ user, params: [id, code], body }) => {
+    requireHr(user);
+    if (id === user.id) {
+      throw new HttpError(403, 'Another HR person handles your own allowances.');
+    }
+    const type = activeAllowanceType(code);
+    validMoney(body);
+    if (!DATE.test(String(body.startsOn)) || !body.startsOn.endsWith('-01')) {
+      throw new HttpError(400, 'Allowances start on the first of a month.');
+    }
+    const current = db.allowances.monthly.find((entry) => entry.employeeId === id && entry.typeCode === code && !entry.endsOn);
+    const lastDayBefore = new Date(Date.parse(`${body.startsOn}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+    db.allowances.monthly = db.allowances.monthly
+      .filter((entry) => entry !== current || current.startsOn < body.startsOn)
+      .map((entry) => (entry === current ? { ...entry, endsOn: lastDayBefore } : entry));
+    const note = String(body.note ?? '').trim();
+    const saved = { id: `MA-${randomUUID().slice(0, 6)}`, employeeId: id, typeCode: code, amount: Number(body.amount), currency: body.currency, startsOn: body.startsOn, ...(note && { note }) };
+    db.allowances.monthly = [saved, ...db.allowances.monthly];
+    notify(id, 'record', `HR set your ${type.name.toLowerCase()} allowance to ${sayMoney(saved.amount, saved.currency)} a month from ${sayMonth(saved.startsOn)}.`);
+    return monthlyView(saved);
+  }],
+  ['POST', /^\/api\/hr\/employees\/([\w-]+)\/allowances\/([\w-]+)\/stop$/, ({ user, params: [id, code], body }) => {
+    requireHr(user);
+    if (id === user.id) {
+      throw new HttpError(403, 'Another HR person handles your own allowances.');
+    }
+    const current = db.allowances.monthly.find((entry) => entry.employeeId === id && entry.typeCode === code && !entry.endsOn);
+    if (!current) {
+      throw new HttpError(404, `They don't get a ${allowanceTypeName(code).toLowerCase()} allowance.`);
+    }
+    const [year, month] = String(body.lastMonth ?? '').split('-').map(Number);
+    const endsOn = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+    if (!(year && month) || endsOn < current.startsOn) {
+      throw new HttpError(400, `Pick a month from ${sayMonth(current.startsOn)} on.`);
+    }
+    const stopped = { ...current, endsOn };
+    db.allowances.monthly = db.allowances.monthly.map((entry) => (entry === current ? stopped : entry));
+    notify(id, 'record', `HR stopped your ${allowanceTypeName(code).toLowerCase()} allowance after ${sayMonth(endsOn)}.`);
+    return monthlyView(stopped);
+  }],
+  ['GET', /^\/api\/hr\/allowance-grants$/, ({ user }) => {
+    requireHr(user);
+    return db.allowances.grants.filter(({ status, employeeId }) => status === 'pending' && employeeId !== user.id).sort((first, second) => first.grantedOn.localeCompare(second.grantedOn)).map(grantView);
+  }],
+  ['POST', /^\/api\/hr\/allowance-grants\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => {
+    requireHr(user);
+    const grant = db.allowances.grants.find((entry) => entry.id === id && entry.status === 'pending');
+    if (!grant) {
+      throw new HttpError(404, 'Nothing waiting for HR with that id');
+    }
+    if (grant.employeeId === user.id) {
+      throw new HttpError(403, 'Your own requests go to another HR person.');
+    }
+    if (body.decision === 'approved') {
+      return approveGrant(user, grant);
+    }
+    const note = String(body.note ?? '').trim();
+    if (!note) {
+      throw new HttpError(400, 'Give a short reason so the HOD knows why.');
+    }
+    const decided = { ...grant, status: 'rejected', decidedBy: user.id, decidedOn: today(), decisionNote: note };
+    db.allowances.grants = db.allowances.grants.map((entry) => (entry.id === id ? decided : entry));
+    notify(grant.grantedBy, 'record', `HR didn't approve the ${allowanceTypeName(grant.typeCode).toLowerCase()} allowance for ${nameOf(grant.employeeId)}: ${sentence(note)}`);
+    return grantView(decided);
+  }],
+  ['POST', /^\/api\/hr\/allowance-types$/, ({ user, body }) => {
+    requireHr(user);
+    const name = String(body.name ?? '').trim();
+    const code = name.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+    if (!code) {
+      throw new HttpError(400, 'Give the allowance a name with letters or numbers.');
+    }
+    if (db.allowances.types.some((type) => type.code === code || (!type.retiredOn && type.name.toLowerCase() === name.toLowerCase()))) {
+      throw new HttpError(409, "There's already an allowance called that.");
+    }
+    const type = { code, name, sortOrder: Math.max(0, ...db.allowances.types.map(({ sortOrder }) => sortOrder)) + 1 };
+    db.allowances.types = [...db.allowances.types, type];
+    return { code, name };
+  }],
+  // Deleted if nobody ever had it, otherwise retired.
+  ['DELETE', /^\/api\/hr\/allowance-types\/([\w-]+)$/, ({ user, params: [code] }) => {
+    requireHr(user);
+    activeAllowanceType(code);
+    const isUsed = db.allowances.monthly.some(({ typeCode }) => typeCode === code) || db.allowances.grants.some(({ typeCode }) => typeCode === code);
+    db.allowances.types = isUsed
+      ? db.allowances.types.map((type) => (type.code === code ? { ...type, retiredOn: today() } : type))
+      : db.allowances.types.filter((type) => type.code !== code);
+    return undefined;
+  }],
+  ['GET', /^\/api\/hr\/resignations$/, ({ user }) => {
+    requireHr(user);
+    return db.resignations.filter(({ status, hodApprovedOn, employeeId }) => status === 'pending' && hodApprovedOn && employeeId !== user.id)
+      .sort((first, second) => first.submittedOn.localeCompare(second.submittedOn)).map(resignationView);
+  }],
+  // HR's step sets the exit date: the day they asked for, unless HR gives another.
+  ['POST', /^\/api\/hr\/resignations\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => {
+    requireHr(user);
+    const resignation = db.resignations.find((entry) => entry.id === id && entry.status === 'pending' && entry.hodApprovedOn);
+    if (!resignation) {
+      throw new HttpError(404, 'Nothing waiting for HR with that id');
+    }
+    if (resignation.employeeId === user.id) {
+      throw new HttpError(403, 'Your own requests go to another HR person.');
+    }
+    if (body.decision !== 'approved') {
+      return rejectResignation(user, resignation, body.note);
+    }
+    const exitOn = body.exitOn ?? resignation.releaseOn;
+    if (!DATE.test(String(exitOn)) || exitOn < today()) {
+      throw new HttpError(400, 'Pick an exit date from today on.');
+    }
+    return approveResignation(user, resignation, exitOn);
+  }],
+  ['GET', /^\/api\/hr\/employees\/([\w-]+)\/exit$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    const resignation = approvedResignationOf(id);
+    return resignation ? resignationView(resignation) : undefined;
+  }],
+  ['PUT', /^\/api\/hr\/employees\/([\w-]+)\/exit\/items\/([\w-]+)$/, ({ user, params: [id, itemId], body }) => tickExitItem(user, id, itemId, body.outcome)],
+  ['DELETE', /^\/api\/hr\/employees\/([\w-]+)\/exit\/items\/([\w-]+)$/, ({ user, params: [id, itemId] }) => tickExitItem(user, id, itemId, undefined)],
+  ['GET', /^\/api\/hr\/exit-items$/, ({ user }) => {
+    requireHr(user);
+    return db.exitItems;
+  }],
+  ['POST', /^\/api\/hr\/exit-items$/, ({ user, body }) => {
+    requireHr(user);
+    const name = String(body.name ?? '').trim();
+    if (!name) {
+      throw new HttpError(400, 'Name what comes back.');
+    }
+    if (db.exitItems.some((item) => item.name.toLowerCase() === name.toLowerCase())) {
+      throw new HttpError(409, "That's already on the list.");
+    }
+    const item = { id: `EI-${randomUUID().slice(0, 6)}`, name };
+    db.exitItems = [...db.exitItems, item];
+    return item;
+  }],
+  ['DELETE', /^\/api\/hr\/exit-items\/([\w-]+)$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    if (!db.exitItems.some((item) => item.id === id)) {
+      throw new HttpError(404, 'Item not found');
+    }
+    db.exitItems = db.exitItems.filter((item) => item.id !== id);
+    return undefined;
+  }],
   ['POST', /^\/api\/hr\/employees\/([\w-]+)\/leaving$/, ({ user, params: [id], body }) => {
     requireHr(user);
     const employee = findOr404('employees', id, 'Employee');
@@ -908,6 +1558,10 @@ const routes = [
     const reports = reportsOf(employee);
     if (reports.length) {
       throw new HttpError(409, `Move their ${reports.length} reports to another manager first`);
+    }
+    const stillOut = stillOutFor(id);
+    if (stillOut.length) {
+      throw new HttpError(409, `Tick off what they still have first: ${stillOut.join(', ').toLowerCase()}.`);
     }
     // Leave after the last day can't be taken, so it's cancelled with them.
     db.leaveRequests = db.leaveRequests.map((leave) =>
@@ -1054,7 +1708,7 @@ const routes = [
     if (!type) {
       throw new HttpError(404, 'Leave type not found');
     }
-    const updated = { ...type, ...pick(body, ['name', 'allowsHalfDay', 'defaultEntitlement', 'documentRequiredAfterDays', 'isForEveryone', 'carriesForward', 'carryForwardCap', 'needsHrApproval']) };
+    const updated = { ...type, noticeDays: undefined, ...pick(body, ['name', 'allowsHalfDay', 'defaultEntitlement', 'documentRequiredAfterDays', 'isForEveryone', 'carriesForward', 'carryForwardCap', 'needsHrApproval', 'noticeDays']) };
     db.leaveTypes = db.leaveTypes.map((entry) => (entry.code === code ? updated : entry));
     return updated;
   }],
@@ -1064,7 +1718,7 @@ const routes = [
     if (!code || db.leaveTypes.some((entry) => entry.code === code)) {
       throw new HttpError(409, "There's already a leave type called that.");
     }
-    const type = { code, ...pick(body, ['name', 'allowsHalfDay', 'isUnlimited', 'defaultEntitlement', 'documentRequiredAfterDays', 'isForEveryone', 'carriesForward', 'carryForwardCap', 'needsHrApproval']) };
+    const type = { code, ...pick(body, ['name', 'allowsHalfDay', 'isUnlimited', 'defaultEntitlement', 'documentRequiredAfterDays', 'isForEveryone', 'carriesForward', 'carryForwardCap', 'needsHrApproval', 'noticeDays']) };
     db.leaveTypes = [...db.leaveTypes.filter(({ code: existing }) => existing !== 'comp-off'), type, ...db.leaveTypes.filter(({ code: existing }) => existing === 'comp-off')];
     if (type.isForEveryone && !type.isUnlimited) {
       activeEmployees().forEach(({ id }) => setEntitled(id, code, Number(type.defaultEntitlement ?? 0)));
@@ -1134,6 +1788,7 @@ const routes = [
     requireHr(user);
     const holiday = { id: `HD-${randomUUID().slice(0, 6)}`, date: body.date, name: body.name, isTentative: Boolean(body.isTentative) };
     db.holidays = [...db.holidays, holiday];
+    recountLeaveOver([holiday.date]);
     return holiday;
   }],
   ['POST', /^\/api\/hr\/holidays\/start-year$/, ({ user, body }) => {
@@ -1144,6 +1799,7 @@ const routes = [
       .map(([monthDay, name]) => ({ id: `HD-${randomUUID().slice(0, 6)}`, date: `${body.year}-${monthDay}`, name, isTentative: false }))
       .filter(({ date }) => !db.holidays.some((holiday) => holiday.date === date));
     db.holidays = [...db.holidays, ...added];
+    recountLeaveOver(added.map(({ date }) => date));
     return added;
   }],
   ['PUT', /^\/api\/hr\/holidays\/([\w-]+)$/, ({ user, params: [id], body }) => {
@@ -1153,11 +1809,16 @@ const routes = [
     if (holiday.isTentative && updated.isTentative === false) {
       notifyEveryone('holiday', `${updated.name} is confirmed for ${sayDate(updated.date)}`);
     }
-    return replaceIn('holidays', updated);
+    const saved = replaceIn('holidays', updated);
+    recountLeaveOver([holiday.date, updated.date]);
+    return saved;
   }],
   ['DELETE', /^\/api\/hr\/holidays\/([\w-]+)$/, ({ user, params: [id] }) => {
     requireHr(user);
-    return removeFrom('holidays', id, 'Holiday');
+    const { date } = findOr404('holidays', id, 'Holiday');
+    const removed = removeFrom('holidays', id, 'Holiday');
+    recountLeaveOver([date]);
+    return removed;
   }],
   ['POST', /^\/api\/hr\/events$/, ({ user, body }) => {
     requireHr(user);
@@ -1238,9 +1899,43 @@ const routes = [
   ['GET', /^\/api\/hr\/documents$/, ({ user }) => {
     requireHr(user);
     return db.documents
-      .filter(({ status }) => status === 'pending')
+      .filter(({ status, employeeId }) => status === 'pending' && employeeId !== user.id)
       .sort((first, second) => String(first.updatedOn).localeCompare(String(second.updatedOn)))
       .map((document) => documentView(db.documentTypes.find(({ code }) => code === document.type), document));
+  }],
+  // Everyone still to hand something in: missing, sent back or expired.
+  ['GET', /^\/api\/hr\/documents\/to-collect$/, ({ user }) => {
+    requireHr(user);
+    return activeEmployees()
+      .map((employee) => ({
+        employeeId: employee.id, employeeName: employee.fullName,
+        documents: documentEntries(employee).filter(({ status, type }) => ['missing', 'rejected', 'expired'].includes(status) && !db.documentTypes.find(({ code }) => code === type)?.retiredOn),
+      }))
+      .filter(({ documents }) => documents.length)
+      .sort((first, second) => first.employeeName.localeCompare(second.employeeName));
+  }],
+  // HR asks one person for a type that isn't for everyone, or stops asking.
+  ['POST', /^\/api\/hr\/employees\/([\w-]+)\/document-types\/([\w-]+)$/, ({ user, params: [id, code] }) => {
+    requireHr(user);
+    const owner = someoneElseForDocuments(user, id);
+    const type = activeDocumentType(code);
+    if (type.isForEveryone || db.askedFor.some((entry) => entry.type === code && entry.employeeId === id)) {
+      throw new HttpError(409, type.isForEveryone ? `Everyone is already asked for ${type.name.toLowerCase()}.` : `They're already asked for ${type.name.toLowerCase()}.`);
+    }
+    db.askedFor = [...db.askedFor, { type: code, employeeId: owner.id }];
+    if (type.uploadedBy === 'employee') {
+      notify(owner.id, 'record', `HR asked for your ${type.name.toLowerCase()}. Upload it from Documents.`);
+    }
+    return undefined;
+  }],
+  ['DELETE', /^\/api\/hr\/employees\/([\w-]+)\/document-types\/([\w-]+)$/, ({ user, params: [id, code] }) => {
+    requireHr(user);
+    someoneElseForDocuments(user, id);
+    if (!db.askedFor.some((entry) => entry.type === code && entry.employeeId === id)) {
+      throw new HttpError(404, "They aren't asked for that document.");
+    }
+    db.askedFor = db.askedFor.filter((entry) => !(entry.type === code && entry.employeeId === id));
+    return undefined;
   }],
   ['GET', /^\/api\/hr\/employees\/([\w-]+)\/documents$/, ({ user, params: [id] }) => {
     requireHr(user);
@@ -1248,14 +1943,15 @@ const routes = [
   }],
   ['PUT', /^\/api\/hr\/employees\/([\w-]+)\/documents\/([\w-]+)\/file$/, ({ user, params: [id, code], query, body }) => {
     requireHr(user);
-    if (id === user.id) {
-      throw new HttpError(403, 'Another HR person handles your own documents.');
-    }
-    return uploadDocument({ by: user, owner: findOr404('employees', id, 'Employee'), code, file: body, expiresOn: query.get('expiresOn') });
+    return uploadDocument({ by: user, owner: someoneElseForDocuments(user, id), code, file: body, issuedOn: query.get('issuedOn'), expiresOn: query.get('expiresOn') });
   }, { upload: CERTIFICATE_UPLOAD }],
-  ['GET', /^\/api\/hr\/employees\/([\w-]+)\/documents\/([\w-]+)\/file$/, ({ user, params: [id, code], res }) => {
+  ['GET', /^\/api\/hr\/employees\/([\w-]+)\/documents\/([\w-]+)\/files\/([\w-]+)$/, ({ user, params: [id, code, fileId], res }) => {
     requireHr(user);
-    return sendDocument(res, findOr404('employees', id, 'Employee'), code);
+    return sendDocument(res, findOr404('employees', id, 'Employee'), code, fileId);
+  }],
+  ['DELETE', /^\/api\/hr\/employees\/([\w-]+)\/documents\/([\w-]+)\/files\/([\w-]+)$/, ({ user, params: [id, code, fileId] }) => {
+    requireHr(user);
+    return removeDocumentFile({ by: user, owner: someoneElseForDocuments(user, id), code, fileId });
   }],
   // Sending one back needs a reason, so they know what to fix.
   ['POST', /^\/api\/hr\/employees\/([\w-]+)\/documents\/([\w-]+)\/decision$/, ({ user, params: [id, code], body }) => {
@@ -1376,6 +2072,214 @@ const routes = [
     return undefined;
   }],
   // The dashboard's facts, for HR and super admins. The pages count and group them; the mock only gathers them.
+  ['GET', /^\/api\/performance$/, ({ user }) => {
+    const cycle = openCycle();
+    return {
+      ...(cycle && { cycle, form: formView(cycle.id, user.id) }),
+      goals: cycle ? goalsOf(cycle.id, user.id) : [],
+      appraisals: db.performance.appraisals.filter(({ employeeId }) => employeeId === user.id).sort((first, second) => second.appraisedOn.localeCompare(first.appraisedOn)).map(ownView),
+      probationReviews: db.performance.probationReviews.filter(({ employeeId }) => employeeId === user.id).map(reviewView),
+    };
+  }],
+  ['POST', /^\/api\/performance\/appraisals\/([\w-]+)\/accept$/, ({ user, params: [id] }) => {
+    const appraisal = db.performance.appraisals.find((entry) => entry.id === id && entry.employeeId === user.id);
+    if (!appraisal) {
+      throw new HttpError(404, 'Appraisal not found');
+    }
+    const accepted = { ...appraisal, acceptedOn: appraisal.acceptedOn ?? today() };
+    db.performance.appraisals = db.performance.appraisals.map((entry) => (entry.id === id ? accepted : entry));
+    return ownView(accepted);
+  }],
+  // Someone writes their own goals while they're a draft or sent back. Saving replaces them.
+  ['PUT', /^\/api\/performance\/goals$/, ({ user, body }) => {
+    const { cycle, form } = requireOwnForm(user);
+    if (!['draft', 'rejected'].includes(form.goalsStatus)) {
+      throw new HttpError(409, 'Your goals are with your HOD or HR, or already approved.');
+    }
+    const plans = Array.isArray(body.goals) ? body.goals : [];
+    if (plans.length === 0 || plans.some(({ title, measure, weight }) => !String(title ?? '').trim() || !String(measure ?? '').trim() || !(weight >= 1 && weight <= 100))) {
+      throw new HttpError(400, 'Give each goal a title, a measure and a weight');
+    }
+    if (plans.reduce((total, { weight }) => total + weight, 0) !== 100) {
+      throw new HttpError(400, 'Goal weights need to add up to 100%.');
+    }
+    db.performance.goals = [
+      ...db.performance.goals.filter((goal) => !(goal.cycleId === cycle.id && goal.employeeId === user.id)),
+      ...plans.map(({ title, measure, weight }) => ({ id: `GL-${randomUUID().slice(0, 6)}`, cycleId: cycle.id, employeeId: user.id, title: title.trim(), measure: measure.trim(), weight })),
+    ];
+    saveForm(cycle.id, user.id, {});
+    return goalsOf(cycle.id, user.id);
+  }],
+  ['POST', /^\/api\/performance\/goals\/submit$/, ({ user }) => {
+    const { cycle, form } = requireOwnForm(user);
+    if (!['draft', 'rejected'].includes(form.goalsStatus)) {
+      throw new HttpError(409, 'Your goals are with your HOD or HR, or already approved.');
+    }
+    if (goalsOf(cycle.id, user.id).length === 0) {
+      throw new HttpError(400, 'Write at least one goal first.');
+    }
+    saveForm(cycle.id, user.id, { goalsStatus: 'submitted', goalsSubmittedOn: today(), hodApprovedBy: undefined, hodApprovedOn: undefined, goalsDecidedBy: undefined, goalsDecidedOn: undefined, goalsNote: undefined });
+    notify(user.managerId, 'performance', `${user.fullName} sent their goals for ${cycle.name}. Approve them or send them back from Performance.`);
+    return formView(cycle.id, user.id);
+  }],
+  ['PUT', /^\/api\/performance\/self-review$/, ({ user, body }) => {
+    const { cycle } = requireOwnForm(user);
+    refuseIfAppraised(cycle, user.id);
+    const text = (value) => String(value ?? '').trim() || undefined;
+    saveForm(cycle.id, user.id, {
+      accomplishments: text(body.accomplishments), strengths: text(body.strengths), learning: text(body.learning), certifications: text(body.certifications), selfReviewedOn: today(),
+    });
+    return formView(cycle.id, user.id);
+  }],
+  ['GET', /^\/api\/team\/performance$/, ({ user }) => {
+    requireManager(user);
+    const cycle = openCycle();
+    return {
+      ...(cycle && { cycle }),
+      people: reportsOf(user).map(({ id, fullName, designation, probationEndsOn }) => {
+        const appraisal = cycle && db.performance.appraisals.find((entry) => entry.cycleId === cycle.id && entry.employeeId === id);
+        return {
+          employeeId: id, fullName, designation, ...(probationEndsOn && { probationEndsOn }), ...(cycle && { form: formView(cycle.id, id) }),
+          goals: cycle ? goalsOf(cycle.id, id) : [], ...(appraisal && { appraisal: appraisalView(appraisal) }),
+        };
+      }),
+    };
+  }],
+  // The HOD's step: approving passes the goals to HR, unless the HOD is HR.
+  ['POST', /^\/api\/team\/performance\/([\w-]+)\/goals\/decision$/, ({ user, params: [id], body }) => {
+    const person = reportOf(user, id);
+    const cycle = requireOpenCycle();
+    if (formOf(cycle.id, person.id)?.goalsStatus !== 'submitted') {
+      throw new HttpError(409, "Their goals aren't waiting for you.");
+    }
+    if (body.decision !== 'approved' || user.roles.includes('HR')) {
+      return finishGoals(user, cycle, person.id, body);
+    }
+    saveForm(cycle.id, person.id, { goalsStatus: 'hod-approved', hodApprovedBy: user.id, hodApprovedOn: today() });
+    notify(person.id, 'performance', `${user.fullName} approved your goals for ${cycle.name}. They now wait for HR.`);
+    activeEmployees().filter((employee) => employee.roles.includes('HR') && employee.id !== person.id)
+      .forEach((hr) => notify(hr.id, 'performance', `${user.fullName} approved ${person.fullName}'s goals for ${cycle.name}. Approve them from Performance.`));
+    return undefined;
+  }],
+  ['POST', /^\/api\/team\/performance\/([\w-]+)\/appraisal$/, ({ user, params: [id], body }) => {
+    const person = reportOf(user, id);
+    const cycle = requireOpenCycle();
+    refuseIfAppraised(cycle, person.id);
+    if (formOf(cycle.id, person.id)?.goalsStatus !== 'approved') {
+      throw new HttpError(409, 'Their goals need approving by you and HR first.');
+    }
+    const given = new Map((body.goals ?? []).map((goal) => [goal.goalId, goal]));
+    const theirs = db.performance.goals.filter((goal) => goal.cycleId === cycle.id && goal.employeeId === person.id);
+    if (given.size !== theirs.length || theirs.some(({ id: goalId }) => !given.has(goalId))) {
+      throw new HttpError(400, 'Rate each of their goals.');
+    }
+    if (!(body.rating >= 1 && body.rating <= 5) || !String(body.comments ?? '').trim()) {
+      throw new HttpError(400, 'Give a rating from 1 to 5 and your comments');
+    }
+    db.performance.goals = db.performance.goals.map((goal) =>
+      given.has(goal.id) ? { ...goal, rating: given.get(goal.id).rating, ...(String(given.get(goal.id).comment ?? '').trim() && { comment: given.get(goal.id).comment.trim() }) } : goal,
+    );
+    const appraisal = {
+      id: `AP-${randomUUID().slice(0, 6)}`, cycleId: cycle.id, employeeId: person.id, rating: body.rating, comments: body.comments.trim(),
+      recommendsPromotion: Boolean(body.recommendsPromotion), ...(body.incrementPercent && { incrementPercent: Number(body.incrementPercent) }), appraisedBy: user.id, appraisedOn: today(),
+      ...(String(body.selfReviewComment ?? '').trim() && { selfReviewComment: body.selfReviewComment.trim() }),
+    };
+    db.performance.appraisals = [...db.performance.appraisals, appraisal];
+    notify(person.id, 'performance', `${user.fullName} finished your ${cycle.name}. Read it on Performance and accept your rating.`);
+    return appraisalView(appraisal);
+  }],
+  ['POST', /^\/api\/team\/performance\/([\w-]+)\/probation-review$/, ({ user, params: [id], body }) => {
+    const person = reportOf(user, id);
+    if (!person.probationEndsOn) {
+      throw new HttpError(409, "They aren't on probation.");
+    }
+    if (!['confirmed', 'extended', 'not-confirmed'].includes(body.outcome) || !String(body.comments ?? '').trim()) {
+      throw new HttpError(400, 'Pick an outcome and add your comments');
+    }
+    const isExtended = body.outcome === 'extended';
+    if (isExtended && !(DATE.test(String(body.extendedTo)) && body.extendedTo > person.probationEndsOn)) {
+      throw new HttpError(400, `Pick a new end date after ${sayDateFromToday(person.probationEndsOn)}.`);
+    }
+    const review = {
+      id: `PR-${randomUUID().slice(0, 6)}`, employeeId: person.id, probationEnded: person.probationEndsOn, outcome: body.outcome,
+      ...(isExtended && { extendedTo: body.extendedTo }), comments: body.comments.trim(), reviewedBy: user.id, reviewedOn: today(),
+    };
+    db.performance.probationReviews = [review, ...db.performance.probationReviews];
+    const outcome = { confirmed: 'confirmed in their role', extended: `on probation until ${sayDateFromToday(body.extendedTo)}`, 'not-confirmed': 'not confirmed in their role' }[body.outcome];
+    if (body.outcome !== 'not-confirmed') {
+      db.employees = db.employees.map((employee) => {
+        if (employee.id !== person.id) {
+          return employee;
+        }
+        const { probationEndsOn: _ended, ...rest } = employee;
+        return isExtended ? { ...rest, probationEndsOn: body.extendedTo } : rest;
+      });
+    }
+    notify(person.id, 'performance', `${user.fullName} reviewed your probation: you're ${outcome.replace('their', 'your')}.`);
+    activeEmployees()
+      .filter((employee) => employee.roles.includes('HR') && employee.id !== person.id)
+      .forEach((hr) => notify(hr.id, 'performance', `${user.fullName} reviewed ${person.fullName}'s probation: ${outcome}.`));
+    return reviewView(review);
+  }],
+  ['GET', /^\/api\/hr\/performance$/, ({ user }) => {
+    requireHr(user);
+    const cycle = latestCycle();
+    return {
+      cycles: [...db.performance.cycles].sort((first, second) => second.openedOn.localeCompare(first.openedOn)),
+      people: cycle
+        ? activeEmployees().filter(({ managerId }) => managerId).map(({ id, fullName, department, managerId }) => {
+          const appraisal = db.performance.appraisals.find((entry) => entry.cycleId === cycle.id && entry.employeeId === id);
+          return {
+            employeeId: id, fullName, department, managerName: nameOf(managerId), form: formView(cycle.id, id), goals: goalsOf(cycle.id, id), ...(appraisal && { appraisal: appraisalView(appraisal) }),
+          };
+        })
+        : [],
+      probationReviews: db.performance.probationReviews.map(reviewView),
+    };
+  }],
+  // HR's step on goals the HOD approved, never their own.
+  ['POST', /^\/api\/hr\/performance\/([\w-]+)\/goals\/decision$/, ({ user, params: [id], body }) => {
+    requireHr(user);
+    if (id === user.id) {
+      throw new HttpError(403, 'Your own goals go to another HR person.');
+    }
+    const cycle = requireOpenCycle();
+    if (formOf(cycle.id, id)?.goalsStatus !== 'hod-approved') {
+      throw new HttpError(409, "Their goals aren't waiting for HR.");
+    }
+    return finishGoals(user, cycle, id, body);
+  }],
+  ['POST', /^\/api\/hr\/appraisal-cycles$/, ({ user, body }) => {
+    requireHr(user);
+    if (openCycle()) {
+      throw new HttpError(409, 'A cycle is already open. Close it before opening another.');
+    }
+    if (!String(body.name ?? '').trim() || !DATE.test(String(body.dueOn)) || body.dueOn <= today()) {
+      throw new HttpError(400, 'Pick a due date after today.');
+    }
+    const cycle = { id: `AY-${randomUUID().slice(0, 6)}`, name: body.name.trim(), dueOn: body.dueOn, openedOn: today() };
+    db.performance.cycles = [...db.performance.cycles, cycle];
+    const due = `${cycle.name}, due ${sayDateFromToday(cycle.dueOn)}.`;
+    activeEmployees().forEach((person) => {
+      if (person.managerId) {
+        notify(person.id, 'performance', `HR opened ${due} Write your goals and KPIs on Performance.`);
+      }
+      if (reportsOf(person).length > 0) {
+        notify(person.id, 'performance', `HR opened ${due} Approve your team's goals, then appraise them.`);
+      }
+    });
+    return cycle;
+  }],
+  ['POST', /^\/api\/hr\/appraisal-cycles\/([\w-]+)\/close$/, ({ user, params: [id] }) => {
+    requireHr(user);
+    const cycle = db.performance.cycles.find((entry) => entry.id === id && !entry.closedOn);
+    if (!cycle) {
+      throw new HttpError(404, 'No open cycle with that id');
+    }
+    const closed = { ...cycle, closedOn: today() };
+    db.performance.cycles = db.performance.cycles.map((entry) => (entry.id === id ? closed : entry));
+    return closed;
+  }],
   ['GET', /^\/api\/insights$/, ({ user }) => {
     requireInsights(user);
     const since = Number(today().slice(0, 4)) - 1;
@@ -1395,6 +2299,10 @@ const routes = [
       leave: db.leaveRequests.filter(({ from }) => Number(from.slice(0, 4)) >= since).map((request) => pick(request, ['employeeId', 'type', 'from', 'to', 'days', 'status', 'appliedOn'])),
       balances: activeEmployees().flatMap(({ id }) => balancesOf(id).map((balance) => ({ employeeId: id, ...pick(balance, ['type', 'entitled', 'taken', 'pending']) }))),
       quotas: [...db.records.quotas].sort((first, second) => first.jobCategory.localeCompare(second.jobCategory)).map(quotaView),
+      ...(latestCycle() && { cycle: latestCycle() }),
+      appraisals: db.performance.appraisals
+        .filter(({ cycleId }) => cycleId === latestCycle()?.id)
+        .map(({ employeeId, rating, recommendsPromotion, incrementPercent }) => ({ employeeId, rating, recommendsPromotion, ...(incrementPercent && { incrementPercent }) })),
     };
   }],
   ['GET', /^\/api\/insights\/attendance$/, ({ user, query }) => {
@@ -1453,7 +2361,7 @@ const readBody = async (req) => {
   try {
     return JSON.parse(Buffer.concat(chunks).toString('utf8'));
   } catch {
-    throw new HttpError(400, 'Body must be JSON');
+    throw new HttpError(400, "Something in that wasn't filled in the right way. Check it and try again.");
   }
 };
 

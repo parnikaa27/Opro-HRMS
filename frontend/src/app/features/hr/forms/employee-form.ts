@@ -7,6 +7,8 @@ import { serverReason, submitForm } from '../../../shared/utils/form-submit';
 import { HrApi } from '../hr-api';
 
 const MAX_FIELD = 120;
+const MINIMUM_AGE = 18;
+const YEAR_LENGTH = 4;
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const LOCATIONS = ['Malé office', 'Hulhumalé site'];
@@ -210,6 +212,13 @@ export class EmployeeForm {
     required(path.gender, { message: 'Pick their gender.' });
     required(path.dateOfBirth, { message: 'Enter their date of birth.' });
     validate(path.dateOfBirth, ({ value }) => (value() && value() >= this.today ? { kind: 'future', message: 'That date hasn’t happened yet.' } : undefined));
+    // The server says the same: at least 18 on their joining day.
+    validate(path.dateOfBirth, ({ value, valueOf }) => {
+      const turnsOfAge = value() && `${Number(value().slice(0, YEAR_LENGTH)) + MINIMUM_AGE}${value().slice(YEAR_LENGTH)}`;
+      return turnsOfAge && valueOf(path.joinedOn) && turnsOfAge > valueOf(path.joinedOn)
+        ? { kind: 'too-young', message: `They need to be ${MINIMUM_AGE} by their joining date.` }
+        : undefined;
+    });
     const afterJoining = (message: string) => ({ value, valueOf }: { value: () => string; valueOf: (field: typeof path.joinedOn) => string }) =>
       value() && valueOf(path.joinedOn) && value() <= valueOf(path.joinedOn) ? { kind: 'order', message } : undefined;
     validate(path.probationEndsOn, afterJoining('Probation ends after they join.'));

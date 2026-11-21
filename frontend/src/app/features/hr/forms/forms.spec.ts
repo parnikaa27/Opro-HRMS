@@ -303,11 +303,13 @@ describe('HR forms', () => {
       fill(root, 'policy-year-end', 'carry');
       fill(root, 'policy-cap', '2');
       fill(root, 'policy-approval', 'hr');
+      fill(root, 'policy-notice', '30');
       await submit(root);
 
       const request = http.expectOne((sent) => sent.method === 'POST' && sent.url === '/api/hr/leave-types');
       expect(request.request.body).toEqual({
         name: 'Marriage leave', allowsHalfDay: true, isUnlimited: false, defaultEntitlement: 5, isForEveryone: false, carriesForward: true, carryForwardCap: 2, needsHrApproval: true,
+        noticeDays: 30,
       });
       request.flush({});
       await settle();
@@ -384,6 +386,15 @@ describe('HR forms', () => {
       'employee-contact-name': 'Mohan Pillai', 'employee-contact-relation': 'Father', 'employee-contact-phone': '+960 777 2030',
       'employee-gender': 'female', 'employee-birth': '1994-05-02', 'employee-probation': '2027-02-15',
     };
+
+    it('needs them to be 18 by their joining date', async () => {
+      const { root } = await render(EmployeeForm, { people: PEOPLE });
+      fill(root, 'employee-joined', '2026-11-15');
+      fill(root, 'employee-birth', '2010-01-01');
+      await submit(root);
+
+      expect(errors(root)).toContain('They need to be 18 by their joining date.');
+    });
 
     it('names every missing field and needs a manager for a new person', async () => {
       const { root } = await render(EmployeeForm, { people: PEOPLE });
@@ -465,6 +476,13 @@ describe('HR forms', () => {
 
   describe('LeavingForm', () => {
     const inputs = { employeeId: 'OPR-0021', name: 'Rohit Verma', joinedOn: '2024-04-01', reports: [] };
+
+    it('starts with the exit date and reason of someone who resigned', async () => {
+      const { root } = await render(LeavingForm, { ...inputs, exitOn: '2027-01-07', resignationReason: 'Moving back home' });
+
+      expect((root.querySelector('[data-testid=leaving-date]') as HTMLInputElement).value).toBe('2027-01-07');
+      expect((root.querySelector('[data-testid=leaving-reason]') as HTMLTextAreaElement).value).toBe('Resigned: Moving back home');
+    });
 
     it('needs a last day after they joined and a reason', async () => {
       const { root } = await render(LeavingForm, inputs);

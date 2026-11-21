@@ -35,8 +35,8 @@ describe('HrPolicyPage', () => {
     expect(texts(root, 'policy-row')).toEqual([
       'Annual leave 30 days Allowed Everyone Carries up to 15 days HOD, then HR Edit Remove',
       'Paternity leave 1 day Full days only People HR picks Lapses HOD Edit Remove',
-      'Unpaid leave No limit Full days only Everyone HOD Edit Remove',
-      'Compensatory off Earned Allowed Earned by working days off Lapses Set under Approvals',
+      'Unpaid leave No limit Full days only Everyone Nothing to carry HOD Edit Remove',
+      'Compensatory off Earned Allowed Earned by working days off Taken within 14 days of the day worked Set under Approvals',
     ]);
   });
 

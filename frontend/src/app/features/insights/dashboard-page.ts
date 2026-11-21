@@ -8,7 +8,7 @@ import { valueOr } from '../../shared/utils/resource';
 import { plural } from '../../shared/utils/text';
 import { summarise } from '../attendance/attendance-summary';
 import { Breakdown } from './breakdown';
-import { ageBand, compliance, genderLabel, isExpatriate, leaveSummary, peopleEvents, percentOf, presence, shares, workforce } from './insights';
+import { ageBand, compliance, genderLabel, isExpatriate, leaveSummary, peopleEvents, percentOf, performance, presence, shares, workforce } from './insights';
 import { InsightsApi } from './insights-api';
 
 const SHORT_MONTH = 3;
@@ -126,6 +126,19 @@ const SHORT_MONTH = 3;
             }
           </section>
 
+          <section class="card card-pad" data-testid="performance">
+            <div class="card-heading"><div><span class="eyebrow">PERFORMANCE</span><h2>{{ data.cycle?.name ?? 'Appraisals' }}</h2></div></div>
+            <dl class="insight-figures">
+              <div><dt>On probation</dt><dd>{{ growth().onProbation }}</dd></div>
+              <div><dt>Appraised</dt><dd>{{ data.cycle ? growth().done + ' of ' + growth().due : 'No cycle' }}</dd></div>
+              <div><dt>Average rating</dt><dd>{{ growth().averageRating ?? 'None yet' }}</dd></div>
+            </dl>
+            <dl class="insight-figures">
+              <div><dt>Rated 4 or 5</dt><dd>{{ growth().highPerformers }}</dd></div>
+              <div><dt>Recommended for promotion</dt><dd>{{ growth().promotions }}</dd></div>
+            </dl>
+          </section>
+
           <section class="card card-pad" data-testid="people-events">
             <div class="card-heading"><div><span class="eyebrow">PEOPLE</span><h2>Coming up</h2></div></div>
             <h3 class="insight-label">Birthdays this month</h3>
@@ -177,6 +190,7 @@ export class DashboardPage {
   protected readonly leave = computed(() => leaveSummary(this.data()?.leave ?? [], this.data()?.balances ?? [], this.day()));
   protected readonly papers = computed(() => compliance(this.staff().active, this.data()?.quotas ?? [], this.day()));
   protected readonly events = computed(() => peopleEvents(this.staff().active, this.day()));
+  protected readonly growth = computed(() => performance(this.staff().active, this.data()?.appraisals ?? []));
 
   protected readonly origin = computed(() => shares(this.staff().active, (person) => (isExpatriate(person) ? 'Expatriates' : 'Maldivians')));
   protected readonly genders = computed(() => shares(this.staff().active, genderLabel));

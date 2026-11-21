@@ -11,6 +11,26 @@ What's left before Opro HRMS can go live, and what's waiting on someone. Kept up
 - [ ] **Domain and HTTPS.** The session cookie is `Secure`, so the portal only works over HTTPS.
 - [ ] **Turn the Netlify demo off**, or put it behind a password, once real people use the real portal.
 
+## Gaps found testing every journey (19 November)
+
+Walked through by hand as Arjun (expatriate employee), Vikram (HOD), Ananya (HR) and Rajesh (super admin), against Spring on a fresh database, and every page at phone width. The 48 automated journeys pass on the mock and on Spring; these are what they don't catch.
+
+**Rules that are missing**
+- [ ] Leave can be booked on a day the person punched in, which counts that day twice. Parnika chose any day in the leave year; refusing days with punches is a small change if wanted.
+- [ ] Waiting requests never expire or escalate (Parnika: nothing for now). A leave day already past (Rohit, 18 November) still waits, and the HOD gets no reminder.
+- [ ] No cover when an HOD is away: only a super admin can step in. Consider an acting HOD for a date range.
+
+**Wording and display**
+- [ ] The dev document list asks expatriates for a National ID. Goes away with the real list.
+
+**Missing for go live**
+- [ ] Importing people in bulk, with leave already used this year, visas and bank details, from HR's current spreadsheets. Adding everyone one at a time isn't realistic.
+
+## From the meeting with Madhu (19 November)
+
+Being built in batches, one PR each. Leave, documents, exit, the performance changes, allowances and onboarding are done (see Leave below, and Documents, Leaving Opro, Performance, Allowances and Onboarding in CLAUDE.md). Still to come:
+- [ ] **Recruitment:** needs its own conversation first.
+
 ## Demo
 
 - [ ] **Publish the Netlify demo**: connect the repository on Netlify (steps in `HOW-TO-RUN.md`). It needs your Netlify account, so it's yours to do. Add the site password if the link shouldn't be open.
@@ -20,10 +40,18 @@ What's left before Opro HRMS can go live, and what's waiting on someone. Kept up
 - [ ] **Office and resort locations.** The pins and radii in `backend/src/main/resources/application.yml` are placeholders. Office punches fail at the real office until they're right.
 - [ ] **Leave rules**, checked against the Maldives Employment Act: days per type (annual 30, sick 30, family 10, maternity 60, paternity 3), when a medical certificate is needed (after 2 days), and carry forward (every type lapses today).
 - [ ] **Attendance rules:** shift 9 to 5, 15 minutes' grace, half day under 4 hours.
-- [ ] **The document list:** each document's name, who uploads it, whether it expires, and whether only expatriates need it. HR enters it in Policies. The dev data has placeholders.
+- [ ] **The document list:** each document's name, who uploads it, whether it expires (and how many days ahead to remind), and whether everyone, only expatriates, or people HR picks need it. HR enters it in Policies. The dev data has placeholders.
+- [ ] **Visa copy reminders twice over:** a visa copy that expires on the same day as the visa record reminds once for each. Fine if the copy is the proof HR wants renewed too; otherwise make the visa copy a type that doesn't expire.
 - [ ] **Exchange rates:** MVR 15.42 and INR 88 per USD are starting values. HR can change them in Policies.
 - [ ] **Footer:** legal name, address, HR email, and the Privacy and HR policy links in `frontend/src/app/core/config.ts`.
 - [ ] **Overtime:** 30 minutes past the shift is the placeholder minimum, and whether overtime is paid (at what rate) or taken as time off. Payroll needs the rate.
+- [ ] **Performance:** the 1 to 5 scale and its words, and whether appraisals should rate company competencies too. Accepting a rating is required with no way to disagree; if staff ever need to record a disagreement, that's a small change.
+- [ ] **Leave notice:** the paper form asks a month ahead for scheduled leave. Set "Asked for (days ahead)" on annual leave in Policies, and on any other type that needs it. Nothing has notice until then.
+- [ ] **Flight entitlement and salary advance ticks on leave requests:** today they're shown to the HOD and HR only. Should ticking the flight box start a flight claim, and who acts on a salary advance before payroll exists?
+- [ ] **Leaving without resigning** (a contract ending, a dismissal): today the return checklist only applies to someone who resigned. Should HR tick items off for everyone who leaves? And is there a minimum notice period between resigning and the last day?
+- [ ] **Allowances:** the real list of kinds and who gets how much, and whether any one-off grants HR makes directly (today only an HOD grants them).
+- [ ] **Onboarding:** the real task list, and whether tasks for IT (email, system access) should wait for Microsoft sign in. Today there's no IT role, so the HOD owns the laptop and desk.
+- [ ] **Minimum age:** 18 by the joining date is a placeholder. Confirm against the Employment Act.
 - [ ] **Comp off for super admins:** today they earn none for working a Friday or a holiday, because nobody is above them to approve it.
 
 ## Later, if needed
@@ -46,7 +74,7 @@ What the document asks for, against what's built. "Done" means built and tested;
 
 **1. Executive dashboard**
 - Done: workforce (headcount, joiners, leavers, attrition, retention, locals and expatriates, gender, employment type, age, departments, nationalities), attendance today and this month, leave (waiting, annual used, sick trend), compliance (expired and expiring papers, quota use), birthdays, anniversaries, probation and contract endings. For HR and super admins.
-- Not yet: business travel, shift status, overtime (built, not on the dashboard yet), and the recruitment, payroll, performance, training and engagement sections (they arrive with their modules).
+- Not yet: business travel, shift status, overtime (built, not on the dashboard yet), and the recruitment, payroll, training and engagement sections (they arrive with their modules).
 
 **2. Employee information**
 - Done: profile with gender, date of birth and employment type, emergency contact, passport (last 4 digits), work permit and visa, medical insurance, bank details (entered by the person, verified by HR), education, work experience, documents repository with HR checks.
@@ -55,7 +83,8 @@ What the document asks for, against what's built. "Done" means built and tested;
 
 **4. Onboarding**
 - Done: employee number generation, document collection.
-- Not yet: email creation and system access (needs Microsoft 365), welcome kit, orientation, induction training, probation tracking.
+- Done since: an onboarding checklist HR keeps, with tasks for HR, the HOD and the joiner, first-day details, a buddy, and progress for HR. Probation reviews are in Performance.
+- Not yet: email creation and system access (needs Microsoft 365), induction training (comes with learning and development).
 
 **5. Attendance**
 - Done: GPS punching from the office, a resort or home, mobile friendly, late arrivals, breaks.
@@ -64,11 +93,15 @@ What the document asks for, against what's built. "Done" means built and tested;
 
 **6. Leave**
 - Done: all the listed types (HR adds any type, emergency leave included), approval by the HOD, calendar, balances.
+- Done on 19 November, from the meeting with Madhu: leave years from each person's joining date, compensatory off valid for 14 days, a balance table (this year, carried forward, approved, taken so far, waiting, left), and the paper form's fields (new, amended or extended application, flight entitlement and salary advance ticks, notice per type, the days marked and the return date).
 - Done since: HR can approve after the HOD.
 
 **7. Payroll**: not started (salary structure in USD and MVR, allowances, overtime, deductions, advances, loans, final settlement, payslips, bank transfer files, reports). Needs the Maldives pension and income tax rules and each bank's file format confirmed.
 
-**8. Performance**: not started (goals, KPIs, probation review, annual appraisal, 360° feedback, ratings, promotion and increment recommendations).
+**8. Performance**
+- Done: probation reviews, appraisal cycles HR opens, goals with measures and weights, HOD appraisals rated 1 to 5, promotion and increment recommendations, a performance section on the dashboard.
+- Done since: goals and KPIs the employee writes (approved by the HOD, then HR), a self review (accomplishments, strengths, learning and development, certifications) the HOD comments on, and accepting the rating.
+- Not yet: 360° feedback, company competencies to rate against, acting on recommendations (needs payroll), a performance report.
 
 **9. Learning and development**: not started (calendar, nominations, attendance, feedback, certificates, hours, competency matrix).
 
@@ -87,7 +120,8 @@ What the document asks for, against what's built. "Done" means built and tested;
 **13. Manager self service**
 - Done: approve leave, punch fixes and home days, team dashboard, team attendance export.
 - Done since: approve overtime.
-- Not yet: appraisals, recruitment requests, wider reports.
+- Done since: appraisals and probation reviews.
+- Not yet: recruitment requests, wider reports.
 
 **14. Reports**
 - Done: headcount, joiners and leavers (attrition and turnover), workforce mix by department, nationality, gender, age or employment type, leave balances, leave taken, attendance, visa and permit expiry. Each as CSV, Excel or PDF.
@@ -113,4 +147,4 @@ What the document asks for, against what's built. "Done" means built and tested;
 - Done since: local vs expat reporting (dashboard and workforce mix report).
 - Not yet: Employment Act compliance reports, once HR says which ones the Ministry asks for.
 
-**20. Executive KPIs**: workforce, attendance, leave, compliance, turnover and diversity are on the dashboard. Recruitment, payroll, performance and learning come with their modules.
+**20. Executive KPIs**: workforce, attendance, leave, compliance, turnover and diversity are on the dashboard. Performance is on it too. Recruitment, payroll and learning come with their modules.

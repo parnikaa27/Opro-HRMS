@@ -44,7 +44,7 @@ class HrPhotoController {
     @Transactional
     ResponseEntity<Void> replace(@PathVariable String id, HttpServletRequest request) {
         Employee me = hr.require(currentUser.get());
-        Employee employee = people.findActive(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Employee not found"));
+        Employee employee = people.findNotLeft(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Employee not found"));
         photos.replace(employee.getId(), Upload.read(request, Upload.PHOTO, MAX_PHOTO_BYTES), me.getId());
         notifications.tell(employee.getId(), Notification.Kind.RECORD, "HR added a new photo to your ID card.");
         return ResponseEntity.noContent().build();
@@ -54,7 +54,7 @@ class HrPhotoController {
     @Transactional
     ResponseEntity<Void> remove(@PathVariable String id) {
         hr.require(currentUser.get());
-        Employee employee = people.findActive(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Employee not found"));
+        Employee employee = people.findNotLeft(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Employee not found"));
         photos.remove(employee.getId());
         notifications.tell(employee.getId(), Notification.Kind.RECORD, "HR removed the photo from your ID card. It shows your initials for now.");
         return ResponseEntity.noContent().build();

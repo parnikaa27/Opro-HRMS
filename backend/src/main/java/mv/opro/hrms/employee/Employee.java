@@ -77,6 +77,15 @@ public class Employee {
         jobCategory = details.jobCategory();
     }
 
+    // After the HOD's probation review: confirmed clears the date, extended moves it.
+    public void confirm() {
+        probationEndsOn = null;
+    }
+
+    public void extendProbation(LocalDate to) {
+        probationEndsOn = to;
+    }
+
     public void leave(LocalDate day, String reason) {
         lastDay = day;
         leavingReason = reason;
@@ -88,8 +97,9 @@ public class Employee {
     }
 
     // Someone past their last day keeps their records but can no longer sign in or show up in live lists.
+    // Joined by then and not left yet.
     public boolean isActiveOn(LocalDate day) {
-        return lastDay == null || !lastDay.isBefore(day);
+        return !joinedOn.isAfter(day) && (lastDay == null || !lastDay.isBefore(day));
     }
 
     public String getId() {

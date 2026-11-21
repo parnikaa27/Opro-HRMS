@@ -11,6 +11,8 @@ import mv.opro.hrms.employee.EmployeeRepository;
 import mv.opro.hrms.employee.People;
 import mv.opro.hrms.employee.Visa;
 import mv.opro.hrms.employee.VisaRepository;
+import mv.opro.hrms.exit.Exits;
+import mv.opro.hrms.onboarding.Onboardings;
 import mv.opro.hrms.leave.LeaveService;
 import mv.opro.hrms.notification.Notification;
 import mv.opro.hrms.notification.Notifications;
@@ -23,6 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 class HrPeople {
 
+    // Nobody younger works at Opro. A placeholder until HR confirms it against the Employment Act.
+    private static final int MINIMUM_AGE = 18;
+
     private static final String ID_PREFIX = "OPR-";
     private static final int ID_DIGITS = 4;
 
@@ -31,18 +36,23 @@ class HrPeople {
     private final People people;
     private final LeaveService leave;
     private final Notifications notifications;
+    private final Exits exits;
+    private final Onboardings onboardings;
 
-    HrPeople(EmployeeRepository employees, VisaRepository visas, People people, LeaveService leave, Notifications notifications) {
+    HrPeople(EmployeeRepository employees, VisaRepository visas, People people, LeaveService leave, Notifications notifications, Exits exits,
+            Onboardings onboardings) {
         this.employees = employees;
         this.visas = visas;
         this.people = people;
         this.leave = leave;
         this.notifications = notifications;
+        this.exits = exits;
+        this.onboardings = onboardings;
     }
 
-    // Active people by default. Former staff only when HR asks for them.
+    // Everyone who hasn't left, people still to start included. Former staff only when HR asks for them.
     List<Employee> list(boolean includesFormer) {
-        return includesFormer ? employees.findAllByOrderByFullName() : people.active();
+        return includesFormer ? employees.findAllByOrderByFullName() : people.notLeft();
     }
 
     Employee find(String id) {
@@ -58,6 +68,7 @@ class HrPeople {
         checkManager(id, details.managerId(), false);
         Employee employee = employees.save(Employee.hire(id, details));
         leave.openYearFor(employee.getId());
+        onboardings.start(employee);
         return employee;
     }
 
@@ -77,7 +88,8 @@ class HrPeople {
         return employee;
     }
 
-    // A last day, with leave booked after it cancelled. Someone who still manages people has to hand them over first.
+    // A last day, with leave booked after it cancelled. Someone who still manages people has to hand them over first, and
+    // someone who resigned has to hand back everything on HR's checklist.
     @Transactional
     Employee markLeaving(String id, LocalDate lastDay, String reason) {
         Employee employee = find(id);
@@ -87,6 +99,10 @@ class HrPeople {
         int reports = people.reportsOf(id).size();
         if (reports > 0) {
             throw new ApiException(HttpStatus.CONFLICT, "Move their " + reports + (reports == 1 ? " report" : " reports") + " to another manager first.");
+        }
+        List<String> stillOut = exits.stillOut(id);
+        if (!stillOut.isEmpty()) {
+            throw new ApiException(HttpStatus.CONFLICT, "Tick off what they still have first: " + String.join(", ", stillOut).toLowerCase() + ".");
         }
         leave.cancelAfter(id, lastDay);
         employee.leave(lastDay, reason.strip());
@@ -136,6 +152,9 @@ class HrPeople {
                 .anyMatch(end -> end != null && !end.isAfter(details.joinedOn()));
         if (isBadEnd) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Probation and contract end dates come after the joining date.");
+        }
+        if (details.dateOfBirth() != null && details.dateOfBirth().plusYears(MINIMUM_AGE).isAfter(details.joinedOn())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "They need to be " + MINIMUM_AGE + " by their joining date.");
         }
     }
 

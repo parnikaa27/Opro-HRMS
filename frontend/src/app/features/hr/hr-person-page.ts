@@ -7,7 +7,7 @@ import { Dialog } from '../../shared/ui/dialog';
 import { Icon } from '../../shared/ui/icon';
 import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { SuccessState } from '../../shared/ui/success-state';
-import { formatFullDate, formatShortDate, maldivesToday, monthOf } from '../../shared/utils/date-time';
+import { addDays, formatFullDate, formatShortDate, maldivesToday, monthOf } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { plural } from '../../shared/utils/text';
 import { toAttendanceRow } from '../attendance/attendance-rows';
@@ -20,6 +20,9 @@ import { TeamApi } from '../team/team-api';
 import { AdjustBalanceForm } from './forms/adjust-balance-form';
 import { LeaveDaysForm } from './forms/leave-days-form';
 import { LeavingForm } from './forms/leaving-form';
+import { ExitCard } from '../exit/exit-card';
+import { ExitApi } from '../exit/exit-api';
+import { stillOut } from '../exit/exit-status';
 import { PhotoForm } from './forms/photo-form';
 import { VisaForm } from './forms/visa-form';
 import { HrApi } from './hr-api';
@@ -27,9 +30,12 @@ import { HrDocumentsCard } from './hr-documents-card';
 import { HrFlightCard } from './hr-flight-card';
 import { HrRecordCard } from './hr-record-card';
 import { PersonMenu } from './person-menu';
+import { HrAllowancesCard } from '../allowance/hr-allowances-card';
+import { HrOnboardingCard } from '../onboarding/hr-onboarding-card';
 
 type Action = 'adjust' | 'visa' | 'leaving' | 'days';
 
+const RECENT_DAYS = 90;
 const SUCCESS: Record<Action, { heading: string; body: string }> = {
   adjust: { heading: 'Balance adjusted', body: 'The change and your reason are in their log below.' },
   days: { heading: 'Leave days saved', body: 'They’ve been told, and the change is in their log below.' },
@@ -39,7 +45,7 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
 
 @Component({
   selector: 'app-hr-person-page',
-  imports: [AdjustBalanceForm, AttendanceTable, ConfirmButton, Dialog, EmployeeCard, HrDocumentsCard, HrFlightCard, HrRecordCard, Icon, LeaveBalances, LeaveDaysForm, LeaveRequests, LeavingForm, ListSkeleton, PersonMenu, PhotoForm, RouterLink, SuccessState, VisaCard, VisaForm],
+  imports: [AdjustBalanceForm, AttendanceTable, ConfirmButton, Dialog, EmployeeCard, ExitCard, HrAllowancesCard, HrDocumentsCard, HrFlightCard, HrOnboardingCard, HrRecordCard, Icon, LeaveBalances, LeaveDaysForm, LeaveRequests, LeavingForm, ListSkeleton, PersonMenu, PhotoForm, RouterLink, SuccessState, VisaCard, VisaForm],
   template: `
     <div class="page-view">
       <a routerLink="/hr/people" class="text-link back-link"><app-icon name="chevronLeft" [size]="15" /> People</a>
@@ -63,7 +69,7 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
             <button type="button" class="secondary-button" [disabled]="isTypesLoading()" (click)="action.set('days')" data-testid="open-days">Leave days</button>
             <button type="button" class="secondary-button" [disabled]="isTypesLoading()" (click)="action.set('adjust')" data-testid="open-adjust">Adjust balance</button>
             <button type="button" class="secondary-button" (click)="action.set('visa')" data-testid="open-visa">Update visa</button>
-            <app-person-menu [employeeId]="employee.id" [isLeaving]="employee.lastDay !== undefined" (leaving)="action.set('leaving')" (photo)="isChangingPhoto.set(true)" />
+            <app-person-menu [employeeId]="employee.id" [isLeaving]="employee.lastDay !== undefined" [stillOut]="stillOut()" (leaving)="action.set('leaving')" (photo)="isChangingPhoto.set(true)" />
           </div>
         </div>
         @if (employee.lastDay; as lastDay) {
@@ -79,7 +85,7 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
           </p>
         }
 
-        <app-leave-balances [balances]="employee.leaveBalances" [types]="typeList()" />
+        <app-leave-balances [balances]="employee.leaveBalances" [types]="typeList()" [joinedOn]="employee.joinedOn" />
 
         <div class="employee-grid">
           <div class="main-column">
@@ -105,7 +111,12 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
               }
             </section>
             <app-hr-record-card [employeeId]="employee.id" [name]="employee.fullName" [isOwn]="employee.id === myId()" />
+            <app-hr-onboarding-card [employeeId]="employee.id" [isRecent]="joinedRecently()" [isOwn]="employee.id === myId()" />
+            @if (resignation(); as resigned) {
+              <app-exit-card [employeeId]="employee.id" [resignation]="resigned" [isOwn]="employee.id === myId()" (changed)="exit.reload()" />
+            }
             <app-hr-documents-card [employeeId]="employee.id" [name]="employee.fullName" [isOwn]="employee.id === myId()" />
+            <app-hr-allowances-card [employeeId]="employee.id" [isOwn]="employee.id === myId()" />
           </div>
           <div class="side-column">
             <app-employee-card [employee]="employee" />
@@ -135,7 +146,7 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
                 <app-visa-form [employeeId]="employee.id" [name]="employee.fullName" [visa]="employee.visa" (saved)="finish('visa')" (cancelled)="close()" />
               }
               @case ('leaving') {
-                <app-leaving-form [employeeId]="employee.id" [name]="employee.fullName" [joinedOn]="employee.joinedOn" [reports]="reports()" (saved)="finish('leaving')" (cancelled)="close()" />
+                <app-leaving-form [employeeId]="employee.id" [name]="employee.fullName" [joinedOn]="employee.joinedOn" [reports]="reports()" [exitOn]="resignation()?.exitOn" [resignationReason]="resignation()?.reason" (saved)="finish('leaving')" (cancelled)="close()" />
               }
             }
           }
@@ -166,6 +177,12 @@ export class HrPersonPage {
   protected readonly success = SUCCESS;
 
   protected readonly employee = computed(() => valueOr(this.person, undefined));
+  // Their accepted resignation, with the checklist. Nothing when they haven't resigned.
+  protected readonly exit = inject(ExitApi).exitOf(this.employeeId);
+  protected readonly resignation = computed(() => valueOr(this.exit, undefined) ?? undefined);
+  protected readonly stillOut = computed(() => stillOut(this.resignation()));
+  // Joined in the last three months: onboarding can still be started for them.
+  protected readonly joinedRecently = computed(() => (this.employee()?.joinedOn ?? '') >= addDays(maldivesToday(), -RECENT_DAYS));
   protected readonly isNotFound = computed(() => {
     const error = this.person.error()?.cause ?? this.person.error();
     return error instanceof HttpErrorResponse && error.status === HttpStatusCode.NotFound;

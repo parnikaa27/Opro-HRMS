@@ -6,7 +6,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +32,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 class LeaveController {
 
     private static final int MAX_REASON = 300;
+    private static final int MAX_ID = 16;
     private static final int MAX_CERTIFICATE_BYTES = 5 * Upload.MEGABYTE;
 
     // Days are left out on purpose: the server counts them. Anything the client sends for days is ignored.
@@ -41,7 +41,11 @@ class LeaveController {
             @NotNull LocalDate from,
             @NotNull LocalDate to,
             @Pattern(regexp = "first|second") String halfDay,
-            @NotBlank @Size(max = MAX_REASON) String reason) {}
+            @NotBlank @Size(max = MAX_REASON) String reason,
+            @Pattern(regexp = "initial|amended|extended") String kind,
+            @Size(max = MAX_ID) String relatedRequestId,
+            Boolean usesFlightEntitlement,
+            Boolean wantsSalaryAdvance) {}
 
     private final LeaveService leave;
     private final CurrentUser currentUser;
@@ -77,7 +81,9 @@ class LeaveController {
     @PostMapping("/api/leave/requests")
     LeaveRequestResponse apply(@Valid @RequestBody ApplyLeave body) {
         Employee me = currentUser.get();
-        LeaveRequest request = leave.apply(me, new LeaveService.Application(body.type(), body.from(), body.to(), body.halfDay(), body.reason()));
+        LeaveRequest request = leave.apply(me, new LeaveService.Application(body.type(), body.from(), body.to(), body.halfDay(), body.reason(),
+                body.kind() == null ? LeaveRequest.INITIAL : body.kind(), body.relatedRequestId(), Boolean.TRUE.equals(body.usesFlightEntitlement()),
+                Boolean.TRUE.equals(body.wantsSalaryAdvance())));
         return LeaveRequestResponse.of(request, me.getFullName(), Map.of());
     }
 

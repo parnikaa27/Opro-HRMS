@@ -14,7 +14,10 @@ import { Icon } from '../../shared/ui/icon';
         <a [routerLink]="['/hr/people', employeeId(), 'edit']" data-testid="edit-person">Edit details and manager</a>
         <button type="button" (click)="choose(photo)" data-testid="change-photo">Change photo</button>
         @if (!isLeaving()) {
-          <button type="button" class="danger" (click)="choose(leaving)" data-testid="mark-leaving">Mark as leaving</button>
+          <button type="button" class="danger" [disabled]="stillOut().length > 0" (click)="choose(leaving)" data-testid="mark-leaving" [attr.aria-describedby]="stillOut().length ? 'still-out' : null">Mark as leaving</button>
+          @if (stillOut().length) {
+            <small id="still-out" class="menu-note">Tick off first: {{ stillOut().join(', ').toLowerCase() }}</small>
+          }
         }
       </div>
     }
@@ -26,6 +29,8 @@ import { Icon } from '../../shared/ui/icon';
 export class PersonMenu {
   readonly employeeId = input.required<string>();
   readonly isLeaving = input(false);
+  // Items someone who resigned still has. Leaving waits until there are none.
+  readonly stillOut = input<readonly string[]>([]);
   readonly photo = output();
   readonly leaving = output();
   protected readonly isOpen = signal(false);

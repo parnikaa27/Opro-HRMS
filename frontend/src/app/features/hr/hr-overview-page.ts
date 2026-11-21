@@ -11,7 +11,10 @@ import { plural } from '../../shared/utils/text';
 import { greetingFor } from '../dashboard/dashboard-page';
 import { HolidaysApi } from '../holidays/holidays-api';
 import { visaAlertsFor } from '../team/visa-alerts';
+import { DocumentsToCollect } from './documents-to-collect';
 import { HrApi } from './hr-api';
+import { inboxCount } from './inbox-count';
+import { OnboardingProgressCard } from '../onboarding/onboarding-progress-card';
 
 const PREVIEW = 4;
 const CONFIRM_WINDOW_DAYS = 60;
@@ -19,7 +22,7 @@ const IN_OFFICE: readonly AttendanceStatus[] = ['present', 'late', 'half-day', '
 
 @Component({
   selector: 'app-hr-overview-page',
-  imports: [Avatar, Icon, RouterLink, WelcomeBanner],
+  imports: [Avatar, DocumentsToCollect, Icon, OnboardingProgressCard, RouterLink, WelcomeBanner],
   template: `
     <app-welcome-banner [dateLabel]="dateLabel" [heading]="greeting + ', ' + firstName() + '.'" [line]="line()" />
 
@@ -52,8 +55,8 @@ const IN_OFFICE: readonly AttendanceStatus[] = ['present', 'late', 'half-day', '
         <div class="stat-icon violet"><app-icon name="mail" /></div>
         <div>
           <span>INBOX</span>
-          <strong data-testid="stat-inbox">{{ openChanges() }}</strong>
-          <small>Detail changes to make</small>
+          <strong data-testid="stat-inbox">{{ inbox.count() }}</strong>
+          <small>Waiting for you</small>
         </div>
       </a>
     </div>
@@ -130,6 +133,9 @@ const IN_OFFICE: readonly AttendanceStatus[] = ['present', 'late', 'half-day', '
         <p class="attendance-off">No tentative holidays in the next two months.</p>
       }
     </section>
+
+    <app-onboarding-progress-card />
+    <app-documents-to-collect />
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -140,7 +146,6 @@ export class HrOverviewPage {
   protected readonly today = maldivesToday();
 
   private readonly everyone = this.hr.employees();
-  private readonly changes = this.hr.changeRequests();
   private readonly thisYear = this.holidaysApi.forYear(() => String(yearOf(this.today)));
   private readonly nextYear = this.holidaysApi.forYear(() => String(yearOf(this.today) + 1));
 
@@ -153,7 +158,7 @@ export class HrOverviewPage {
   protected readonly inToday = computed(() => this.people().filter(({ today }) => today && IN_OFFICE.includes(today.status)).length);
   protected readonly line = computed(() => `${plural(this.people().length, 'person', 'people')} at Opro. ${this.inToday()} in today.`);
   protected readonly onLeave = computed(() => this.people().filter(({ today }) => today?.status === 'on-leave'));
-  protected readonly openChanges = computed(() => valueOr(this.changes, []).filter(({ status }) => status === 'open').length);
+  protected readonly inbox = inboxCount();
   protected readonly visaAlerts = computed(() => visaAlertsFor(this.people(), this.today));
   protected readonly toConfirm = computed(() => {
     const until = addDays(this.today, CONFIRM_WINDOW_DAYS);

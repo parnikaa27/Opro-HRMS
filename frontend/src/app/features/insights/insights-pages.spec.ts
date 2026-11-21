@@ -10,14 +10,16 @@ const FACTS: Insights = {
   people: [
     {
       id: 'OPR-0015', fullName: 'Priya Nair', department: 'Operations', designation: 'Officer', nationality: 'Indian', gender: 'female', dateOfBirth: '1992-11-20',
-      joinedOn: '2022-11-14', employmentType: 'Permanent', visaExpiry: '2026-12-20', passportExpiry: '2031-06-30',
+      joinedOn: '2022-11-14', employmentType: 'Permanent', visaExpiry: '2026-12-20', passportExpiry: '2031-06-30', managerId: 'OPR-0004',
       today: { employeeId: 'OPR-0015', date: '2026-11-12', status: 'present', punches: [{ at: '2026-11-12T08:55:00+05:00', direction: 'in' }], workedMinutes: 0, overtimeMinutes: 0 },
     },
-    { id: 'OPR-0023', fullName: 'Karan Mehta', department: 'Service', designation: 'Lead', nationality: 'Maldivian', gender: 'male', joinedOn: '2026-02-01', employmentType: 'Contract', contractEndsOn: '2026-12-31' },
+    { id: 'OPR-0023', fullName: 'Karan Mehta', department: 'Service', designation: 'Lead', nationality: 'Maldivian', gender: 'male', joinedOn: '2026-02-01', employmentType: 'Contract', contractEndsOn: '2026-12-31', managerId: 'OPR-0004', probationEndsOn: '2026-12-20' },
   ],
   leave: [{ employeeId: 'OPR-0015', type: 'annual', from: '2026-12-20', to: '2026-12-24', days: 3, status: 'pending', appliedOn: '2026-11-10' }],
   balances: [{ employeeId: 'OPR-0015', type: 'annual', entitled: 30, taken: 15, pending: 3 }],
   quotas: [{ id: 'Q1', jobCategory: 'Administration', slots: 1, used: 1, approvalNumber: 'Q', approvedOn: '2025-01-01', expiresOn: '2027-01-01' }],
+  cycle: { id: 'AY-2026', name: '2026 appraisals', dueOn: '2027-01-31', openedOn: '2026-11-10' },
+  appraisals: [{ employeeId: 'OPR-0023', rating: 4, recommendsPromotion: true, incrementPercent: 8 }],
 };
 
 describe('insights pages', () => {
@@ -49,6 +51,9 @@ describe('insights pages', () => {
       expect([texts(root, 'kpi-total'), texts(root, 'kpi-joiners'), texts(root, 'kpi-leavers'), texts(root, 'kpi-in')]).toEqual([['2'], ['1'], ['0'], ['1']]);
       expect(texts(root.querySelector('[data-testid=workforce]') as HTMLElement, 'breakdown-row').slice(0, 2)).toEqual(['Expatriates 1 50%', 'Maldivians 1 50%']);
       expect(text(root.querySelector('[data-testid=leave]') as HTMLElement)).toContain('Annual leave used 50%');
+      expect(text(root.querySelector('[data-testid=performance]') as HTMLElement)).toBe(
+        'PERFORMANCE 2026 appraisals On probation 1 Appraised 1 of 2 Average rating 4.0 Rated 4 or 5 1 Recommended for promotion 1',
+      );
     });
 
     it('flags papers, quota and what is coming up, linking to the right person page', async () => {

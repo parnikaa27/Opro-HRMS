@@ -52,6 +52,12 @@ public class CalendarEditor {
         holidays.delete(holidays.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Holiday not found")));
     }
 
+    // Where a holiday is now, so leave over it can be counted again after it moves or goes.
+    @Transactional(readOnly = true)
+    public LocalDate dateOf(String id) {
+        return holidays.findById(id).map(Holiday::getHolidayDate).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Holiday not found"));
+    }
+
     // Adds the civil holidays a year doesn't have yet. Running it twice adds nothing the second time.
     public List<Holiday> startYear(int year) {
         List<LocalDate> taken = holidays.findByHolidayDateBetweenOrderByHolidayDate(LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31)).stream()

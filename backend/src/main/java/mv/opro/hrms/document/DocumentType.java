@@ -19,10 +19,13 @@ public class DocumentType {
     private boolean forExpatriatesOnly;
     private int sortOrder;
     private LocalDate retiredOn;
+    private int remindDaysBefore;
+    private boolean isForEveryone;
 
     protected DocumentType() {}
 
-    public record Rules(String name, String uploadedBy, boolean hasExpiry, boolean forExpatriatesOnly) {}
+    // remindDaysBefore: how long before expiry the person and HR hear. isForEveryone false: only people HR asks.
+    public record Rules(String name, String uploadedBy, boolean hasExpiry, boolean forExpatriatesOnly, int remindDaysBefore, boolean isForEveryone) {}
 
     DocumentType(String code, int sortOrder, Rules rules) {
         this.code = code;
@@ -35,6 +38,8 @@ public class DocumentType {
         uploadedBy = rules.uploadedBy();
         hasExpiry = rules.hasExpiry();
         forExpatriatesOnly = rules.forExpatriatesOnly();
+        remindDaysBefore = rules.remindDaysBefore();
+        isForEveryone = rules.isForEveryone();
     }
 
     void retire(LocalDate on) {
@@ -75,5 +80,13 @@ public class DocumentType {
 
     public LocalDate getRetiredOn() {
         return retiredOn;
+    }
+
+    public int getRemindDaysBefore() {
+        return remindDaysBefore;
+    }
+
+    public boolean isForEveryone() {
+        return isForEveryone;
     }
 }

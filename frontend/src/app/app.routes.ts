@@ -28,6 +28,7 @@ export const routes: Routes = [
       { path: 'calendar', title: 'Calendar · Opro HRMS', loadComponent: calendarPage },
       { path: 'holidays', redirectTo: 'calendar' },
       { path: 'documents', title: 'Documents · Opro HRMS', loadComponent: () => import('./features/documents/documents-page').then((page) => page.DocumentsPage) },
+      { path: 'performance', title: 'Performance · Opro HRMS', loadComponent: () => import('./features/performance/my-performance-page').then((page) => page.MyPerformancePage) },
       { path: 'profile', title: 'Profile · Opro HRMS', loadComponent: () => import('./features/profile/profile-page').then((page) => page.ProfilePage) },
       {
         path: 'hr',
@@ -44,6 +45,7 @@ export const routes: Routes = [
           { path: 'visas', title: 'Visas · Opro HRMS', loadComponent: () => import('./features/hr/hr-visas-page').then((page) => page.HrVisasPage) },
           { path: 'inbox', title: 'Inbox · Opro HRMS', loadComponent: () => import('./features/hr/hr-inbox-page').then((page) => page.HrInboxPage) },
           { path: 'announcements', title: 'Announcements · Opro HRMS', loadComponent: () => import('./features/hr/hr-announcements-page').then((page) => page.HrAnnouncementsPage) },
+          { path: 'performance', title: 'Performance · Opro HRMS', loadComponent: () => import('./features/performance/hr-performance-page').then((page) => page.HrPerformancePage) },
           { path: 'policy', title: 'Policies · Opro HRMS', loadComponent: () => import('./features/hr/hr-policy-page').then((page) => page.HrPolicyPage) },
         ],
       },
@@ -56,6 +58,7 @@ export const routes: Routes = [
           { path: 'approvals', title: 'Approvals · Opro HRMS', loadComponent: approvalsPage, data: { scope: 'team' } },
           { path: 'attendance', title: 'Team attendance · Opro HRMS', loadComponent: attendancePage, data: { scope: 'team' } },
           { path: 'calendar', title: 'Team calendar · Opro HRMS', loadComponent: calendarPage, data: { showsTeamLeave: true, scope: 'team' } },
+          { path: 'performance', title: 'Team performance · Opro HRMS', loadComponent: () => import('./features/performance/team-performance-page').then((page) => page.TeamPerformancePage) },
           { path: ':employeeId', title: 'Team member · Opro HRMS', loadComponent: memberPage, data: { scope: 'team' } },
         ],
       },

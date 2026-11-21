@@ -1,6 +1,6 @@
 import { EXPIRY_WARNING_DAYS } from '../../core/config';
 import { AttendanceStatus } from '../../models/attendance';
-import { BalanceFact, LeaveFact, PersonFact } from '../../models/insights';
+import { AppraisalFact, BalanceFact, LeaveFact, PersonFact } from '../../models/insights';
 import { Quota } from '../../models/record';
 import { addDays, addMonths, daysUntil, monthDayOf, monthNumberOf, monthOf, yearOf } from '../../shared/utils/date-time';
 
@@ -31,7 +31,8 @@ export const shares = <T>(items: readonly T[], labelOf: (item: T) => string): Sh
     .sort((first, second) => second.count - first.count || first.label.localeCompare(second.label));
 };
 
-export const isActive = ({ lastDay }: PersonFact, today: string) => !lastDay || lastDay >= today;
+// Joined by today and not left. Someone still to start isn't counted yet.
+export const isActive = ({ joinedOn, lastDay }: PersonFact, today: string) => joinedOn <= today && (!lastDay || lastDay >= today);
 export const isExpatriate = ({ nationality }: PersonFact) => nationality !== NATIONAL;
 
 // Whole years from a date to today.
@@ -142,5 +143,21 @@ export const peopleEvents = (active: readonly PersonFact[], today: string) => {
       .sort((first, second) => monthDayOf(first.joinedOn).localeCompare(monthDayOf(second.joinedOn))),
     probation: active.filter(({ probationEndsOn }) => within(probationEndsOn, PROBATION_WINDOW_DAYS)),
     contracts: active.filter(({ contractEndsOn }) => within(contractEndsOn, EXPIRY_WARNING_DAYS)),
+  };
+};
+
+const HIGH_RATING = 4;
+
+// On probation, and how far the appraisal cycle has got. Everyone with an HOD is appraised; super admins have none.
+export const performance = (active: readonly PersonFact[], appraisals: readonly AppraisalFact[]) => {
+  const appraised = active.filter(({ managerId }) => managerId !== undefined);
+  const done = appraisals.filter(({ employeeId }) => appraised.some(({ id }) => id === employeeId));
+  return {
+    onProbation: active.filter(({ probationEndsOn }) => probationEndsOn !== undefined).length,
+    due: appraised.length,
+    done: done.length,
+    averageRating: done.length ? (done.reduce((sum, { rating }) => sum + rating, 0) / done.length).toFixed(1) : undefined,
+    highPerformers: done.filter(({ rating }) => rating >= HIGH_RATING).length,
+    promotions: done.filter(({ recommendsPromotion }) => recommendsPromotion).length,
   };
 };

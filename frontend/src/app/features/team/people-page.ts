@@ -82,7 +82,8 @@ export class PeoplePage {
   protected readonly profileLink = (id: string) => ({ hr: ['/hr/people', id], team: ['/team', id], company: ['/company', id] })[this.scope()];
   // Where everyone is today, for a super admin: in, from home, at a resort, on leave, not in.
   protected readonly whereToday = computed(() => {
-    const days = this.list().map(({ today }) => today);
+    // Only people working here today: not anyone still to start.
+    const days = this.list().filter(({ joinedOn }) => joinedOn <= this.today).map(({ today }) => today);
     const count = (isThere: (day: TeamMember['today']) => boolean) => days.filter(isThere).length;
     // A declined day from home has punches but counts as absent.
     const isIn = (day: TeamMember['today']) => day !== undefined && day.punches.length > 0 && day.status !== 'absent';
@@ -100,5 +101,9 @@ export class PeoplePage {
   });
 
   protected readonly statusOf = (person: TeamMember) =>
-    person.lastDay && person.lastDay < this.today ? { label: `Left ${formatCompactDate(person.lastDay)}`, tone: 'neutral' as const } : statusToday(person.today);
+    person.lastDay && person.lastDay < this.today
+      ? { label: `Left ${formatCompactDate(person.lastDay)}`, tone: 'neutral' as const }
+      : person.joinedOn > this.today
+        ? { label: `Joins ${formatCompactDate(person.joinedOn)}`, tone: 'neutral' as const }
+        : statusToday(person.today);
 }

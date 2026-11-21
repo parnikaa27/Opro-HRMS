@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { CompOffClaim, CorrectionRequest, HomeDay, OvertimeClaim } from '../../models/attendance';
+import { Resignation } from '../../models/exit';
 import { LeaveRequest } from '../../models/leave';
 import { Avatar } from '../../shared/ui/avatar';
 import { Dialog } from '../../shared/ui/dialog';
@@ -10,22 +11,23 @@ import { isWaitingForHr } from '../../shared/utils/approval-step';
 import { formatDayShort } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { fixCategoryLabel } from '../attendance/fix-categories';
-import { LeaveApi } from '../leave/leave-api';
-import { describeDates, describeLength } from '../leave/leave-format';
+import { LeaveApi, needsCertificate } from '../leave/leave-api';
+import { describeDates, describeExtras, describeLength } from '../leave/leave-format';
 import { CompOffList } from './comp-off-list';
 import { DecisionState } from './decision-state';
 import { DeclineForm } from './decline-form';
 import { HomeDayList } from './home-day-list';
 import { OvertimeList } from './overtime-list';
+import { ResignationList } from './resignation-list';
 import { submittedAgo } from './request-row';
 import { TeamApi, ViewScope } from './team-api';
 
-type Tab = 'pending' | 'approved' | 'rejected' | 'fixes' | 'home' | 'comp-off' | 'overtime';
+type Tab = 'pending' | 'approved' | 'rejected' | 'fixes' | 'home' | 'comp-off' | 'overtime' | 'resignations';
 
 interface Declining {
   id: string;
   name: string;
-  kind: 'leave' | 'fix' | 'home' | 'comp-off' | 'overtime';
+  kind: 'leave' | 'fix' | 'home' | 'comp-off' | 'overtime' | 'resignation';
 }
 
 // Still the HOD's to decide: not yet passed on to HR.
@@ -35,14 +37,14 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
 
 @Component({
   selector: 'app-approvals-page',
-  imports: [Avatar, CompOffList, DeclineForm, Dialog, HomeDayList, Icon, ListSkeleton, OvertimeList, StatusPill],
+  imports: [Avatar, CompOffList, DeclineForm, Dialog, HomeDayList, Icon, ListSkeleton, OvertimeList, ResignationList, StatusPill],
   template: `
     <div class="page-view">
       <div class="page-title">
         <div>
           <span class="eyebrow">{{ scope() === 'company' ? 'ACROSS OPRO' : 'TEAM MANAGEMENT' }}</span>
           <h1>Leave requests</h1>
-          <p>{{ scope() === 'company' ? 'Every request at Opro. Step in when an HOD is away.' : 'Review leave, punch fixes, home days, comp off and overtime for your team.' }}</p>
+          <p>{{ scope() === 'company' ? 'Every request at Opro. Step in when an HOD is away.' : 'Review leave, punch fixes, home days, comp off, overtime and resignations for your team.' }}</p>
         </div>
       </div>
 
@@ -58,7 +60,7 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
           }
         </div>
 
-        @if (leave.error() || fixes.error() || homeDays.error() || compOffs.error() || overtime.error()) {
+        @if (leave.error() || fixes.error() || homeDays.error() || compOffs.error() || overtime.error() || resignations.error()) {
           <p class="attendance-off">Requests didn't load. Refresh the page to try again.</p>
         } @else if (leave.isLoading() && leaveList().length === 0) {
           <app-list-skeleton [count]="3" />
@@ -72,6 +74,17 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
           />
           @if (pendingCompOffs().length === 0) {
             <p class="attendance-off">{{ emptyText['comp-off'] }}</p>
+          }
+        } @else if (tab() === 'resignations') {
+          <app-resignation-list
+            [resignations]="pendingResignations()"
+            [busyId]="decisions.busyId()"
+            [failedId]="decisions.failedId()"
+            (approved)="approveResignation($event)"
+            (declined)="declining.set({ id: $event.id, name: $event.employeeName ?? '', kind: 'resignation' })"
+          />
+          @if (pendingResignations().length === 0) {
+            <p class="attendance-off">{{ emptyText.resignations }}</p>
           }
         } @else if (tab() === 'overtime') {
           <app-overtime-list
@@ -129,6 +142,11 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
                 }
                 @if (request.hasCertificate) {
                   <span class="certificate-note" data-testid="certificate">Medical certificate attached</span>
+                } @else if (isMissingCertificate(request)) {
+                  <span class="certificate-note missing" data-testid="certificate-missing">Medical certificate missing</span>
+                }
+                @if (describeExtras(request); as extras) {
+                  <span class="certificate-note" data-testid="leave-extras">{{ extras }}</span>
                 }
               </div>
               <div><small>DATES</small><strong>{{ describeDates(request) }}</strong></div>
@@ -174,6 +192,7 @@ export class ApprovalsPage {
   protected readonly homeDays = this.api.homeDays({ status: 'pending', scope: this.scope });
   protected readonly compOffs = this.api.compOffs({ status: 'pending', scope: this.scope });
   protected readonly overtime = this.api.overtime({ status: 'pending', scope: this.scope });
+  protected readonly resignations = this.api.resignations({ status: 'pending', scope: this.scope });
   private readonly types = inject(LeaveApi).types();
   protected readonly decisions = new DecisionState();
 
@@ -189,6 +208,9 @@ export class ApprovalsPage {
   protected readonly pendingHomeDays = computed(() => valueOr(this.homeDays, []).filter(isHodStep).sort((first, second) => first.date.localeCompare(second.date)));
   protected readonly pendingCompOffs = computed(() => valueOr(this.compOffs, []).filter(isHodStep).sort((first, second) => first.date.localeCompare(second.date)));
   protected readonly pendingOvertime = computed(() => valueOr(this.overtime, []).filter(isHodStep).sort((first, second) => first.date.localeCompare(second.date)));
+  protected readonly pendingResignations = computed(() =>
+    valueOr(this.resignations, []).filter(isHodStep).sort((first, second) => first.submittedOn.localeCompare(second.submittedOn)),
+  );
   private readonly byStatus = (status: LeaveRequest['status']) => this.leaveList().filter((request) => request.status === status);
 
   protected readonly tabs = computed(() => [
@@ -199,6 +221,7 @@ export class ApprovalsPage {
     { value: 'home' as const, label: 'Home working', count: this.pendingHomeDays().length },
     { value: 'comp-off' as const, label: 'Comp off', count: this.pendingCompOffs().length },
     { value: 'overtime' as const, label: 'Overtime', count: this.pendingOvertime().length },
+    { value: 'resignations' as const, label: 'Resignations', count: this.pendingResignations().length },
   ]);
 
   protected readonly shown = computed(() => {
@@ -216,6 +239,7 @@ export class ApprovalsPage {
     home: 'Nobody is waiting for a home working decision.',
     'comp-off': 'Nobody worked a day off that needs compensatory off.',
     overtime: 'Nobody stayed past the shift long enough to count.',
+    resignations: 'Nobody has resigned.',
     approved: 'No approved requests yet.',
     rejected: 'You haven’t declined anything.',
   };
@@ -227,8 +251,12 @@ export class ApprovalsPage {
     home: 'We had the site visit today, so I needed you in the office.',
     'comp-off': 'You came in by choice that Friday, so there’s nothing to give back.',
     overtime: 'The delivery was moved to the next day, so staying late wasn’t needed.',
+    resignation: 'Your contract runs to the end of the project. Let’s talk about a later date.',
   };
 
+  // Sick leave long enough to need a certificate, without one yet. They can still approve it.
+  protected readonly isMissingCertificate = (request: LeaveRequest) =>
+    request.status === 'pending' && needsCertificate(valueOr(this.types, []).find(({ code }) => code === request.type), request.days);
   protected readonly typeName = (code: string) => valueOr(this.types, []).find((type) => type.code === code)?.name ?? code;
   protected readonly othersOff = (request: LeaveRequest) =>
     this.leaveList()
@@ -239,6 +267,7 @@ export class ApprovalsPage {
   protected readonly describeDates = describeDates;
   protected readonly isWaitingForHr = isWaitingForHr;
   protected readonly describeLength = describeLength;
+  protected readonly describeExtras = describeExtras;
   protected readonly formatDayShort = formatDayShort;
   protected readonly fixCategoryLabel = fixCategoryLabel;
   protected readonly submittedAgo = submittedAgo;
@@ -259,6 +288,10 @@ export class ApprovalsPage {
     return this.decisions.run(id, () => this.api.decideOvertime(id, { decision: 'approved' }, this.scope()), () => this.overtime.reload());
   }
 
+  protected approveResignation({ id }: Resignation) {
+    return this.decisions.run(id, () => this.api.decideResignation(id, { decision: 'approved' }, this.scope()), () => this.resignations.reload());
+  }
+
   protected approveHomeDay({ id }: HomeDay) {
     return this.decisions.run(id, () => this.api.decideHomeDay(id, { decision: 'approved' }, this.scope()), () => this.homeDays.reload());
   }
@@ -272,8 +305,9 @@ export class ApprovalsPage {
       home: () => this.api.decideHomeDay(target.id, decision, this.scope()),
       'comp-off': () => this.api.decideCompOff(target.id, decision, this.scope()),
       overtime: () => this.api.decideOvertime(target.id, decision, this.scope()),
+      resignation: () => this.api.decideResignation(target.id, decision, this.scope()),
     }[target.kind];
-    const list = { leave: this.leave, fix: this.fixes, home: this.homeDays, 'comp-off': this.compOffs, overtime: this.overtime }[target.kind];
+    const list = { leave: this.leave, fix: this.fixes, home: this.homeDays, 'comp-off': this.compOffs, overtime: this.overtime, resignation: this.resignations }[target.kind];
     return this.decisions.run(target.id, save, () => list.reload());
   }
 }

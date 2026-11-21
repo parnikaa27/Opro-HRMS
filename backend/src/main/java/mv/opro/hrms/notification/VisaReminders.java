@@ -52,6 +52,7 @@ public class VisaReminders {
     private final People people;
     private final Notifications notifications;
     private final PeopleReminders peopleReminders;
+    private final DocumentReminders documentReminders;
     private final Clock clock;
 
     // Every morning at 8, and on start up. Tests turn this off and call remind() themselves.
@@ -73,13 +74,14 @@ public class VisaReminders {
     }
 
     VisaReminders(VisaRepository visas, Records records, VisaReminderRepository sent, People people, Notifications notifications,
-            PeopleReminders peopleReminders, Clock clock) {
+            PeopleReminders peopleReminders, DocumentReminders documentReminders, Clock clock) {
         this.visas = visas;
         this.records = records;
         this.sent = sent;
         this.people = people;
         this.notifications = notifications;
         this.peopleReminders = peopleReminders;
+        this.documentReminders = documentReminders;
         this.clock = clock;
     }
 
@@ -105,6 +107,7 @@ public class VisaReminders {
             remind(person, PROBATION, person.getProbationEndsOn(), today, active, hr);
         }
         peopleReminders.remind(today, active, hr);
+        documentReminders.remind(today, active, hr);
     }
 
     private void remind(Employee holder, Kind kind, LocalDate expiresOn, LocalDate today, Map<String, Employee> active, List<Employee> hr) {

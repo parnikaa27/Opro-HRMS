@@ -71,6 +71,14 @@ class OvertimeApiTests {
     }
 
     @Test
+    void someoneSeesTheirOwnOvertimeAndWhereItStands() throws Exception {
+        String mine = as("OPR-0018").get("/api/attendance/overtime").body();
+
+        assertThat(JsonPath.<List<String>>read(mine, "$[*].id")).containsExactly("OT-1");
+        assertThat(JsonPath.<List<String>>read(mine, "$[*].status")).containsExactly("pending");
+    }
+
+    @Test
     void theAttendanceLogShowsOvertime() throws Exception {
         String november = as("OPR-0018").get("/api/attendance?month=2026-11").body();
 

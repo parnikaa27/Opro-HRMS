@@ -11,6 +11,7 @@ import mv.opro.hrms.common.Wording;
 import mv.opro.hrms.employee.Employee;
 import mv.opro.hrms.employee.EmployeeRepository;
 import mv.opro.hrms.leave.LeaveService;
+import mv.opro.hrms.leave.LeaveType;
 import mv.opro.hrms.notification.Notification;
 import mv.opro.hrms.notification.Notifications;
 import org.springframework.http.HttpStatus;
@@ -100,7 +101,8 @@ public class CompOffs {
         leave.earnCompOff(decider, claim.getEmployeeId(), claim.getWorkDate(), days);
         claim.approve(days, decider.getId(), today);
         notifications.tell(claim.getEmployeeId(), Notification.Kind.LEAVE, decider.getFullName() + " approved " + Wording.days(days)
-                + " of compensatory off for working on " + date + ".");
+                + " of compensatory off for working on " + date + ". Take it by " + Wording.date(claim.getWorkDate().plusDays(LeaveType.COMP_OFF_VALID_DAYS))
+                + ", or it's gone.");
         return view(claim);
     }
 

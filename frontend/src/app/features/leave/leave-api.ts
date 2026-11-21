@@ -3,7 +3,10 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { LeaveBalance, LeaveRequest, LeaveType } from '../../models/leave';
 
-export type LeaveApplication = Pick<LeaveRequest, 'type' | 'from' | 'to' | 'halfDay' | 'days' | 'reason'>;
+export type LeaveApplication = Pick<
+  LeaveRequest,
+  'type' | 'from' | 'to' | 'halfDay' | 'days' | 'reason' | 'kind' | 'relatedRequestId' | 'usesFlightEntitlement' | 'wantsSalaryAdvance'
+>;
 
 const CERTIFICATE_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 const MAX_CERTIFICATE_BYTES = 5_242_880; // 5 MB

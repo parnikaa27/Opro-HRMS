@@ -14,10 +14,11 @@ import { LeaveBalances } from '../leave/leave-balances';
 import { LeaveRequests } from '../leave/leave-requests';
 import { EmployeeCard } from '../profile/employee-card';
 import { TeamApi, ViewScope } from './team-api';
+import { TeamGrantsCard } from '../allowance/team-grants-card';
 
 @Component({
   selector: 'app-team-member-page',
-  imports: [AttendanceTable, EmployeeCard, Icon, LeaveBalances, LeaveRequests, ListSkeleton, MonthPicker, RouterLink, VisaCard],
+  imports: [AttendanceTable, EmployeeCard, Icon, LeaveBalances, LeaveRequests, ListSkeleton, MonthPicker, RouterLink, TeamGrantsCard, VisaCard],
   template: `
     <div class="page-view">
       <a [routerLink]="scope() === 'company' ? '/company' : '/team/people'" class="text-link back-link"><app-icon name="chevronLeft" [size]="15" /> People</a>
@@ -43,7 +44,7 @@ import { TeamApi, ViewScope } from './team-api';
           </div>
         </div>
 
-        <app-leave-balances [balances]="employee.leaveBalances" [types]="typeList()" />
+        <app-leave-balances [balances]="employee.leaveBalances" [types]="typeList()" [joinedOn]="employee.joinedOn" />
 
         <div class="employee-grid">
           <div class="main-column">
@@ -58,6 +59,9 @@ import { TeamApi, ViewScope } from './team-api';
               <app-attendance-table [rows]="rows()" />
             </section>
             <app-leave-requests [requests]="requests()" [types]="typeList()" [isReadOnly]="true" heading="Their leave requests" />
+            @if (scope() === 'team') {
+              <app-team-grants-card [employeeId]="employee.id" [name]="employee.fullName" />
+            }
           </div>
           <div class="side-column">
             <app-employee-card [employee]="employee" />

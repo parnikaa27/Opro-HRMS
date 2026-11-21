@@ -61,7 +61,7 @@ test('HR adds a person, gives them a photo, and marks them as leaving', async ({
   await page.getByTestId('leaving-date').fill('2026-02-01');
   await page.getByTestId('leaving-reason').fill('Probation not passed');
   await page.getByTestId('leaving-submit').click();
-  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(page.getByTestId('leaving-note')).toContainText('Left on 1 February 2026');
 
   await page.goto('/login');
@@ -80,7 +80,7 @@ test('a sick note goes up with the request, and only HR can open it', async ({ p
   await page.getByTestId('leave-reason').fill('Dengue, three days of rest');
   await page.getByTestId('leave-certificate').setInputFiles({ name: 'note.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 sick note') });
   await page.getByTestId('leave-submit').click();
-  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
   const request = page.getByTestId('leave-request').filter({ hasText: '14 Feb to 16 February 2027' });
   await expect(request.getByTestId('certificate')).toContainText('Medical certificate attached');
 
@@ -120,7 +120,7 @@ test('an approved punch fix lands on the record, and the employee is told', asyn
   await page.getByTestId('fix-time').fill('06:05');
   await page.getByTestId('fix-reason').fill('Came in early for the stock count');
   await page.getByTestId('fix-submit').click();
-  await page.getByTestId('success-state').getByRole('button', { name: 'Done' }).click();
+  await page.getByTestId('success-state').getByRole('button', { name: 'Done', exact: true }).click();
 
   await page.getByTestId('sidebar-sign-out').click();
   await signInAs(page, 'OPR-0004');

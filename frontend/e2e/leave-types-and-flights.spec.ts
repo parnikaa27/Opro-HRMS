@@ -23,12 +23,12 @@ test('HR adds a leave type for people they pick, and gives it to one person', as
   await expect(page.getByTestId('days-count')).toHaveValue('5');
   await page.getByTestId('days-reason').fill('Getting married in January');
   await page.getByTestId('days-submit').click();
-  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(page.getByTestId('adjustment').first()).toContainText('marriage leave');
 
   await signInAs(page, 'OPR-0023');
   await page.getByTestId('nav-leave').click();
-  await expect(page.getByTestId('leave-balance').filter({ hasText: 'Marriage leave' })).toContainText('5 days available');
+  await expect(page.getByTestId('balance-row').filter({ hasText: 'Marriage leave' }).locator('td').last()).toHaveText('5');
 });
 
 test('HR sets a flight allowance, and a claim counts straight away with nobody to approve it', async ({ page }) => {
@@ -48,7 +48,7 @@ test('HR sets a flight allowance, and a claim counts straight away with nobody t
   await page.getByTestId('claim-date').fill(`${thisYear}-06-15`);
   await page.getByTestId('claim-amount').fill('200');
   await page.getByTestId('claim-submit').click();
-  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(page.getByTestId('flight-claim').filter({ hasText: 'Malé to Kochi, one way' })).toContainText('Claimed');
 
   await signInAs(page, 'OPR-0002');

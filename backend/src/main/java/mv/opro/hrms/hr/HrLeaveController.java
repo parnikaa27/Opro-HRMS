@@ -63,11 +63,12 @@ class HrLeaveController {
             @NotNull Boolean isForEveryone,
             @NotNull Boolean carriesForward,
             @DecimalMin("0") @DecimalMax(MAX_DAYS) BigDecimal carryForwardCap,
-            @NotNull Boolean needsHrApproval) {
+            @NotNull Boolean needsHrApproval,
+            @Min(1) @Max(MAX_DAYS_WHOLE) Integer noticeDays) {
 
         LeaveType.Rules rules() {
             return new LeaveType.Rules(name, allowsHalfDay, isUnlimited, defaultEntitlement, documentRequiredAfterDays, isForEveryone, carriesForward,
-                    carryForwardCap, needsHrApproval);
+                    carryForwardCap, needsHrApproval, noticeDays);
         }
     }
 
@@ -160,6 +161,6 @@ class HrLeaveController {
         if (employeeId.equals(me.getId())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Your own leave goes through your manager.");
         }
-        return people.findActive(employeeId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Employee not found"));
+        return people.findNotLeft(employeeId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Employee not found"));
     }
 }

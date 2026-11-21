@@ -1,6 +1,7 @@
 import { AttendanceDay } from './attendance';
 import { EmploymentType, Gender } from './employee';
 import { LeaveRequest } from './leave';
+import { AppraisalCycle } from './performance';
 import { Quota } from './record';
 
 // One person as the dashboard and reports see them, past staff included. Field names match Spring's InsightController.
@@ -44,4 +45,14 @@ export interface Insights {
   leave: LeaveFact[];
   balances: BalanceFact[];
   quotas: Quota[];
+  // The open appraisal cycle, or the last one closed, with its appraisals so far.
+  cycle?: AppraisalCycle;
+  appraisals: AppraisalFact[];
+}
+
+export interface AppraisalFact {
+  employeeId: string;
+  rating: number;
+  recommendsPromotion: boolean;
+  incrementPercent?: number;
 }

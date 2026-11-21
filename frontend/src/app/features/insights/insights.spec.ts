@@ -1,5 +1,5 @@
 import { PersonFact } from '../../models/insights';
-import { ageBand, compliance, isActive, leaveSummary, peopleEvents, presence, shares, workforce, yearsSince } from './insights';
+import { ageBand, compliance, isActive, leaveSummary, peopleEvents, performance, presence, shares, workforce, yearsSince } from './insights';
 
 const TODAY = '2026-11-12';
 const person = (overrides: Partial<PersonFact>): PersonFact => ({
@@ -22,12 +22,14 @@ describe('insights', () => {
 
     const result = workforce(people, TODAY);
 
-    expect(result.total).toBe(4);
+    // E starts on 1 December, so isn't counted yet.
+    expect(result.total).toBe(3);
     expect(result.joiners.map(({ id }) => id)).toEqual(['D']);
     expect(result.leavers.map(({ id }) => id)).toEqual(['C']);
-    expect(result.growthPercent).toBe(33);
-    expect(result.attritionPercent).toBe(29);
+    expect(result.growthPercent).toBe(0);
+    expect(result.attritionPercent).toBe(33);
     expect(result.retentionPercent).toBe(67);
+    expect(isActive(person({ joinedOn: '2026-12-01' }), TODAY)).toBe(false);
     expect(isActive(person({ lastDay: TODAY }), TODAY)).toBe(true);
   });
 
@@ -111,5 +113,18 @@ describe('insights', () => {
     expect(events.anniversaries.map(({ id }) => id)).toEqual(['A']);
     expect(events.probation.map(({ id }) => id)).toEqual(['B']);
     expect(events.contracts.map(({ id }) => id)).toEqual(['C']);
+  });
+
+  describe('performance', () => {
+    it('counts probation and how far the cycle has got, leaving out people with no HOD', () => {
+      const people = [person({ id: 'A', managerId: 'H', probationEndsOn: '2026-12-01' }), person({ id: 'B', managerId: 'H' }), person({ id: 'S' })];
+      const appraisals = [{ employeeId: 'A', rating: 5, recommendsPromotion: true }, { employeeId: 'B', rating: 2, recommendsPromotion: false }, { employeeId: 'S', rating: 3, recommendsPromotion: false }];
+
+      expect(performance(people, appraisals)).toEqual({ onProbation: 1, due: 2, done: 2, averageRating: '3.5', highPerformers: 1, promotions: 1 });
+    });
+
+    it('has no average before anyone is appraised', () => {
+      expect(performance([person({ managerId: 'H' })], []).averageRating).toBeUndefined();
+    });
   });
 });

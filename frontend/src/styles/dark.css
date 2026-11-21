@@ -567,6 +567,9 @@
 :root[data-theme='dark'] .search-results {
   border: 1px solid #27333c;
 }
+:root[data-theme='dark'] .search-results .search-colleague a {
+  color: #5ac6ba;
+}
 :root[data-theme='dark'] .notification-popover .popover-action {
   color: #5ac6ba;
 }
@@ -657,6 +660,9 @@
 :root[data-theme='dark'] .large-request .certificate-note {
   color: #5ac6ba;
 }
+:root[data-theme='dark'] .large-request .certificate-note.missing {
+  color: #fe8d75;
+}
 :root[data-theme='dark'] .punch-error {
   color: #ff8c75;
 }
@@ -680,6 +686,21 @@
 }
 :root[data-theme='dark'] a.insight-row:hover span {
   color: #5ac6ba;
+}
+:root[data-theme='dark'] .weight-total.is-off {
+  color: #ff8c75;
+}
+:root[data-theme='dark'] .day-strip li {
+  background: #1f302d;
+}
+:root[data-theme='dark'] .day-strip li {
+  color: #5ac6ba;
+}
+:root[data-theme='dark'] .day-strip li.off {
+  background: #202c34;
+}
+:root[data-theme='dark'] .inline-select select {
+  background: #19242c;
 }
 @media (max-width: 860px) {
 :root[data-theme='dark'] .mobile-menu {
@@ -1255,6 +1276,9 @@
 :root:not([data-theme='light']) .search-results {
   border: 1px solid #27333c;
 }
+:root:not([data-theme='light']) .search-results .search-colleague a {
+  color: #5ac6ba;
+}
 :root:not([data-theme='light']) .notification-popover .popover-action {
   color: #5ac6ba;
 }
@@ -1345,6 +1369,9 @@
 :root:not([data-theme='light']) .large-request .certificate-note {
   color: #5ac6ba;
 }
+:root:not([data-theme='light']) .large-request .certificate-note.missing {
+  color: #fe8d75;
+}
 :root:not([data-theme='light']) .punch-error {
   color: #ff8c75;
 }
@@ -1368,6 +1395,21 @@
 }
 :root:not([data-theme='light']) a.insight-row:hover span {
   color: #5ac6ba;
+}
+:root:not([data-theme='light']) .weight-total.is-off {
+  color: #ff8c75;
+}
+:root:not([data-theme='light']) .day-strip li {
+  background: #1f302d;
+}
+:root:not([data-theme='light']) .day-strip li {
+  color: #5ac6ba;
+}
+:root:not([data-theme='light']) .day-strip li.off {
+  background: #202c34;
+}
+:root:not([data-theme='light']) .inline-select select {
+  background: #19242c;
 }
 @media (max-width: 860px) {
 :root:not([data-theme='light']) .mobile-menu {

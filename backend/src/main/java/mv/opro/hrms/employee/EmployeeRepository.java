@@ -10,15 +10,20 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface EmployeeRepository extends JpaRepository<Employee, String> {
 
-    @Query("select e from Employee e where e.lastDay is null or e.lastDay >= :day order by e.fullName")
+    // Active: joined by then, and not left. Someone who hasn't started yet can't sign in and isn't counted anywhere.
+    @Query("select e from Employee e where e.joinedOn <= :day and (e.lastDay is null or e.lastDay >= :day) order by e.fullName")
     List<Employee> findActiveOn(LocalDate day);
+
+    // Everyone who hasn't left, people still to start included. HR's people list.
+    @Query("select e from Employee e where e.lastDay is null or e.lastDay >= :day order by e.fullName")
+    List<Employee> findNotLeftOn(LocalDate day);
 
     // Serialises changes for one person, so two requests sent at once can't both spend the same balance.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select e from Employee e where e.id = :id")
     Optional<Employee> lockById(String id);
 
-    @Query("select e from Employee e where e.managerId = :managerId and (e.lastDay is null or e.lastDay >= :day) order by e.fullName")
+    @Query("select e from Employee e where e.managerId = :managerId and e.joinedOn <= :day and (e.lastDay is null or e.lastDay >= :day) order by e.fullName")
     List<Employee> findActiveReports(String managerId, LocalDate day);
 
     @Query("select max(e.id) from Employee e")
@@ -32,6 +37,6 @@ public interface EmployeeRepository extends JpaRepository<Employee, String> {
 
     List<Employee> findAllByOrderByFullName();
 
-    @Query("select count(e) > 0 from Employee e where e.managerId = :managerId and (e.lastDay is null or e.lastDay >= :day)")
+    @Query("select count(e) > 0 from Employee e where e.managerId = :managerId and e.joinedOn <= :day and (e.lastDay is null or e.lastDay >= :day)")
     boolean hasActiveReports(String managerId, LocalDate day);
 }

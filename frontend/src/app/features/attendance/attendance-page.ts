@@ -40,7 +40,7 @@ import { SummaryRow } from './summary-row';
       @if (attendance.error()) {
         <p class="attendance-off">This month's attendance didn't load. Refresh the page to try again.</p>
       } @else {
-        <app-summary-row [summary]="summary()" />
+        <app-summary-row [summary]="summary()" [overtimeClaims]="monthOvertime()" />
         <section class="card full-table">
           <div class="card-heading">
             <div>
@@ -86,6 +86,8 @@ export class AttendancePage {
   protected readonly currentMonth = monthOf(this.today);
   protected readonly month = signal(this.currentMonth);
   protected readonly monthLabel = computed(() => formatMonth(this.month()).toUpperCase());
+  private readonly overtime = this.api.overtime();
+  protected readonly monthOvertime = computed(() => valueOr(this.overtime, []).filter(({ date }) => date.startsWith(this.month())));
 
   protected readonly attendance = this.api.month(this.month);
   protected readonly corrections = this.api.corrections();
