@@ -96,7 +96,6 @@ const seedDocuments = (employees, visas) => employees.flatMap((employee) => {
     copy('employment-contract', { updatedOn: employee.joinedOn }),
     ...(visa ? [copy('visa-copy', { issuedOn: visa.visaIssuedOn, expiresOn: visa.visaExpiry }), copy('passport-copy', { expiresOn: visa.passportExpiry })] : []),
     ...(employee.nationality === 'Maldivian' ? [copy('national-id', {})] : []),
-    copy('health-insurance', { updatedOn: '2026-02-05', issuedOn: '2026-02-01', status: 'pending' }),
   ];
 });
 db.documents = seedDocuments(db.employees, db.visas);
@@ -2357,7 +2356,7 @@ const readBody = async (req) => {
   try {
     return JSON.parse(Buffer.concat(chunks).toString('utf8'));
   } catch {
-    throw new HttpError(400, 'Body must be JSON');
+    throw new HttpError(400, "Something in that wasn't filled in the right way. Check it and try again.");
   }
 };
 

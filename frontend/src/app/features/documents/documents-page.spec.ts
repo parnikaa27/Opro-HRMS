@@ -16,7 +16,7 @@ const DOCUMENTS = [
     type: 'certificates', name: 'Educational certificates', uploadedBy: 'employee', status: 'pending', issuedOn: '2020-05-01', updatedOn: '2026-11-11',
     files: [{ id: 'DF-2', uploadedOn: '2026-11-11' }, { id: 'DF-3', uploadedOn: '2026-11-11' }],
   }),
-  entry({ type: 'insurance', name: 'Health insurance', status: 'missing', files: [] }),
+  entry({ type: 'police-clearance', name: 'Police clearance', status: 'missing', files: [] }),
 ];
 
 describe('DocumentsPage', () => {
@@ -47,7 +47,7 @@ describe('DocumentsPage', () => {
       'Visa copy Expired 31 Oct 2026 Download Expired',
       'Passport copy Sent back: Photo page is cut off Download Add a page or a new copy Sent back',
       'Educational certificates From 01 May 2020 Page 1 Page 2 Add a page or a new copy Waiting for HR',
-      'Health insurance HR adds this one Missing',
+      'Police clearance HR adds this one Missing',
     ]);
     expect(root.querySelector('[data-testid=document] a')?.getAttribute('href')).toBe('/api/documents/contract/files/DF-1');
     expect(root.querySelectorAll('[data-testid=document]')[4].querySelector('a')).toBeNull();

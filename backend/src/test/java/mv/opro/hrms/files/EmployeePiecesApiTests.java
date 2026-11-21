@@ -21,7 +21,7 @@ class EmployeePiecesApiTests {
 
     private static final byte[] JPEG = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0, 16, 'J', 'F', 'I', 'F'};
     private static final byte[] PDF = "%PDF-1.4 sick note".getBytes(StandardCharsets.US_ASCII);
-    private static final int SEEDED_FILES = 31;
+    private static final int SEEDED_FILES = 22;
     private static final int SEEDED_NOTIFICATIONS = 7;
 
     @LocalServerPort
@@ -60,7 +60,7 @@ class EmployeePiecesApiTests {
     void someoneSeesTheirOwnDocumentsAndDownloadsThem() throws Exception {
         String documents = arjun.get("/api/documents").body();
         assertThat(JsonPath.<List<String>>read(documents, "$[*].name"))
-                .containsExactly("Employment contract", "National ID", "Visa copy", "Health insurance", "Passport copy", "Educational certificates");
+                .containsExactly("Employment contract", "National ID", "Visa copy", "Passport copy", "Educational certificates");
         assertThat(JsonPath.<List<String>>read(documents, "$[?(@.name == 'Visa copy')].expiresOn")).containsExactly("2026-12-20");
         assertThat(JsonPath.<List<String>>read(documents, "$[?(@.name == 'National ID')].status")).containsExactly("missing");
 

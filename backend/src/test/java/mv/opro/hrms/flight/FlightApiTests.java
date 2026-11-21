@@ -20,7 +20,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class FlightApiTests {
 
     private static final int SEEDED_NOTIFICATIONS = 7;
-    private static final int SEEDED_FILES = 31;
+    private static final int SEEDED_FILES = 22;
     private static final byte[] PDF = "%PDF-1.4 ticket".getBytes(StandardCharsets.US_ASCII);
 
     @LocalServerPort

@@ -16,7 +16,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 // Arjun (OPR-0018) is Indian, Sneha (OPR-0011) Maldivian, Ananya (OPR-0002) HR. Today is 12 November 2026.
-// Employees upload their passport copy, National ID and certificates; HR adds the contract, visa copy and insurance.
+// Employees upload their passport copy, National ID and certificates; HR adds the contract and visa copy.
 @ApiTest
 class DocumentsApiTests {
 
@@ -45,7 +45,7 @@ class DocumentsApiTests {
         jdbc.update("delete from document_file where id like 'DF-%' and length(id) <= 12");
         jdbc.update("update employee_document set expires_on = '2026-12-20', status = 'verified' where id = 'OPR-0018-visa'");
         jdbc.update("delete from document_type_person where employee_id <> 'OPR-0015'");
-        jdbc.update("delete from document_type where code not in ('employment-contract', 'national-id', 'health-insurance', 'visa-copy', 'passport-copy', "
+        jdbc.update("delete from document_type where code not in ('employment-contract', 'national-id', 'visa-copy', 'passport-copy', "
                 + "'educational-certificates', 'marriage-certificate')");
         jdbc.update("update document_type set retired_on = null");
         jdbc.update("delete from stored_file where id not in (select file_id from document_file)");

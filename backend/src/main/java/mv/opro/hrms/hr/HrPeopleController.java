@@ -78,7 +78,7 @@ class HrPeopleController {
     record VisaBody(
             @NotBlank @Size(max = 40) String workPermitNumber,
             @NotBlank @Size(max = 40) String visaNumber,
-            @NotNull @Pattern(regexp = "[A-Za-z0-9]{4}", message = "must be exactly 4 letters or numbers") String passportLast4,
+            @NotNull @Pattern(regexp = "[A-Za-z0-9]{4}", message = "has to be exactly 4 letters or numbers") String passportLast4,
             @NotNull LocalDate passportExpiry,
             @NotNull LocalDate visaIssuedOn,
             @NotNull LocalDate visaExpiry,

@@ -21,11 +21,8 @@ Walked through by hand as Arjun (expatriate employee), Vikram (HOD), Ananya (HR)
 - [ ] No cover when an HOD is away: only a super admin can step in. Consider an acting HOD for a date range.
 
 **Wording and display**
-- [ ] When the server's own validation catches something, the message reads like code: `currency must match "MVR|USD"`, `dateOfBirth must be a past date`. The forms stop most of these first, but every message should be written for a person.
-- [ ] On phones, empty table cells show a heading with nothing under it (Recommends, Read on HR's Performance page). Say "None" or "Not yet".
-- [ ] "Health insurance" is both a document employees upload and the medical insurance HR keeps on the record. Keep one.
 - [ ] The dev document list asks expatriates for a National ID. Goes away with the real list.
-- [ ] Employees can't look up a colleague: search finds people only for HODs, HR and super admins.
+- [ ] Employees can't look up a colleague: search finds people only for HODs, HR and super admins. Waiting on Parnika: what a colleague may see (name, role, department, work email?) and where a result opens.
 
 **Missing for go live**
 - [ ] Importing people in bulk, with leave already used this year, visas and bank details, from HR's current spreadsheets. Adding everyone one at a time isn't realistic.

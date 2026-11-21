@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 class RecordController {
 
     record BankBody(@NotBlank @Size(max = 80) String bankName, @NotBlank @Size(max = 120) String accountName,
-            @NotBlank @Pattern(regexp = "[0-9 ]{6,40}", message = "must be 6 to 40 digits") String accountNumber,
+            @NotBlank @Pattern(regexp = "[0-9 ]{6,40}", message = "has to be 6 to 40 digits") String accountNumber,
             @NotNull @Pattern(regexp = "MVR|USD") String currency) {}
 
     private final Records records;

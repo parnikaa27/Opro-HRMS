@@ -309,7 +309,7 @@ Logo, "People first, always.", "© year Opro Pvt Ltd · Malé, Republic of Maldi
 ### Non functional
 
 - English only. Dhivehi is not planned.
-- Fully responsive. Phones are a first class target, many staff will check punches and leave on mobile. Checked at 375, 768, 900, 1024 and 1280 px with nothing wider than the screen. On phones, tables turn into stacked rows (each value under its column's name, `class="stacks"` and `data-label` on each cell), request rows show their dates, amounts and reasons under the name instead of hiding them, and request tabs scroll on one line. Between 861 and 1100 px the side column sits under the main one.
+- Fully responsive. Phones are a first class target, many staff will check punches and leave on mobile. Checked at 375, 768, 900, 1024 and 1280 px with nothing wider than the screen. On phones, tables turn into stacked rows (each value under its column's name, `class="stacks"` and `data-label` on each cell; a cell says "None" or "Not yet" rather than nothing, and an empty one hides), request rows show their dates, amounts and reasons under the name instead of hiding them, and request tabs scroll on one line. Between 861 and 1100 px the side column sits under the main one.
 - Light and dark. The Figma design has no dark version, so dark is generated from the light stylesheets by `scripts/build-dark-theme.mjs` into `src/styles/dark.css`: light surfaces become navy tinted dark ones, text turns light, coloured text is lifted until it reads, and the parts that are dark on purpose (sidebar, staff card, welcome banner, primary buttons) stay as they are. The script reports any text under 4.5:1 against the dark card. Never edit `dark.css` by hand: change the script or the light styles and run `npm run theme:dark`. `npm run check` fails if it is stale.
 - The portal follows the device setting. Light, Dark or Auto in the name menu overrides it, remembered per browser. Printing is always light.
 - If a dark design arrives from the designer, it replaces the generated values.
@@ -543,7 +543,7 @@ The full, generated reference is Swagger UI at `http://localhost:8080/swagger-ui
 - Records for request and response shapes, named to match the frontend's models field for field. Entities are classes with getters, no setters the API doesn't need.
 - Constructor injection, package private where possible. No Lombok.
 - Every error leaves as `{"message": "..."}`, written for the person reading it. Throw `ApiException` with a status for refusals people can act on. Never send stack traces or internal details.
-- Bean Validation on every request body. The frontend's checks are for comfort, these are the real ones.
+- Bean Validation on every request body. The frontend's checks are for comfort, these are the real ones. `ApiErrors` puts a broken rule into words ("Currency has to be MVR or USD."); a rule's own `message` reads after the field's name.
 - The schema changes only through a new Flyway migration. Never edit one that has been applied anywhere shared. Hibernate only validates (`ddl-auto: validate`).
 - "Today" always comes from the injected `Clock` (Maldives time), never `LocalDate.now()` on its own.
 - Roles are worked out per request: manager from active reports, HR from the record. Load the signed in employee through `CurrentUser` so a leaving date or new reporting line applies at once.

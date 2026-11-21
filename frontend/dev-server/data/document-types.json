@@ -2,7 +2,6 @@
   {"code": "employment-contract", "name": "Employment contract", "uploadedBy": "hr", "hasExpiry": false, "isForExpatriatesOnly": false, "sortOrder": 1, "remindDaysBefore": 30, "isForEveryone": true},
   {"code": "national-id", "name": "National ID", "uploadedBy": "employee", "hasExpiry": false, "isForExpatriatesOnly": false, "sortOrder": 2, "remindDaysBefore": 30, "isForEveryone": true},
   {"code": "visa-copy", "name": "Visa copy", "uploadedBy": "hr", "hasExpiry": true, "isForExpatriatesOnly": true, "sortOrder": 2, "remindDaysBefore": 30, "isForEveryone": true},
-  {"code": "health-insurance", "name": "Health insurance", "uploadedBy": "hr", "hasExpiry": false, "isForExpatriatesOnly": false, "sortOrder": 3, "remindDaysBefore": 30, "isForEveryone": true},
   {"code": "passport-copy", "name": "Passport copy", "uploadedBy": "employee", "hasExpiry": true, "isForExpatriatesOnly": true, "sortOrder": 3, "remindDaysBefore": 60, "isForEveryone": true},
   {"code": "educational-certificates", "name": "Educational certificates", "uploadedBy": "employee", "hasExpiry": false, "isForExpatriatesOnly": false, "sortOrder": 6, "remindDaysBefore": 30, "isForEveryone": true},
   {"code": "marriage-certificate", "name": "Marriage certificate", "uploadedBy": "employee", "hasExpiry": false, "isForExpatriatesOnly": false, "sortOrder": 7, "remindDaysBefore": 30, "isForEveryone": false}

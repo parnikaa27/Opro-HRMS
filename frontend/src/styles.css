@@ -860,6 +860,11 @@ td.row-actions {
       display: flex;
     }
 
+    /* A blank cell would leave its heading standing alone. */
+    td[data-label]:empty {
+      display: none;
+    }
+
     td[data-label]::before {
       content: attr(data-label);
       display: block;

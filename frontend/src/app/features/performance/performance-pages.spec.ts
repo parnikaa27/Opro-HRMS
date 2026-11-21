@@ -230,11 +230,18 @@ describe('Performance pages', () => {
 
       expect(text(root.querySelector('[data-testid=cycle-progress]') as HTMLElement)).toBe('1 of 2 appraised. Due 31 January 2027.');
       expect(texts(root, 'hr-appraisal-row')).toEqual([
-        'Arjun Reddy Operations Vikram Singh 2, waiting for hr Not yet',
+        'Arjun Reddy Operations Vikram Singh 2, waiting for hr Not yet Not yet Not yet',
         'Karan Mehta Operations Vikram Singh 1, approved 4, Exceeds expectations Promotion, 8% increment 12 Nov',
       ]);
       expect(texts(root, 'probation-review')).toEqual(['Kavya Menon by Vikram Singh, 12 Nov OUTCOME Confirmed COMMENTS Settled in well']);
       expect(root.querySelector('app-cycle-form')).toBeNull();
+    });
+
+    it('says None when an appraisal recommends nothing', async () => {
+      const [, karan] = OVERVIEW.people;
+      const root = await render({ ...OVERVIEW, people: [{ ...karan, appraisal: { ...KARAN_APPRAISAL, recommendsPromotion: false, incrementPercent: undefined } }] });
+
+      expect(texts(root, 'hr-appraisal-row')).toEqual(['Karan Mehta Operations Vikram Singh 1, approved 4, Exceeds expectations None Not yet']);
     });
 
     it('approves goals the HOD approved', async () => {

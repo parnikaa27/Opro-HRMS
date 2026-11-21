@@ -72,7 +72,7 @@ import { GOALS_STATUS, OUTCOMES, PerformanceApi, RATINGS } from './performance-a
                       <td data-label="HOD">{{ row.managerName }}</td>
                       <td data-label="GOALS">{{ row.goals.length ? row.goals.length + ', ' + goalsStatus[row.form?.goalsStatus ?? 'draft'].toLowerCase() : 'None yet' }}</td>
                       <td data-label="RATING">{{ row.appraisal ? row.appraisal.rating + ', ' + ratings[row.appraisal.rating] : 'Not yet' }}</td>
-                      <td data-label="RECOMMENDS">{{ recommends(row.appraisal?.recommendsPromotion, row.appraisal?.incrementPercent) }}</td>
+                      <td data-label="RECOMMENDS">{{ recommends(row.appraisal) }}</td>
                       <td data-label="ACCEPTED">{{ acceptedOn(row.appraisal) }}</td>
                     </tr>
                   }
@@ -122,9 +122,12 @@ export class HrPerformancePage {
   // Goals their HOD approved, for HR's step. Never HR's own: another HR person approves those.
   protected readonly goalsForHr = computed(() => this.rows().filter(({ form, employeeId }) => form?.goalsStatus === 'hod-approved' && employeeId !== this.myId()));
   private readonly myId = computed(() => this.session.user()?.id);
-  protected readonly acceptedOn = (appraisal?: Appraisal) => (!appraisal ? '' : appraisal.acceptedOn ? formatShortDate(appraisal.acceptedOn) : 'Not yet');
-  protected readonly recommends = (promotion?: boolean, increment?: number) =>
-    [promotion ? 'Promotion' : '', increment ? `${increment}% increment` : ''].filter(Boolean).join(', ');
+  protected readonly acceptedOn = (appraisal?: Appraisal) => (appraisal?.acceptedOn ? formatShortDate(appraisal.acceptedOn) : 'Not yet');
+  // Every cell says something, so a phone never shows a heading with nothing under it.
+  protected readonly recommends = (appraisal?: Appraisal) =>
+    !appraisal
+      ? 'Not yet'
+      : [appraisal.recommendsPromotion ? 'Promotion' : '', appraisal.incrementPercent ? `${appraisal.incrementPercent}% increment` : ''].filter(Boolean).join(', ') || 'None';
 
   protected decided() {
     this.deciding.set(undefined);
