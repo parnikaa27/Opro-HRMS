@@ -36,7 +36,10 @@ class LeaveApiTests {
     @AfterEach
     void cleanUp() {
         jdbc.update("delete from leave_request where length(id) > 7");
-        jdbc.update("delete from leave_entitlement where leave_year = 2027");
+        jdbc.update("delete from leave_entitlement where employee_id = 'OPR-0018' and leave_year = 2026");
+        jdbc.update("update leave_type set notice_days = null");
+        jdbc.update("delete from holiday where length(id) > 5");
+        jdbc.update("delete from notification where id > 7");
         jdbc.update("update leave_entitlement set entitled = 10, taken_before = 3 where employee_id = 'OPR-0018' and type = 'family'");
         jdbc.update("update leave_request set status = 'approved' where id = 'LR-1031'");
     }
@@ -95,8 +98,9 @@ class LeaveApiTests {
         assertThat(apply("annual", "2026-12-10", "2026-12-08", "").body()).isEqualTo("{\"message\":\"The last day can't be before the first.\"}");
         assertThat(apply("annual", "2026-12-04", "2026-12-04", "").body())
                 .isEqualTo("{\"message\":\"Those dates are all Fridays or public holidays. Nothing to take.\"}");
-        assertThat(apply("annual", "2026-12-30", "2027-01-03", "").body())
-                .isEqualTo("{\"message\":\"Leave can't run past New Year. Split it into two requests, one for each year.\"}");
+        // Arjun joined on 20 December, so his leave year ends on the 19th.
+        assertThat(apply("annual", "2026-12-17", "2026-12-22", "").body())
+                .isEqualTo("{\"message\":\"Your leave year ends on Saturday 19 December. Split this into two requests, one each side of it.\"}");
     }
 
     @Test
@@ -113,16 +117,69 @@ class LeaveApiTests {
     void youCantTakeMoreThanIsLeftOrATypeYouDontHold() throws Exception {
         assertThat(apply("family", "2026-12-06", "2026-12-17", "").body()).isEqualTo("{\"message\":\"You only have 7 days of family responsibility leave left.\"}");
         assertThat(apply("maternity", "2026-12-06", "2026-12-06", "").body()).isEqualTo("{\"message\":\"You don't have maternity leave to take.\"}");
-        assertThat(apply("unpaid", "2026-12-06", "2026-12-24", "").statusCode()).isEqualTo(200);
+        assertThat(apply("unpaid", "2026-12-06", "2026-12-17", "").statusCode()).isEqualTo(200);
     }
 
     @Test
-    void bookingIntoNextYearOpensItsBalanceFromThePolicy() throws Exception {
-        HttpResponse<String> response = apply("annual", "2027-01-10", "2027-01-11", "");
+    void bookingIntoNextLeaveYearOpensItsBalanceFromThePolicy() throws Exception {
+        // Arjun's next leave year starts on 20 December, his joining anniversary, not in January.
+        HttpResponse<String> response = apply("annual", "2026-12-27", "2026-12-28", "");
 
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(jdbc.queryForObject("select entitled from leave_entitlement where employee_id = 'OPR-0018' and type = 'annual' and leave_year = 2027", Double.class))
+        assertThat(jdbc.queryForObject("select entitled from leave_entitlement where employee_id = 'OPR-0018' and type = 'annual' and leave_year = 2026", Double.class))
                 .isEqualTo(30.0);
+    }
+
+    @Test
+    void takenToDateCountsOnlyApprovedDaysUpToToday() throws Exception {
+        jdbc.update("insert into leave_request (id, employee_id, type, from_date, to_date, days, reason, status, applied_on) values "
+                + "('LR-TEST-1', 'OPR-0018', 'family', '2026-11-10', '2026-11-15', 4, 'Home', 'approved', '2026-11-01')");
+
+        String balances = arjun.get("/api/leave/balances").body();
+
+        // Tuesday 10 to Sunday 15 November is 4 working days (11th is Republic Day, 13th a Friday). Tuesday and today are past.
+        assertThat(balance(balances, "family", "taken")).isEqualTo("7.0");
+        assertThat(balance(balances, "family", "takenToDate")).isEqualTo("5.0");
+    }
+
+    @Test
+    void aTypeWithNoticeIsAskedForThatFarAhead() throws Exception {
+        jdbc.update("update leave_type set notice_days = 30 where code = 'annual'");
+
+        assertThat(apply("annual", "2026-12-06", "2026-12-06", "").body())
+                .isEqualTo("{\"message\":\"Annual leave is asked for 30 days ahead. The earliest it can start is Saturday 12 December.\"}");
+        assertThat(apply("annual", "2026-12-13", "2026-12-13", "").statusCode()).isEqualTo(200);
+        assertThat(apply("sick", "2026-11-15", "2026-11-15", "").statusCode()).isEqualTo(200);
+    }
+
+    @Test
+    void anApprovedAmendmentReplacesTheRequestItAmends() throws Exception {
+        String original = JsonPath.read(apply("annual", "2026-12-06", "2026-12-08", ",\"usesFlightEntitlement\":true").body(), "$.id");
+
+        HttpResponse<String> amended = apply("annual", "2026-12-07", "2026-12-09", ",\"kind\":\"amended\",\"relatedRequestId\":\"" + original + "\"");
+        String id = JsonPath.read(amended.body(), "$.id");
+        assertThat(JsonPath.<String>read(amended.body(), "$.kind")).isEqualTo("amended");
+        assertThat(jdbc.queryForObject("select status from leave_request where id = ?", String.class, original)).isEqualTo("pending");
+
+        ApiClient vikram = new ApiClient(port);
+        vikram.signIn("OPR-0004");
+        vikram.post("/api/team/leave-requests/" + id + "/decision", "{\"decision\":\"approved\"}");
+
+        assertThat(jdbc.queryForObject("select status from leave_request where id = ?", String.class, original)).isEqualTo("cancelled");
+        assertThat(jdbc.queryForObject("select uses_flight_entitlement from leave_request where id = ?", Boolean.class, original)).isTrue();
+    }
+
+    @Test
+    void anExtensionFollowsStraightOnFromTheLeaveItExtends() throws Exception {
+        // Ends Thursday 10 December. Friday is off, so Saturday the 12th follows straight on.
+        String original = JsonPath.read(apply("annual", "2026-12-08", "2026-12-10", "").body(), "$.id");
+        String extending = ",\"kind\":\"extended\",\"relatedRequestId\":\"" + original + "\"";
+
+        assertThat(apply("unpaid", "2026-12-14", "2026-12-14", extending).body())
+                .isEqualTo("{\"message\":\"An extension starts straight after the leave it extends, which ends on Thursday 10 December. With a gap, it's a new request.\"}");
+        assertThat(apply("unpaid", "2026-12-12", "2026-12-13", extending).statusCode()).isEqualTo(200);
+        assertThat(apply("unpaid", "2026-12-15", "2026-12-15", ",\"kind\":\"extended\"").body())
+                .isEqualTo("{\"message\":\"Pick the request you're extending.\"}");
     }
 
     @Test
@@ -161,5 +218,32 @@ class LeaveApiTests {
 
         assertThat(JsonPath.<List<String>>read(requests, "$[*].from")).containsExactly("2026-12-06", "2026-11-04");
         assertThat(JsonPath.<List<String>>read(requests, "$[?(@.id == 'LR-1031')].decidedByName")).containsExactly("Vikram Singh");
+    }
+
+    @Test
+    void aNewHolidayGivesBackTheDayAndCancelsLeaveItCoversWhole() throws Exception {
+        // Sunday 6 to Tuesday 8 December is three working days; Wednesday 9 is one.
+        String trip = JsonPath.read(apply("family", "2026-12-06", "2026-12-08", "").body(), "$.id");
+        String dayOff = JsonPath.read(apply("family", "2026-12-09", "2026-12-09", "").body(), "$.id");
+        ApiClient ananya = new ApiClient(port);
+        ananya.signIn("OPR-0002");
+
+        ananya.post("/api/hr/holidays", "{\"date\":\"2026-12-07\",\"name\":\"Extra holiday\",\"isTentative\":false}");
+        String moved = JsonPath.read(ananya.post("/api/hr/holidays", "{\"date\":\"2026-12-20\",\"name\":\"Moving one\",\"isTentative\":true}").body(), "$.id");
+        ananya.put("/api/hr/holidays/" + moved, "{\"date\":\"2026-12-09\",\"name\":\"Moving one\",\"isTentative\":false}");
+
+        assertThat(jdbc.queryForObject("select days from leave_request where id = ?", Double.class, trip)).isEqualTo(2.0);
+        assertThat(jdbc.queryForObject("select status from leave_request where id = ?", String.class, dayOff)).isEqualTo("cancelled");
+        List<String> told = JsonPath.read(arjun.get("/api/notifications").body(), "$[*].text");
+        assertThat(told).contains("Your family responsibility leave from 6 December now takes 2 days, not 3, because the public holidays changed.",
+                "Your family responsibility leave on 9 December is cancelled: it's a public holiday now, so you don't need it.");
+    }
+
+    @Test
+    void leaveCanBeBookedForAnyDayInThisLeaveYearButNotBefore() throws Exception {
+        // Arjun's leave year started on 20 December 2025.
+        assertThat(apply("family", "2026-10-06", "2026-10-06", "").statusCode()).isEqualTo(200);
+        assertThat(apply("family", "2025-12-18", "2025-12-18", "").body())
+                .isEqualTo("{\"message\":\"Your leave year started on 20 December 2025. Leave before that can't be booked now; ask HR.\"}");
     }
 }

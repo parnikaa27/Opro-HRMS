@@ -5,7 +5,7 @@ import { StatusPill, Tone } from '../../shared/ui/status-pill';
 import { isWaitingForHr } from '../../shared/utils/approval-step';
 import { maldivesToday } from '../../shared/utils/date-time';
 import { CERTIFICATE_ACCEPT, certificateProblem, LeaveApi, needsCertificate } from './leave-api';
-import { describeDates, describeLength } from './leave-format';
+import { describeDates, describeExtras, describeLength } from './leave-format';
 
 const STATUS: Record<LeaveStatus, { label: string; tone: Tone }> = {
   pending: { label: 'Pending', tone: 'late' },
@@ -31,6 +31,9 @@ const STATUS: Record<LeaveStatus, { label: string; tone: Tone }> = {
           <div>
             <strong>{{ nameOf(request.type) }}</strong>
             <span>{{ dates(request) }}@if (request.decisionNote) { · “{{ request.decisionNote }}”}</span>
+            @if (describeExtras(request); as extras) {
+              <span data-testid="leave-extras">{{ extras }}</span>
+            }
             @if (!isReadOnly() && canCancel(request)) {
               @if (confirming() === request.id) {
                 <span class="row-actions" role="group" aria-label="Confirm cancellation">
@@ -90,6 +93,7 @@ export class LeaveRequests {
   protected readonly certificateAccept = CERTIFICATE_ACCEPT;
   protected readonly status = STATUS;
   protected readonly isWaitingForHr = isWaitingForHr;
+  protected readonly describeExtras = describeExtras;
 
   protected readonly nameOf = (code: string) => this.types().find((type) => type.code === code)?.name ?? code;
   protected readonly isMissingCertificate = (request: LeaveRequest) =>

@@ -1,44 +1,70 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { LeaveBalance, LeaveType } from '../../models/leave';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { COMP_OFF, LeaveBalance, LeaveType } from '../../models/leave';
 import { CircleProgress } from '../../shared/ui/circle-progress';
-import { Icon } from '../../shared/ui/icon';
+import { formatCompactDate, formatShortDate, maldivesToday } from '../../shared/utils/date-time';
 import { plural } from '../../shared/utils/text';
+import { leaveYearOf } from './leave-days';
 
 const PERCENT = 100;
 const RINGS = 2;
-const HINTS: Readonly<Record<string, string>> = {
-  family: 'Caring for a sick family member',
-  maternity: 'Before and after your baby arrives',
-  paternity: 'When your child is born',
-  'comp-off': 'For Fridays and holidays you worked',
-};
 
-// The first two balances get rings like the design's annual and sick cards. The rest use its "special leave" card.
+// The first two balances get rings like the design's annual and sick cards. Every type is then in one table:
+// what the year gives, what's carried forward, approved, taken so far, waiting and left.
 @Component({
   selector: 'app-leave-balances',
-  imports: [CircleProgress, Icon],
+  imports: [CircleProgress],
   template: `
     <div class="leave-balance-row">
-      @for (balance of balances(); track balance.type; let index = $index) {
+      @for (balance of ringed(); track balance.type; let index = $index) {
         <div class="card leave-balance" data-testid="leave-balance">
-          @if (index < rings) {
-            <app-circle-progress [percent]="share(balance)" [label]="'' + available(balance)" [sub]="ringLabel(balance)" [colour]="index === 0 ? 'aqua' : 'amber'" />
-            <div>
-              <h3>{{ nameOf(balance.type) }}</h3>
-              <span>{{ available(balance) }} of {{ plural(balance.entitled, 'day') }} available{{ balance.carriedOver ? ', ' + balance.carriedOver + ' carried over' : '' }}</span>
-              <div class="progress-track" [class.amber]="index === 1"><i [style.width.%]="share(balance)"></i></div>
-            </div>
-          } @else {
-            <div class="special-icon"><app-icon name="sparkles" /></div>
-            <div>
-              <h3>{{ nameOf(balance.type) }}</h3>
-              <span>{{ plural(available(balance), 'day') }} available</span>
-              <p>{{ hints[balance.type] ?? '' }}</p>
-            </div>
-          }
+          <app-circle-progress [percent]="share(balance)" [label]="'' + left(balance)" [sub]="ringLabel(balance)" [colour]="index === 0 ? 'aqua' : 'amber'" />
+          <div>
+            <h3>{{ nameOf(balance.type) }}</h3>
+            <span>{{ left(balance) }} of {{ plural(balance.entitled, 'day') }} available{{ balance.carriedOver ? ', ' + balance.carriedOver + ' carried over' : '' }}</span>
+            <div class="progress-track" [class.amber]="index === 1"><i [style.width.%]="share(balance)"></i></div>
+          </div>
         </div>
       }
     </div>
+
+    <section class="card full-table" data-testid="balance-table">
+      <div class="card-heading">
+        <div>
+          <span class="eyebrow">LEAVE BALANCE</span>
+          <h2>{{ yearLabel() }}</h2>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="stacks">
+          <thead>
+            <tr>
+              <th scope="col">TYPE</th><th scope="col">THIS YEAR</th><th scope="col">CARRIED FORWARD</th><th scope="col">APPROVED</th>
+              <th scope="col">TAKEN SO FAR</th><th scope="col">WAITING</th><th scope="col">LEFT</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (balance of balances(); track balance.type) {
+              <tr data-testid="balance-row">
+                <td>
+                  <strong>{{ nameOf(balance.type) }}</strong>
+                  @if (balance.type === compOff && balance.expiresOn) {
+                    <small class="cell-note">Take by {{ formatShortDate(balance.expiresOn) }}</small>
+                  }
+                </td>
+                <td data-label="THIS YEAR">{{ balance.entitled - (balance.carriedOver ?? 0) }}</td>
+                <td data-label="CARRIED FORWARD">{{ balance.carriedOver ?? 0 }}</td>
+                <td data-label="APPROVED">{{ balance.taken }}</td>
+                <td data-label="TAKEN SO FAR">{{ balance.takenToDate ?? balance.taken }}</td>
+                <td data-label="WAITING">{{ balance.pending }}</td>
+                <td data-label="LEFT"><strong>{{ left(balance) }}</strong></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7">No leave to show yet.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
   `,
   host: { class: 'contents' },
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -46,12 +72,23 @@ const HINTS: Readonly<Record<string, string>> = {
 export class LeaveBalances {
   readonly balances = input.required<readonly LeaveBalance[]>();
   readonly types = input.required<readonly LeaveType[]>();
+  // Their joining date, which sets when their leave year runs.
+  readonly joinedOn = input<string>();
 
-  protected readonly rings = RINGS;
-  protected readonly hints = HINTS;
+  protected readonly compOff = COMP_OFF;
+  protected readonly ringed = computed(() => this.balances().slice(0, RINGS));
+  protected readonly yearLabel = computed(() => {
+    const joinedOn = this.joinedOn();
+    if (!joinedOn) {
+      return 'This leave year';
+    }
+    const { start, end } = leaveYearOf(joinedOn, maldivesToday());
+    return `${formatCompactDate(start)} to ${formatCompactDate(end)}`;
+  });
   protected readonly nameOf = (code: string) => this.types().find((type) => type.code === code)?.name ?? code;
-  protected readonly available = (balance: LeaveBalance) => balance.entitled - balance.taken - balance.pending;
-  protected readonly share = (balance: LeaveBalance) => (balance.entitled > 0 ? (this.available(balance) / balance.entitled) * PERCENT : 0);
+  protected readonly left = (balance: LeaveBalance) => balance.entitled - balance.taken - balance.pending;
+  protected readonly share = (balance: LeaveBalance) => (balance.entitled > 0 ? (this.left(balance) / balance.entitled) * PERCENT : 0);
   protected readonly ringLabel = (balance: LeaveBalance) => `${this.nameOf(balance.type).split(' ')[0].toLowerCase()} days`;
   protected readonly plural = plural;
+  protected readonly formatShortDate = formatShortDate;
 }

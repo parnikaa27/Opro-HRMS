@@ -36,6 +36,16 @@ public class People {
         return employees.findById(id).filter(employee -> employee.isActiveOn(today()));
     }
 
+    // Someone who hasn't left, even if they haven't started: HR prepares their photo and leave before day one.
+    public Optional<Employee> findNotLeft(String id) {
+        return employees.findById(id).filter(employee -> employee.getLastDay() == null || !employee.getLastDay().isBefore(today()));
+    }
+
+    // Everyone who hasn't left, people still to start included.
+    public List<Employee> notLeft() {
+        return employees.findNotLeftOn(today());
+    }
+
     public List<Employee> reportsOf(String managerId) {
         return employees.findActiveReports(managerId, today());
     }

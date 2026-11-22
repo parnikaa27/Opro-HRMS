@@ -11,9 +11,12 @@ public class LeaveType {
     // Earned by working a Friday or a public holiday. The policy never gives it.
     public static final String COMP_OFF = "comp-off";
 
+    // Compensatory off is taken within this many days of the day worked, or it's gone.
+    public static final int COMP_OFF_VALID_DAYS = 14;
+
     // What HR sets from Policies.
     public record Rules(String name, boolean allowsHalfDay, boolean isUnlimited, BigDecimal defaultEntitlement, Integer documentRequiredAfterDays,
-            boolean isForEveryone, boolean carriesForward, BigDecimal carryForwardCap, boolean needsHrApproval) {}
+            boolean isForEveryone, boolean carriesForward, BigDecimal carryForwardCap, boolean needsHrApproval, Integer noticeDays) {}
 
     @Id
     private String code;
@@ -29,6 +32,7 @@ public class LeaveType {
     private BigDecimal carryForwardCap;
     private LocalDate retiredOn;
     private boolean needsHrApproval;
+    private Integer noticeDays;
 
     protected LeaveType() {}
 
@@ -51,6 +55,7 @@ public class LeaveType {
         this.carriesForward = !isUnlimited && rules.carriesForward();
         this.carryForwardCap = carriesForward ? rules.carryForwardCap() : null;
         this.needsHrApproval = rules.needsHrApproval();
+        this.noticeDays = rules.noticeDays();
     }
 
     void retire(LocalDate on) {
@@ -104,6 +109,11 @@ public class LeaveType {
     // HR approves after the HOD.
     public boolean needsHrApproval() {
         return needsHrApproval;
+    }
+
+    // How many days ahead a first request has to be made. Null: none.
+    public Integer getNoticeDays() {
+        return noticeDays;
     }
 
     public boolean isRetired() {

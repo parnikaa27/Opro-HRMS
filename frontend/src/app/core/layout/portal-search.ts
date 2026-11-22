@@ -1,10 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, input, signal, viewChild } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { Avatar } from '../../shared/ui/avatar';
 import { Dismiss } from '../../shared/ui/dismiss';
 import { Icon } from '../../shared/ui/icon';
 import { valueOr } from '../../shared/utils/resource';
 import { TeamApi } from '../../features/team/team-api';
 import { HrApi } from '../../features/hr/hr-api';
+import { ColleaguesApi } from '../colleagues-api';
 import { PortalView, Session } from '../session';
 import { NavItem } from './nav-items';
 
@@ -18,7 +20,7 @@ const MAX_RESULTS = 6;
 
 @Component({
   selector: 'app-portal-search',
-  imports: [Icon, RouterLink],
+  imports: [Avatar, Icon, RouterLink],
   template: `
     <app-icon name="search" [size]="18" />
     <input
@@ -45,7 +47,15 @@ const MAX_RESULTS = 6;
               <small>{{ result.kind }}</small>
             </a>
           </li>
-        } @empty {
+        }
+        @for (colleague of colleagues(); track colleague.id) {
+          <li class="search-colleague" data-testid="search-colleague">
+            <app-avatar [name]="colleague.fullName" [photoUrl]="colleague.photoUrl" />
+            <span><strong>{{ colleague.fullName }}</strong><small>{{ colleague.designation }}, {{ colleague.department }}</small></span>
+            <a [href]="'mailto:' + colleague.email" (click)="close()">{{ colleague.email }}</a>
+          </li>
+        }
+        @if (isEmpty()) {
           <li class="search-empty">Nothing matches “{{ query() }}”.</li>
         }
       </ul>
@@ -71,7 +81,9 @@ export class PortalSearch {
   protected readonly isOpen = signal(false);
   private readonly closeOnDismiss = inject(Dismiss).dismissed.subscribe(() => this.isOpen.set(false));
   private readonly needle = computed(() => this.query().trim().toLowerCase());
-  // People only load once someone types, so search costs nothing until used. HR and super admins search everyone, HODs their team.
+  // People only load once someone types, so search costs nothing until used. HR and super admins search everyone, HODs their team,
+  // and everyone finds a colleague's role and email from their own view.
+  private readonly everyoneHere = inject(ColleaguesApi).colleagues(() => this.view() === 'mine' && this.needle() !== '');
   private readonly teamPeople = inject(TeamApi).members({ isEnabled: () => this.view() === 'team' && this.session.isManager() && this.needle() !== '' });
   private readonly company = inject(TeamApi).members({ isEnabled: () => this.view() === 'company' && this.session.isSuperAdmin() && this.needle() !== '', scope: () => 'company' });
   private readonly everyone = inject(HrApi).employees({ isEnabled: () => this.view() === 'hr' && this.session.isHr() && this.needle() !== '' });
@@ -90,6 +102,12 @@ export class PortalSearch {
       .map(({ fullName, path }) => ({ label: fullName, path, kind: 'Person' as const }));
     return [...pages, ...people].slice(0, MAX_RESULTS);
   });
+  protected readonly colleagues = computed(() =>
+    valueOr(this.everyoneHere, [])
+      .filter(({ id, fullName }) => id !== this.session.user()?.id && fullName.toLowerCase().includes(this.needle()))
+      .slice(0, MAX_RESULTS - this.results().length),
+  );
+  protected readonly isEmpty = computed(() => !this.results().length && !this.colleagues().length && !this.everyoneHere.isLoading());
   protected readonly showsResults = computed(() => this.isOpen() && this.needle() !== '');
 
   protected focus(event: Event) {

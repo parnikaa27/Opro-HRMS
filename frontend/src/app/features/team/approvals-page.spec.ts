@@ -1,6 +1,7 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { CompOffClaim, CorrectionRequest, HomeDay, OvertimeClaim } from '../../models/attendance';
+import { Resignation } from '../../models/exit';
 import { LeaveRequest } from '../../models/leave';
 import { click, fail, fill, NOW, respond, setupHttp, settle, text, texts } from '../../../testing/fixtures';
 import { ApprovalsPage } from './approvals-page';
@@ -26,6 +27,15 @@ const OVERTIME: OvertimeClaim[] = [
   { id: 'OT-1', employeeId: 'A', employeeName: 'Arjun Reddy', date: '2026-11-09', status: 'pending', minutes: 80 },
 ];
 
+// Arjun waits for Vikram; Priya's already went on to HR, so it isn't Vikram's to decide.
+const RESIGNATIONS: Resignation[] = [
+  { id: 'RS-1', employeeId: 'OPR-0018', employeeName: 'Arjun Reddy', submittedOn: '2026-11-10', reason: 'Moving back home', releaseOn: '2026-12-31', status: 'pending', checklist: [] },
+  {
+    id: 'RS-2', employeeId: 'OPR-0015', employeeName: 'Priya Nair', submittedOn: '2026-11-09', reason: 'New job', releaseOn: '2026-12-15', status: 'pending',
+    hodApprovedByName: 'Vikram Singh', hodApprovedOn: '2026-11-10', checklist: [],
+  },
+];
+
 describe('ApprovalsPage', () => {
   let http: HttpTestingController;
 
@@ -48,6 +58,7 @@ describe('ApprovalsPage', () => {
       '/api/team/home-days?status=pending': homeDays,
       '/api/team/comp-offs?status=pending': compOffs,
       '/api/team/overtime?status=pending': overtime,
+      '/api/team/resignations?status=pending': RESIGNATIONS,
       '/api/leave/types': [{ code: 'annual', name: 'Annual leave', allowsHalfDay: true }],
     });
     return fixture.nativeElement as HTMLElement;
@@ -59,7 +70,7 @@ describe('ApprovalsPage', () => {
   it('shows waiting leave oldest first with counts on the tabs and overlap warnings', async () => {
     const root = await render();
 
-    expect([...root.querySelectorAll('[role=tab]')].map((tab) => text(tab))).toEqual(['Pending 2', 'Approved', 'Declined', 'Punch fixes 1', 'Home working 1', 'Comp off 1', 'Overtime 2']);
+    expect([...root.querySelectorAll('[role=tab]')].map((tab) => text(tab))).toEqual(['Pending 2', 'Approved', 'Declined', 'Punch fixes 1', 'Home working 1', 'Comp off 1', 'Overtime 2', 'Resignations 1']);
     expect(texts(root, 'leave-row').map((item) => item.split(' Decline')[0])).toEqual([
       'PN Priya Nair Annual leave · Submitted yesterday Also off then: Sneha Kulkarni (pending), Karan Mehta DATES 20 Dec to 24 December 2026 DURATION 3 days REASON Trip',
       'SK Sneha Kulkarni Annual leave · Submitted today Also off then: Priya Nair (pending) DATES 22 December 2026 DURATION 1 day REASON Trip',
@@ -270,5 +281,44 @@ describe('ApprovalsPage', () => {
     await fail(http, '/api/team/leave-requests');
 
     expect(text(fixture.nativeElement)).toContain("Requests didn't load");
+  });
+
+  it('approves a resignation, which passes it to HR, and declines one with a reason', async () => {
+    const root = await render();
+    click(root, 'tab-resignations');
+    expect(texts(root, 'pending-resignation')).toEqual(['AR Arjun Reddy Resigned · Submitted 2 days ago LAST DAY ASKED FOR 31 December 2026 REASON Moving back home Decline Approve']);
+
+    click(root, 'approve');
+    const approval = http.expectOne('/api/team/resignations/RS-1/decision');
+    expect(approval.request.body).toEqual({ decision: 'approved' });
+    approval.flush({});
+    await settle();
+    http.expectOne('/api/team/resignations?status=pending').flush(RESIGNATIONS);
+    await settle();
+
+    click(root, 'reject');
+    fill(root, 'decision-note', 'Let us talk about a later date');
+    click(root, 'confirm-reject');
+    expect(http.expectOne('/api/team/resignations/RS-1/decision').request.body).toEqual({ decision: 'rejected', note: 'Let us talk about a later date' });
+  });
+
+  it('tells the HOD when sick leave long enough to need a certificate has none', async () => {
+    const sick: LeaveRequest = {
+      id: 'LR-9', employeeId: 'OPR-0018', employeeName: 'Arjun Reddy', type: 'sick', from: '2026-11-15', to: '2026-11-18', days: 3, reason: 'Flu', status: 'pending', appliedOn: '2026-11-12',
+    };
+    const fixture = TestBed.createComponent(ApprovalsPage);
+    await respond(http, {
+      '/api/team/leave-requests': [sick],
+      '/api/team/corrections': [],
+      '/api/team/home-days?status=pending': [],
+      '/api/team/comp-offs?status=pending': [],
+      '/api/team/overtime?status=pending': [],
+      '/api/team/resignations?status=pending': [],
+      '/api/leave/types': [{ code: 'sick', name: 'Sick leave', allowsHalfDay: true, documentRequiredAfterDays: 2 }],
+    });
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(text(root.querySelector('[data-testid=certificate-missing]') as HTMLElement)).toBe('Medical certificate missing');
+    expect(root.querySelector('[data-testid=approve]')).not.toBeNull();
   });
 });

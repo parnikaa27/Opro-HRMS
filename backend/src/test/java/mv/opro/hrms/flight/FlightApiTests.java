@@ -20,7 +20,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class FlightApiTests {
 
     private static final int SEEDED_NOTIFICATIONS = 7;
-    private static final int SEEDED_FILES = 31;
+    private static final int SEEDED_FILES = 22;
     private static final byte[] PDF = "%PDF-1.4 ticket".getBytes(StandardCharsets.US_ASCII);
 
     @LocalServerPort
@@ -41,7 +41,7 @@ class FlightApiTests {
     @AfterEach
     void cleanUp() {
         jdbc.update("delete from flight_claim where id not in ('FC-1', 'FC-2')");
-        jdbc.update("delete from stored_file where id not in (select file_id from employee_document where file_id is not null)");
+        jdbc.update("delete from stored_file where id not in (select file_id from document_file)");
         jdbc.update("update flight_allowance set amount_usd = 1200 where employee_id = 'OPR-0018'");
         jdbc.update("delete from flight_allowance where allowance_year <> 2026");
         jdbc.update("update exchange_rate set per_usd = 15.42 where currency = 'MVR'");
@@ -88,6 +88,16 @@ class FlightApiTests {
         assertThat(claim("101", "USD").body()).isEqualTo("{\"message\":\"That's $101.00, more than the $100.00 you have left for 2026.\"}");
         assertThat(as("OPR-0011").post("/api/flights/claims", "{\"flightDate\":\"2026-12-18\",\"route\":\"Home\",\"amount\":10,\"currency\":\"USD\"}").body())
                 .isEqualTo("{\"message\":\"You don't have a flight allowance for 2026. Ask HR about it.\"}");
+    }
+
+    @Test
+    void aYearHrHasntSetCarriesTheLastAllowance() throws Exception {
+        // Arjun has $1,200 for 2026 and nothing set for 2027 yet.
+        HttpResponse<String> nextYear = arjun.post("/api/flights/claims", "{\"flightDate\":\"2027-02-10\",\"route\":\"Home\",\"amount\":1200,\"currency\":\"USD\"}");
+
+        assertThat(nextYear.statusCode()).isEqualTo(200);
+        assertThat(arjun.post("/api/flights/claims", "{\"flightDate\":\"2027-03-10\",\"route\":\"Home\",\"amount\":1,\"currency\":\"USD\"}").body())
+                .isEqualTo("{\"message\":\"That's $1.00, more than the $0.00 you have left for 2027.\"}");
     }
 
     @Test

@@ -7,11 +7,12 @@ import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { StatusPill } from '../../shared/ui/status-pill';
 import { valueOr } from '../../shared/utils/resource';
 import { describeDocument, documentStatus } from './document-status';
+import { DocumentFiles } from './document-files';
 import { DocumentUploadForm } from './document-upload-form';
 
 @Component({
   selector: 'app-documents-page',
-  imports: [Dialog, DocumentUploadForm, Icon, ListSkeleton, StatusPill],
+  imports: [Dialog, DocumentFiles, DocumentUploadForm, Icon, ListSkeleton, StatusPill],
   template: `
     <div class="page-view">
       <div class="page-title">
@@ -33,18 +34,16 @@ import { DocumentUploadForm } from './document-upload-form';
               <div>
                 <strong>{{ document.name }}</strong>
                 <span>{{ describe(document) }}</span>
+                <app-document-files [files]="document.files" [name]="document.name" [basePath]="'/api/documents/' + document.type" [canRemove]="canRemove(document)" [isDownload]="true" [busyId]="removing()" (removed)="remove(document, $event)" />
                 @if (document.uploadedBy === 'employee') {
-                  <button type="button" class="text-link" (click)="uploading.set(document)" data-testid="upload-document">{{ document.hasFile ? 'Upload a new copy' : 'Upload' }}</button>
+                  <button type="button" class="text-link" (click)="uploading.set(document)" data-testid="upload-document">{{ document.files.length ? 'Add a page or a new copy' : 'Upload' }}</button>
+                }
+                @if (failedType() === document.type) {
+                  <span class="row-error" role="alert">That file didn't come off. Try again in a moment.</span>
                 }
               </div>
               <app-status-pill [tone]="status(document).tone">{{ status(document).label }}</app-status-pill>
-              @if (document.hasFile) {
-                <a class="icon-button" [href]="'/api/documents/' + document.type + '/file'" download [attr.aria-label]="'Download ' + document.name">
-                  <app-icon name="download" [size]="17" />
-                </a>
-              } @else {
-                <span></span>
-              }
+              <span></span>
             </div>
           } @empty {
             <p class="attendance-off">HR hasn't listed any documents yet.</p>
@@ -62,11 +61,31 @@ import { DocumentUploadForm } from './document-upload-form';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DocumentsPage {
-  protected readonly documents = inject(CompanyApi).documents();
+  private readonly api = inject(CompanyApi);
+  protected readonly documents = this.api.documents();
   protected readonly list = computed(() => valueOr(this.documents, []));
   protected readonly uploading = signal<DocumentEntry | undefined>(undefined);
   protected readonly describe = describeDocument;
   protected readonly status = documentStatus;
+
+  protected readonly removing = signal<string | undefined>(undefined);
+  protected readonly failedType = signal<string | undefined>(undefined);
+  // Their own files come off until HR has verified the copy.
+  protected readonly canRemove = ({ uploadedBy, status }: DocumentEntry) => uploadedBy === 'employee' && (status === 'pending' || status === 'rejected');
+
+  protected async remove({ type }: DocumentEntry, fileId: string) {
+    this.removing.set(fileId);
+    this.failedType.set(undefined);
+    try {
+      await this.api.removeDocumentFile(type, fileId);
+      this.documents.reload();
+    } catch (error) {
+      console.error('Removing a document file failed', error);
+      this.failedType.set(type);
+    } finally {
+      this.removing.set(undefined);
+    }
+  }
 
   protected uploaded() {
     this.uploading.set(undefined);

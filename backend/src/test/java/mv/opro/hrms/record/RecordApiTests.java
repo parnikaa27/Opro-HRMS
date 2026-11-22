@@ -92,6 +92,18 @@ class RecordApiTests {
     }
 
     @Test
+    void refusalsAreWrittenForPeopleNotAsRules() throws Exception {
+        String url = "/api/profile/bank-account";
+
+        assertThat(JsonPath.<String>read(arjun.put(url, BANK.replace("USD", "EUR")).body(), "$.message")).isEqualTo("Currency has to be MVR or USD.");
+        assertThat(JsonPath.<String>read(arjun.put(url, BANK.replace("Bank of Maldives", "")).body(), "$.message")).isEqualTo("Bank name is needed.");
+        assertThat(JsonPath.<String>read(arjun.put(url, BANK.replace("7730 0001 99999", "12ab")).body(), "$.message"))
+                .isEqualTo("Account number has to be 6 to 40 digits.");
+        assertThat(JsonPath.<String>read(arjun.put(url, "{\"bankName\":").body(), "$.message"))
+                .isEqualTo("Something in that wasn't filled in the right way. Check it and try again.");
+    }
+
+    @Test
     void hrKeepsInsuranceEducationAndExperienceButNeverTheirOwn() throws Exception {
         ananya.put("/api/hr/employees/OPR-0018/insurance", "{\"provider\":\"Ascension\",\"policyNumber\":\"AS-1\",\"expiresOn\":\"2027-12-31\"}");
         String education = ananya.post("/api/hr/employees/OPR-0018/education",

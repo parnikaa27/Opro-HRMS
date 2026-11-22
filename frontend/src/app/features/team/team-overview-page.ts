@@ -22,6 +22,7 @@ import { DecisionState } from './decision-state';
 import { DeclineForm } from './decline-form';
 import { TeamApi, TeamMember } from './team-api';
 import { visaAlertsFor } from './visa-alerts';
+import { TeamOnboardingCard } from '../onboarding/team-onboarding-card';
 
 const PREVIEW_COUNT = 3;
 const TEAM_PREVIEW = 4;
@@ -34,7 +35,7 @@ const statusOf = (member: TeamMember): AttendanceStatus => member.today?.status 
 
 @Component({
   selector: 'app-team-overview-page',
-  imports: [Avatar, DeclineForm, Dialog, Icon, RouterLink, StatusPill, WelcomeBanner],
+  imports: [Avatar, DeclineForm, Dialog, Icon, RouterLink, StatusPill, TeamOnboardingCard, WelcomeBanner],
   template: `
     <app-welcome-banner [dateLabel]="dateLabel" [heading]="greeting + ', ' + firstName() + '.'" [line]="line()" />
 
@@ -183,6 +184,8 @@ const statusOf = (member: TeamMember): AttendanceStatus => member.today?.status 
         <a routerLink="/team/people" class="text-link">View visa records <app-icon name="arrow" [size]="15" /></a>
       </section>
     </div>
+
+    <app-team-onboarding-card />
 
     <app-dialog heading="Decline request" [isOpen]="declining() !== undefined" (isOpenChange)="$event || declining.set(undefined)">
       @if (declining(); as request) {

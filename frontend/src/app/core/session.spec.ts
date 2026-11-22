@@ -68,7 +68,6 @@ describe('Session', () => {
     await signingIn;
     expect(navigate).toHaveBeenLastCalledWith('/hr');
 
-    session.user.set(undefined);
     const asManager = session.signIn('OPR-0004');
     http.expectOne('/api/session/login').flush(null);
     await Promise.resolve();
@@ -97,6 +96,18 @@ describe('Session', () => {
     await signingIn;
 
     expect(navigate).toHaveBeenCalledWith('/');
+  });
+
+  it('loads the new person when someone else was signed in on the page', async () => {
+    session.user.set(employee({ id: 'OPR-0018', fullName: 'Arjun Reddy' }));
+
+    const signingIn = session.signIn('OPR-0004');
+    http.expectOne('/api/session/login').flush(null);
+    await Promise.resolve();
+    http.expectOne('/api/me').flush(manager());
+    await signingIn;
+
+    expect(session.user()?.id).toBe(manager().id);
   });
 
   it('remembers the chosen view and goes there', async () => {

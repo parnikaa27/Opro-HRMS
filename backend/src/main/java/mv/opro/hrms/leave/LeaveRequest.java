@@ -12,6 +12,9 @@ public class LeaveRequest {
     static final String PENDING = "pending";
     static final String APPROVED = "approved";
     static final String CANCELLED = "cancelled";
+    static final String INITIAL = "initial";
+    static final String AMENDED = "amended";
+    static final String EXTENDED = "extended";
 
     @Id
     private String id;
@@ -34,22 +37,29 @@ public class LeaveRequest {
     private LocalDate hodApprovedOn;
     private boolean hasCertificate;
     private UUID certificateFileId;
+    private String kind;
+    private String relatedRequestId;
+    private boolean usesFlightEntitlement;
+    private boolean wantsSalaryAdvance;
 
     protected LeaveRequest() {}
 
-    static LeaveRequest apply(String id, String employeeId, String type, LocalDate from, LocalDate to, String halfDay, BigDecimal days,
-            String reason, LocalDate today) {
+    static LeaveRequest apply(String id, String employeeId, LeaveService.Application application, BigDecimal days, LocalDate today) {
         LeaveRequest request = new LeaveRequest();
         request.id = id;
         request.employeeId = employeeId;
-        request.type = type;
-        request.fromDate = from;
-        request.toDate = to;
-        request.halfDay = halfDay;
+        request.type = application.type();
+        request.fromDate = application.from();
+        request.toDate = application.to();
+        request.halfDay = application.halfDay();
         request.days = days;
-        request.reason = reason;
+        request.reason = application.reason().strip();
         request.status = PENDING;
         request.appliedOn = today;
+        request.kind = application.kind();
+        request.relatedRequestId = INITIAL.equals(application.kind()) ? null : application.relatedId();
+        request.usesFlightEntitlement = application.usesFlightEntitlement();
+        request.wantsSalaryAdvance = application.wantsSalaryAdvance();
         return request;
     }
 
@@ -60,6 +70,11 @@ public class LeaveRequest {
 
     void cancel() {
         status = CANCELLED;
+    }
+
+    // A holiday moved in or out of the leave changes how many days it takes.
+    void recount(BigDecimal counted) {
+        days = counted;
     }
 
     void decide(String decision, String by, LocalDate on, String note) {
@@ -87,6 +102,27 @@ public class LeaveRequest {
 
     boolean isPending() {
         return PENDING.equals(status);
+    }
+
+    boolean isApproved() {
+        return APPROVED.equals(status);
+    }
+
+    // Initial, amended (replaces the related request once approved) or extended (follows on from it).
+    public String getKind() {
+        return kind;
+    }
+
+    public String getRelatedRequestId() {
+        return relatedRequestId;
+    }
+
+    public boolean usesFlightEntitlement() {
+        return usesFlightEntitlement;
+    }
+
+    public boolean wantsSalaryAdvance() {
+        return wantsSalaryAdvance;
     }
 
     public String getId() {

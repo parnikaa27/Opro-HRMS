@@ -1,29 +1,46 @@
 import { TestBed } from '@angular/core/testing';
-import { text, texts } from '../../../testing/fixtures';
+import { click, settle, texts } from '../../../testing/fixtures';
 import { AttendanceRow, AttendanceTable } from './attendance-table';
 
-const ROW: AttendanceRow = {
-  date: '2026-11-10', day: 'Tuesday', dateLabel: '10 Nov, Tue', punchIn: '08:55 AM', punchOut: '05:20 PM', hours: '08h 25m', status: { label: 'Present', tone: 'ok' }, isEdited: true,
-};
+const day = (date: string): AttendanceRow => ({
+  date, day: date, dateLabel: date, punchIn: '09:00 AM', punchOut: '05:00 PM', hours: '08h 00m', status: { label: 'On time', tone: 'ok' }, isEdited: false,
+});
+const MONTH = Array.from({ length: 10 }, (_, index) => day(`2026-11-${String(10 - index).padStart(2, '0')}`));
 
 describe('AttendanceTable', () => {
-  const render = async (rows: AttendanceRow[]) => {
+  const render = async (pageSize?: number) => {
     const fixture = TestBed.createComponent(AttendanceTable);
-    fixture.componentRef.setInput('rows', rows);
+    fixture.componentRef.setInput('rows', MONTH);
+    if (pageSize) {
+      fixture.componentRef.setInput('pageSize', pageSize);
+    }
     await fixture.whenStable();
-    return fixture.nativeElement as HTMLElement;
+    return { fixture, root: fixture.nativeElement as HTMLElement };
   };
 
-  it('says when a day was corrected by hand, for everyone who reads it', async () => {
-    const root = await render([ROW]);
+  it('shows every day without a page size', async () => {
+    const { root } = await render();
 
-    expect(texts(root, 'attendance-row')).toEqual(['Tuesday 10 Nov, Tue 08:55 AM 05:20 PM 08h 25m Present Corrected']);
+    expect(texts(root, 'attendance-row')).toHaveLength(10);
+    expect(root.querySelector('[data-testid=show-more-days]')).toBeNull();
   });
 
-  it('spans its empty state across every column', async () => {
-    const root = await render([]);
+  it('opens on a week, shows more a week at a time, then fewer, and starts over for a new month', async () => {
+    const { fixture, root } = await render(7);
+    expect(texts(root, 'attendance-row')).toHaveLength(7);
 
-    expect(root.querySelector('td')?.getAttribute('colspan')).toBe('5');
-    expect(text(root.querySelector('td') as HTMLElement)).toBe('No punches recorded yet.');
+    expect(texts(root, 'show-more-days')).toEqual(['Show 3 more days']);
+    click(root, 'show-more-days');
+    await settle();
+    expect(texts(root, 'attendance-row')).toHaveLength(10);
+
+    click(root, 'show-fewer-days');
+    await settle();
+    expect(texts(root, 'attendance-row')).toHaveLength(7);
+
+    click(root, 'show-more-days');
+    fixture.componentRef.setInput('rows', MONTH.slice(0, 9));
+    await settle();
+    expect(texts(root, 'attendance-row')).toHaveLength(7);
   });
 });

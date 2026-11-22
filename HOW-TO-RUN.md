@@ -39,6 +39,7 @@ HRMS/
           dashboard/       Overview: welcome banner, today's attendance, leave balance, visa, recent attendance, staff card, next holiday, latest request
           documents/       Documents page: status, download, and uploading the ones employees send. Its upload form also serves HR
           leave/           Balance rings, request history with cancel, request modal with day count preview
+          performance/     Own goals and appraisals, the HOD's goals, appraisal and probation forms, HR's cycles and progress
           attendance/      Summary cards, attendance log, punch in and out, punch fixes, CSV export
           calendar/        Company calendar: holidays, events, and who is away for HODs and super admins
           holidays/        API for holidays and company events
@@ -54,7 +55,7 @@ HRMS/
     dev-server/            Mock API that stands in for Spring
       server.mjs           Routes, sessions, XSRF check. Node built ins only
       attendance.mjs       Generates the last 62 days of punches relative to today, and works a day out again after an approved punch fix, using the schedule in force
-      data/                JSON fixtures: employees, visas, leave, flight allowances and claims, exchange rates, holidays, events, corrections, announcements, notifications, change requests, balance adjustments, work schedules, document types, records (insurance, bank details, education, experience, expatriate quota). Uploaded files stay in memory until restart
+      data/                JSON fixtures: employees, visas, leave, flight allowances and claims, exchange rates, holidays, events, corrections, announcements, notifications, change requests, balance adjustments, work schedules, document types, records (insurance, bank details, education, experience, expatriate quota), and the dashboard and reports as Spring's dev profile served them (`dashboard.json`, `reports.json`; save them again from Spring if their shape changes). Uploaded files stay in memory until restart
     proxy.conf.mjs         Sends /api to the mock or to Spring
     scripts/
       build-dark-theme.mjs Writes src/styles/dark.css from portal.css and styles.css (see theme:dark)
@@ -75,6 +76,7 @@ HRMS/
       files/               Stored files (in PostgreSQL for now), upload checks, and serving them safely
       document/            Document types HR keeps, everyone's copies, uploads and HR's checks (Documents service)
       approval/            HR's step after the HOD: which requests need it, what waits for HR and deciding it (/api/hr/approvals)
+      performance/         Probation reviews, appraisal cycles, goals and appraisals (/api/performance, /api/team/performance, /api/hr/performance)
       insight/             The facts behind the executive dashboard and reports, for HR and super admins (/api/insights)
       record/              Medical insurance, bank details (entered by the person, verified by HR), education and work experience (Records service)
       announcement/        Notes from HR on everyone's overview, and AnnouncementEditor for posting them
@@ -105,44 +107,44 @@ npm 11 blocks install scripts by default. Leave them blocked: the Angular build 
 
 ## Run the app
 
-Two terminals, both inside `frontend/`. (Or in the Claude desktop app, the `mock-api` and `frontend` entries in `.claude/launch.json` start the same two servers.)
+The portal runs on Spring and PostgreSQL: every screen reads from and writes to the database. Three terminals. (Or in the Claude desktop app, the `spring-api` and `frontend` entries in `.claude/launch.json` start Spring and the app.)
+
+Start the database, from `backend/` (Docker Desktop running):
+
+```bash
+docker compose up -d
+```
+
+Then Spring, from `backend/`:
+
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+Then the app, from `frontend/`:
+
+```bash
+npm start
+```
+
+Open `http://localhost:4200`. Calls to `/api` are proxied to Spring on `http://localhost:8080`.
+
+Spring keeps what you do in the database. To start again from the seed data, run this inside `backend/` (it removes only the `opro-hrms` project's volume):
+
+```bash
+docker compose down -v && docker compose up -d
+```
+
+### On the mock instead
+
+The JSON mock is only for the Netlify demo and the second e2e run, and for frontend work without Java. It keeps changes in memory until it restarts, and never moves leave balances. From `frontend/`:
 
 ```bash
 npm run mock
 ```
 
 ```bash
-npm start
-```
-
-Open `http://localhost:4200`. Calls to `/api` are proxied to the mock on port 4300.
-
-Everything you change (approving leave, applying, cancelling, asking for punch fixes) is kept in memory and resets when you restart the mock. Leave balances in the mock never move, because counting days is the backend's job.
-
-### Against the real backend
-
-Start the database and Spring, from `backend/`:
-
-```bash
-docker compose up -d
-```
-
-```bash
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
-```
-
-Then the frontend, from `frontend/`:
-
-```bash
-USE_MOCK_BACKEND=false npm start
-```
-
-That sends `/api` to Spring on `http://localhost:8080` instead. Nothing else changes. Every page works end to end on Spring, the HR view included.
-
-Unlike the mock, Spring keeps what you do in the database. To start again from the seed data, run this inside `backend/` (it removes only the `opro-hrms` project's volume):
-
-```bash
-docker compose down -v && docker compose up -d
+USE_MOCK_BACKEND=true npm start
 ```
 
 To see a working day on a weekend, pin Spring's clock the way `MOCK_NOW` pins the mock's: add `-Dspring-boot.run.jvmArguments="-Dopro.fixed-time=2026-11-12T10:30:00+05:00"`.
@@ -217,9 +219,9 @@ Everyone has an Indian name. Sneha and Karan are Maldivian nationals, so they se
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `USE_MOCK_BACKEND` | `true` | `true` sends `/api` to the mock, `false` sends it to Spring |
+| `USE_MOCK_BACKEND` | unset | `true` sends `/api` to the mock; anything else sends it to Spring |
 | `MOCK_PORT` | `4300` | Port for the mock API |
-| `SPRING_PORT` | `8080` | Port the proxy sends `/api` to when `USE_MOCK_BACKEND=false` |
+| `SPRING_PORT` | `8080` | Port the proxy sends `/api` to, unless `USE_MOCK_BACKEND=true` |
 | `E2E_BACKEND` | unset | `spring` runs the e2e journeys against Spring instead of the mock (`npm run test:e2e:spring` sets it) |
 | `MOCK_NOW` | unset | Pins the mock's clock, for example `MOCK_NOW=2026-11-12T15:10:00+05:00 npm run mock`. Handy on weekends, when every screen shows days off |
 

@@ -1,0 +1,19 @@
+{
+  "types": [
+    { "code": "housing", "name": "Housing", "sortOrder": 1 },
+    { "code": "food", "name": "Food", "sortOrder": 2 },
+    { "code": "transport", "name": "Transport", "sortOrder": 3 },
+    { "code": "phone", "name": "Phone", "sortOrder": 4 }
+  ],
+  "monthly": [
+    { "id": "MA-1", "employeeId": "OPR-0018", "typeCode": "housing", "amount": 6000, "currency": "MVR", "startsOn": "2024-01-01" },
+    { "id": "MA-2", "employeeId": "OPR-0018", "typeCode": "food", "amount": 1500, "currency": "MVR", "startsOn": "2024-01-01" },
+    { "id": "MA-3", "employeeId": "OPR-0015", "typeCode": "housing", "amount": 400, "currency": "USD", "startsOn": "2022-09-01" }
+  ],
+  "grants": [
+    {
+      "id": "AG-1", "employeeId": "OPR-0021", "typeCode": "transport", "amount": 750, "currency": "MVR", "reason": "Taxis during the ferry strike",
+      "status": "pending", "grantedBy": "OPR-0004", "grantedOn": "2026-11-10"
+    }
+  ]
+}

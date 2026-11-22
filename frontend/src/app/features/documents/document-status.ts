@@ -12,16 +12,18 @@ const STATUS: Record<DocumentEntry['status'], { label: string; tone: Tone }> = {
 
 export const documentStatus = ({ status }: DocumentEntry) => STATUS[status];
 
-// The line under a document's name: why it was sent back, when it runs out, or who adds a missing one.
-export const describeDocument = ({ status, uploadedBy, expiresOn, updatedOn, decisionNote }: DocumentEntry) => {
+// The line under a document's name: why it was sent back, who adds a missing one, or the dates it runs between.
+export const describeDocument = ({ status, uploadedBy, issuedOn, expiresOn, updatedOn, decisionNote }: DocumentEntry) => {
   if (status === 'rejected') {
     return `Sent back: ${decisionNote ?? ''}`;
   }
   if (status === 'missing') {
     return uploadedBy === 'employee' ? 'Upload a PDF, JPG or PNG' : 'HR adds this one';
   }
+  const from = issuedOn ? `From ${formatCompactDate(issuedOn)}` : '';
   if (expiresOn) {
-    return `${status === 'expired' ? 'Expired' : 'Expires'} ${formatCompactDate(expiresOn)}`;
+    const ends = `${status === 'expired' ? 'expired' : 'expires'} ${formatCompactDate(expiresOn)}`;
+    return from ? `${from}, ${ends}` : ends.charAt(0).toUpperCase() + ends.slice(1);
   }
-  return updatedOn ? `Updated ${formatCompactDate(updatedOn)}` : 'On file';
+  return from || (updatedOn ? `Updated ${formatCompactDate(updatedOn)}` : 'On file');
 };

@@ -42,10 +42,10 @@ class LeaveTypesApiTests {
     void cleanUp() {
         jdbc.update("delete from leave_request where length(id) > 7");
         jdbc.update("delete from balance_adjustment where id <> 'BA-1'");
-        jdbc.update("delete from leave_entitlement where type not in ('annual', 'sick', 'family', 'maternity', 'paternity') or leave_year <> 2026");
+        jdbc.update("delete from leave_entitlement where type not in ('annual', 'sick', 'family', 'maternity', 'paternity') or leave_year <> case when employee_id = 'OPR-0018' then 2025 else 2026 end");
         jdbc.update("update leave_entitlement set entitled = 30, removed_on = null where employee_id = 'OPR-0018' and type = 'annual'");
         jdbc.update("update leave_entitlement set removed_on = null");
-        jdbc.update("insert into leave_entitlement (employee_id, type, leave_year, entitled, taken_before) values ('OPR-0018', 'family', 2026, 10, 3) on conflict do nothing");
+        jdbc.update("insert into leave_entitlement (employee_id, type, leave_year, entitled, taken_before) values ('OPR-0018', 'family', 2025, 10, 3) on conflict do nothing");
         jdbc.update("delete from leave_type where code not in ('annual', 'sick', 'family', 'maternity', 'paternity', 'unpaid', 'comp-off')");
         jdbc.update("update leave_type set retired_on = null, carries_forward = false, carry_forward_cap = null");
         jdbc.update("delete from notification where id > ?", SEEDED_NOTIFICATIONS);
@@ -126,8 +126,8 @@ class LeaveTypesApiTests {
 
     @Test
     void whatIsLeftCarriesForwardUpToTheCap() throws Exception {
-        // 2025: 30 days, 22 taken, so 8 left.
-        jdbc.update("insert into leave_entitlement (employee_id, type, leave_year, entitled, taken_before) values ('OPR-0018', 'annual', 2025, 30, 22)");
+        // Arjun's last leave year (20 December 2024 to 19 December 2025): 30 days, 22 taken, so 8 left.
+        jdbc.update("insert into leave_entitlement (employee_id, type, leave_year, entitled, taken_before) values ('OPR-0018', 'annual', 2024, 30, 22)");
 
         assertThat(balance(arjun, "annual", "carriedOver")).isEqualTo("0");
         annualCarriesForward(15);
@@ -139,7 +139,7 @@ class LeaveTypesApiTests {
 
     @Test
     void carriedDaysCanBeBookedNextYear() throws Exception {
-        // 12 left in 2026. Without carry forward, 2027 opens with 30 and this is too long. With it, 30 plus 12 is enough.
+        // 12 left this leave year. Without carry forward, the next one (from 20 December) opens with 30 and this is too long. With it, 30 plus 12 is enough.
         String longTrip = "{\"type\":\"annual\",\"from\":\"2027-02-01\",\"to\":\"2027-03-12\",\"reason\":\"Long trip home\"}";
         assertThat(arjun.post("/api/leave/requests", longTrip).statusCode()).isEqualTo(409);
         annualCarriesForward(15);

@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.List;
 import mv.opro.hrms.holiday.CalendarEditor;
+import mv.opro.hrms.leave.LeaveService;
 import mv.opro.hrms.holiday.CompanyEvent;
 import mv.opro.hrms.holiday.Holiday;
 import mv.opro.hrms.session.CurrentUser;
@@ -52,35 +53,46 @@ class HrCalendarController {
     private final HrAccess hr;
     private final CurrentUser currentUser;
     private final CalendarEditor calendar;
+    private final LeaveService leave;
 
-    HrCalendarController(HrAccess hr, CurrentUser currentUser, CalendarEditor calendar) {
+    HrCalendarController(HrAccess hr, CurrentUser currentUser, CalendarEditor calendar, LeaveService leave) {
         this.hr = hr;
         this.currentUser = currentUser;
         this.calendar = calendar;
+        this.leave = leave;
     }
 
     @PostMapping("/api/hr/holidays")
     HolidayResponse addHoliday(@Valid @RequestBody HolidayBody body) {
         hr.require(currentUser.get());
-        return HolidayResponse.of(calendar.addHoliday(body.date(), body.name(), body.isTentative()));
+        Holiday added = calendar.addHoliday(body.date(), body.name(), body.isTentative());
+        leave.recountOver(List.of(added.getHolidayDate()));
+        return HolidayResponse.of(added);
     }
 
     @PostMapping("/api/hr/holidays/start-year")
     List<HolidayResponse> startYear(@Valid @RequestBody StartYearBody body) {
         hr.require(currentUser.get());
-        return calendar.startYear(body.year()).stream().map(HolidayResponse::of).toList();
+        List<Holiday> added = calendar.startYear(body.year());
+        leave.recountOver(added.stream().map(Holiday::getHolidayDate).toList());
+        return added.stream().map(HolidayResponse::of).toList();
     }
 
     @PutMapping("/api/hr/holidays/{id}")
     HolidayResponse updateHoliday(@PathVariable String id, @Valid @RequestBody HolidayBody body) {
         hr.require(currentUser.get());
-        return HolidayResponse.of(calendar.updateHoliday(id, body.date(), body.name(), body.isTentative()));
+        LocalDate before = calendar.dateOf(id);
+        Holiday updated = calendar.updateHoliday(id, body.date(), body.name(), body.isTentative());
+        leave.recountOver(List.of(before, updated.getHolidayDate()));
+        return HolidayResponse.of(updated);
     }
 
     @DeleteMapping("/api/hr/holidays/{id}")
     ResponseEntity<Void> deleteHoliday(@PathVariable String id) {
         hr.require(currentUser.get());
+        LocalDate before = calendar.dateOf(id);
         calendar.deleteHoliday(id);
+        leave.recountOver(List.of(before));
         return ResponseEntity.noContent().build();
     }
 

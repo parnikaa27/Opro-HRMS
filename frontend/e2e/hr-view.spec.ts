@@ -17,7 +17,7 @@ test('HR adjusts a balance, but leaves leave and punches to the HOD', async ({ p
   await page.getByTestId('adjust-reason').fill('Worked the Victory Day event');
   await page.getByRole('button', { name: 'Save adjustment' }).click();
   await expect(page.getByTestId('success-state')).toContainText('Balance adjusted');
-  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(page.getByTestId('adjustment').first()).toContainText('Worked the Victory Day event');
 
   await expect(page.getByTestId('open-record')).toHaveCount(0);

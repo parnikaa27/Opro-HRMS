@@ -32,7 +32,7 @@ test('an employee applies for half a day, sees it pending, then cancels it', asy
   await expect(page.getByTestId('leave-preview')).toContainText('0.5 days requested');
   await page.getByTestId('leave-submit').click();
   await expect(page.getByTestId('success-state')).toContainText('Request submitted');
-  await page.getByTestId('success-state').getByRole('button', { name: 'Done' }).click();
+  await page.getByTestId('success-state').getByRole('button', { name: 'Done', exact: true }).click();
 
   const request = page.getByTestId('leave-request').filter({ hasText: 'morning only' }).last();
   await expect(request).toContainText('Pending');
@@ -40,6 +40,30 @@ test('an employee applies for half a day, sees it pending, then cancels it', asy
   await request.getByTestId('cancel-request').click();
   await request.getByTestId('confirm-cancel').click();
   await expect(request).toContainText('Cancelled');
+});
+
+test('the leave form marks each day, says when they are back, and the HOD sees the flight tick', async ({ page }) => {
+  test.slow();
+  await signInAs(page, 'OPR-0023');
+  await page.goto('/leave');
+  await expect(page.getByTestId('balance-row').first()).toBeVisible();
+
+  await page.getByTestId('apply-leave').click();
+  // Monday 1 to Thursday 4 March 2027, with Friday 5 off.
+  await page.getByTestId('leave-from').fill('2027-03-01');
+  await page.getByTestId('leave-to').fill('2027-03-04');
+  await page.getByTestId('leave-reason').fill('Trip home');
+  await page.getByTestId('leave-flight').check();
+  await expect(page.getByTestId('day-strip')).toContainText('AL');
+  await expect(page.getByTestId('return-date')).toContainText('Back at work on 6 March 2027');
+  await page.getByTestId('leave-submit').click();
+  await page.getByTestId('success-state').getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(page.getByTestId('leave-request').filter({ hasText: '1 Mar to 4 March 2027' }).getByTestId('leave-extras')).toHaveText('Uses flight entitlement');
+
+  await page.getByTestId('sidebar-sign-out').click();
+  await signInAs(page, 'OPR-0004');
+  await page.goto('/team/approvals');
+  await expect(page.getByTestId('leave-row').filter({ hasText: 'Karan Mehta' }).filter({ hasText: '1 Mar' }).getByTestId('leave-extras')).toHaveText('Uses flight entitlement');
 });
 
 test('an employee asks for a punch fix and sees it pending', async ({ page }) => {
@@ -53,7 +77,7 @@ test('an employee asks for a punch fix and sees it pending', async ({ page }) =>
   await page.getByTestId('fix-reason').fill('The reader rejected my finger twice');
   await page.getByTestId('fix-submit').click();
   await expect(page.getByTestId('success-state')).toContainText('Fix requested');
-  await page.getByTestId('success-state').getByRole('button', { name: 'Done' }).click();
+  await page.getByTestId('success-state').getByRole('button', { name: 'Done', exact: true }).click();
 
   await expect(page.getByTestId('correction').filter({ hasText: 'The reader rejected my finger twice' })).toContainText('Pending');
 });

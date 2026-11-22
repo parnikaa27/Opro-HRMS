@@ -25,7 +25,7 @@ export const rulesOn = (schedules, date) =>
 const toIso = (date, minutes) =>
   `${new Date(Date.parse(`${date}T00:00:00Z`) + minutes * 60_000).toISOString().slice(0, 16)}:00+05:00`;
 
-const addDays = (date, offset) => {
+export const addDays = (date, offset) => {
   const day = new Date(`${date}T00:00:00Z`);
   day.setUTCDate(day.getUTCDate() + offset);
   return day.toISOString().slice(0, 10);

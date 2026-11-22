@@ -16,7 +16,7 @@ test('an employee enters bank details, and HR checks them against the full numbe
   await page.getByTestId('bank-account-name').fill('Kavya Menon');
   await page.getByTestId('bank-number').fill('7701 2345 678');
   await page.getByTestId('bank-submit').click();
-  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(page.getByTestId('my-bank')).toContainText('•••• 5678');
   await expect(page.getByTestId('my-bank')).toContainText('Waiting for HR');
 

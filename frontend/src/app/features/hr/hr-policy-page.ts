@@ -11,13 +11,16 @@ import { ExchangeRatesCard } from './exchange-rates-card';
 import { PolicyForm } from './forms/policy-form';
 import { HrApi } from './hr-api';
 import { WorkScheduleCard } from './work-schedule-card';
+import { ExitItemsCard } from '../exit/exit-items-card';
+import { AllowanceTypesCard } from '../allowance/allowance-types-card';
+import { OnboardingTasksCard } from '../onboarding/onboarding-tasks-card';
 
 // Editing means a type is open in the form. "new" means adding one.
 type Editing = LeaveType | 'new' | undefined;
 
 @Component({
   selector: 'app-hr-policy-page',
-  imports: [ApprovalStepsCard, ConfirmButton, Dialog, DocumentTypesCard, ExchangeRatesCard, ListSkeleton, PolicyForm, WorkScheduleCard],
+  imports: [AllowanceTypesCard, ApprovalStepsCard, ConfirmButton, Dialog, DocumentTypesCard, ExchangeRatesCard, ExitItemsCard, ListSkeleton, OnboardingTasksCard, PolicyForm, WorkScheduleCard],
   template: `
     <div class="page-view">
       <div class="page-title">
@@ -51,7 +54,7 @@ type Editing = LeaveType | 'new' | undefined;
                     <td data-label="DAYS PER YEAR">{{ daysLabel(type) }}</td>
                     <td data-label="HALF DAYS">{{ type.allowsHalfDay ? 'Allowed' : 'Full days only' }}</td>
                     <td data-label="GIVEN TO">{{ type.code === compOff ? 'Earned by working days off' : type.isForEveryone ? 'Everyone' : 'People HR picks' }}</td>
-                    <td data-label="AT YEAR END">{{ type.isUnlimited ? '' : type.carriesForward ? 'Carries up to ' + plural(type.carryForwardCap ?? 0, 'day') : 'Lapses' }}</td>
+                    <td data-label="AT YEAR END">{{ type.code === compOff ? 'Taken within 14 days of the day worked' : type.isUnlimited ? 'Nothing to carry' : type.carriesForward ? 'Carries up to ' + plural(type.carryForwardCap ?? 0, 'day') : 'Lapses' }}</td>
                     <td data-label="APPROVED BY">{{ type.code === compOff ? 'Set under Approvals' : type.needsHrApproval ? 'HOD, then HR' : 'HOD' }}</td>
                     <td class="row-actions">
                       @if (type.code !== compOff) {
@@ -73,6 +76,9 @@ type Editing = LeaveType | 'new' | undefined;
       <app-approval-steps-card />
       <app-work-schedule-card />
       <app-document-types-card />
+      <app-exit-items-card />
+      <app-allowance-types-card />
+      <app-onboarding-tasks-card />
       <app-exchange-rates-card />
     </div>
 

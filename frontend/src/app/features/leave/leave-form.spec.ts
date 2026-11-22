@@ -1,8 +1,8 @@
 import { Component, signal } from '@angular/core';
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { LeaveBalance, LeaveType } from '../../models/leave';
-import { fill, pdf, pickFile, setupHttp, settle, text } from '../../../testing/fixtures';
+import { LeaveBalance, LeaveRequest, LeaveType } from '../../models/leave';
+import { click, fill, NOW, pdf, pickFile, setupHttp, settle, text, texts } from '../../../testing/fixtures';
 import { LeaveForm } from './leave-form';
 
 const TYPES: LeaveType[] = [
@@ -15,15 +15,19 @@ const BALANCES: LeaveBalance[] = [
   { type: 'annual', entitled: 30, taken: 27, pending: 0 },
   { type: 'sick', entitled: 30, taken: 0, pending: 0 },
 ];
+const BOOKED: LeaveRequest = {
+  id: 'LR-1', employeeId: 'OPR-0018', type: 'annual', from: '2026-12-06', to: '2026-12-08', days: 3, reason: 'Trip', status: 'approved', appliedOn: '2026-11-01',
+};
 
 @Component({
   imports: [LeaveForm],
-  template: `<app-leave-form [types]="types" [balances]="balances" [holidays]="holidays" (applied)="applied.set(true); missing.set($event)" (cancelled)="cancelled.set(true)" />`,
+  template: `<app-leave-form [types]="types" [balances]="balances" [holidays]="holidays" [requests]="requests" joinedOn="2023-12-20" (applied)="applied.set(true); missing.set($event)" (cancelled)="cancelled.set(true)" />`,
 })
 class Host {
   types = TYPES;
   balances = BALANCES;
   holidays = new Set(['2026-12-01']);
+  requests = [BOOKED];
   readonly applied = signal(false);
   readonly missing = signal<boolean | undefined>(undefined);
   readonly cancelled = signal(false);
@@ -35,6 +39,8 @@ describe('LeaveForm', () => {
   let host: Host;
 
   beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
     http = setupHttp();
     const fixture = TestBed.createComponent(Host);
     await fixture.whenStable();
@@ -42,7 +48,10 @@ describe('LeaveForm', () => {
     host = fixture.componentInstance;
   });
 
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
 
   const errors = () => [...root.querySelectorAll('.field-error')].map((error) => text(error));
   const submitForm = async () => {
@@ -159,7 +168,9 @@ describe('LeaveForm', () => {
     await submitForm();
 
     const request = http.expectOne('/api/leave/requests');
-    expect(request.request.body).toEqual({ type: 'annual', from: '2026-12-03', to: '2026-12-03', days: 0.5, reason: 'Dentist', halfDay: 'first' });
+    expect(request.request.body).toEqual({
+      kind: 'initial', type: 'annual', from: '2026-12-03', to: '2026-12-03', days: 0.5, reason: 'Dentist', halfDay: 'first', usesFlightEntitlement: false, wantsSalaryAdvance: false,
+    });
     request.flush({});
     await settle();
     expect(host.applied()).toBe(true);
@@ -196,5 +207,74 @@ describe('LeaveForm', () => {
     (root.querySelector('.secondary-button') as HTMLButtonElement).click();
 
     expect(host.cancelled()).toBe(true);
+  });
+
+  it('asks a type with notice that far ahead', async () => {
+    host.types = TYPES.map((type) => (type.code === 'annual' ? { ...type, noticeDays: 30 } : type));
+    TestBed.tick();
+    fill(root, 'leave-from', '2026-12-03');
+    fill(root, 'leave-to', '2026-12-03');
+    await submitForm();
+
+    expect(errors()).toContain('Annual leave is asked for 30 days ahead. The earliest it can start is 12 December 2026.');
+  });
+
+  it('keeps a request inside their leave year, which ends the day before they joined', async () => {
+    fill(root, 'leave-type', 'unpaid');
+    fill(root, 'leave-from', '2026-12-17');
+    fill(root, 'leave-to', '2026-12-22');
+    await submitForm();
+
+    expect(errors()).toContain('Your leave year ends on 19 December 2026. Split this into two requests, one each side of it.');
+  });
+
+  it('amends a request: copies it in, gives its days back and names it', async () => {
+    fill(root, 'leave-kind', 'amended');
+    fill(root, 'leave-related', 'LR-1');
+    expect((root.querySelector('[data-testid=leave-to]') as HTMLInputElement).value).toBe('2026-12-08');
+
+    fill(root, 'leave-to', '2026-12-10');
+    fill(root, 'leave-reason', 'Longer trip');
+    click(root, 'leave-flight');
+    await submitForm();
+
+    const body = http.expectOne('/api/leave/requests').request.body;
+    expect([body.kind, body.relatedRequestId, body.days, body.usesFlightEntitlement]).toEqual(['amended', 'LR-1', 5, true]);
+  });
+
+  it('starts an extension straight after the leave it extends, and refuses a gap', async () => {
+    fill(root, 'leave-kind', 'extended');
+    fill(root, 'leave-related', 'LR-1');
+    expect((root.querySelector('[data-testid=leave-from]') as HTMLInputElement).value).toBe('2026-12-09');
+
+    fill(root, 'leave-type', 'unpaid');
+    fill(root, 'leave-from', '2026-12-12');
+    fill(root, 'leave-to', '2026-12-12');
+    await submitForm();
+
+    expect(errors()).toContain('An extension starts straight after the leave it extends, which ends on 8 December 2026.');
+  });
+
+  it('needs the request an amendment changes', async () => {
+    fill(root, 'leave-kind', 'amended');
+    await submitForm();
+
+    expect(errors()).toContain('Pick the request this changes.');
+  });
+
+  it('shows each day with its code and the day they are back', () => {
+    fill(root, 'leave-from', '2026-11-30');
+    fill(root, 'leave-to', '2026-12-04');
+
+    expect(texts(root, 'day-strip')[0].replace(/\s+/g, ' ')).toBe('Mo 30 AL Tu 1 PH We 2 AL Th 3 AL Fr 4 OFF');
+    expect(text(root.querySelector('[data-testid=return-date]') as HTMLElement)).toContain('Back at work on 5 December 2026.');
+  });
+
+  it('allows any day this leave year, but not before it started', async () => {
+    fill(root, 'leave-from', '2025-12-18');
+    fill(root, 'leave-to', '2025-12-18');
+    await submitForm();
+
+    expect(errors()).toContain("Your leave year started on 20 December 2025. Leave before that can't be booked now; ask HR.");
   });
 });

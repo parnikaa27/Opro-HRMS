@@ -51,7 +51,8 @@ class DevSessionController {
 
     @PostMapping("/api/session/login")
     ResponseEntity<Void> login(@Valid @RequestBody LoginRequest body, HttpServletRequest request, HttpServletResponse response) {
-        Employee employee = people.findActive(body.employeeId()).orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Unknown employee"));
+        Employee employee = people.findActive(body.employeeId()).orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST,
+                "Unknown employee, or someone who hasn't started or has left"));
 
         // A fresh session on every sign in, so an old session id can never be reused (session fixation).
         HttpSession old = request.getSession(false);

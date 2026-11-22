@@ -118,7 +118,7 @@ body {
 
   small {
     color: var(--muted);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
   }
 }
@@ -126,6 +126,47 @@ body {
 .search-empty {
   padding: 10px;
   color: var(--muted);
+}
+
+/* HR's ten links and the footer outgrow a 720px laptop screen. The design's fixed sidebar then scrolls on its own,
+   so Sign out is always reachable. */
+.sidebar {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+/* The design has no colleague lookup. A colleague isn't a page to open: their name and role, and their email to write to. */
+.search-results .search-colleague {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 10px;
+  align-items: center;
+  padding: 9px 10px;
+
+  .avatar {
+    grid-row: span 2;
+  }
+
+  span {
+    display: grid;
+    color: var(--ink);
+  }
+
+  a {
+    display: block;
+    padding: 0;
+    color: var(--aqua-dark);
+    font-size: 13px;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+
+    &:hover,
+    &:focus-visible {
+      background: none;
+      text-decoration: underline;
+    }
+  }
 }
 
 /* The design only shows a short list. A full panel scrolls inside itself, so "Mark all as read" stays reachable. */
@@ -232,13 +273,13 @@ dialog.modal {
 
   .field-error {
     margin-top: -2px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
   }
 
   [role='alert'] {
     color: var(--coral);
-    font-size: 11px;
+    font-size: 12px;
   }
 }
 
@@ -267,7 +308,7 @@ dialog.modal {
   align-items: center;
   gap: 10px;
   margin-top: 4px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
 
   .text-link {
@@ -275,7 +316,7 @@ dialog.modal {
     padding: 0;
     border: 0;
     background: none;
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .danger {
@@ -285,7 +326,7 @@ dialog.modal {
 
 .history-row .row-error {
   color: var(--coral);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 /* Calendar chips for things the design's mock calendar doesn't have: holidays and team leave. */
@@ -324,21 +365,21 @@ dialog.modal {
   .overlap {
     margin-top: 3px;
     color: #bc7b12;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 600;
   }
 
   .row-error {
     grid-column: 1 / -1;
     color: var(--coral);
-    font-size: 10px;
+    font-size: 11px;
   }
 }
 
 .request-list .row-error {
   margin: -4px 0 6px;
   color: var(--coral);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 /* A person cell in the team attendance table, which the design shows as a single person's log. */
@@ -364,7 +405,7 @@ dialog.modal {
   .card-text {
     margin: 12px 0 16px;
     color: var(--muted);
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.5;
   }
 }
@@ -464,7 +505,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
   display: block;
   margin-top: 4px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
 }
 
@@ -498,7 +539,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
     display: grid;
     gap: 6px;
     color: #526972;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
   }
 
@@ -511,7 +552,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
     outline: 0;
     color: var(--ink);
     background: white;
-    font-size: 11px;
+    font-size: 12px;
 
     &:focus {
       border-color: var(--aqua);
@@ -527,7 +568,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
   gap: 8px;
   margin: -6px 0 16px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 
   input {
@@ -546,7 +587,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
   border-radius: 10px;
   background: #fff4dd;
   color: #7a5a1c;
-  font-size: 12px;
+  font-size: 13px;
 
   strong {
     color: #5c430f;
@@ -556,7 +597,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
     border: 0;
     background: none;
     padding: 0;
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .row-actions {
@@ -627,6 +668,11 @@ app-work-schedule-card + app-exchange-rates-card > .card {
   color: var(--aqua-dark);
   font-weight: 600;
 
+  /* Missing reads as something to chase, in the design's coral. The words say it too. */
+  &.missing {
+    color: #b44a35;
+  }
+
   .text-link {
     display: inline;
     font-size: inherit;
@@ -635,7 +681,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
 
 .history-row .row-actions label.text-link {
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
 
   &:has(:focus-visible) {
     outline: 2px solid var(--aqua);
@@ -654,7 +700,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
 
   > span {
     color: var(--muted);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
   }
 
@@ -681,7 +727,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
 .punch-error {
   max-inline-size: 260px;
   color: var(--coral);
-  font-size: 11px;
+  font-size: 12px;
   text-align: end;
 }
 
@@ -723,7 +769,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
 
     span {
       color: var(--muted);
-      font-size: 12px;
+      font-size: 13px;
       line-height: 1.45;
     }
   }
@@ -740,7 +786,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
   gap: 7px;
   margin-block: 2px 12px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
 
   app-icon {
     color: var(--aqua-dark);
@@ -761,7 +807,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
     border-radius: 6px;
     background: transparent;
     color: #7a8c94;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
   }
 
@@ -786,7 +832,7 @@ app-work-schedule-card + app-exchange-rates-card > .card {
 
   dt {
     color: var(--muted);
-    font-size: 11px;
+    font-size: 12px;
   }
 
   dd {
@@ -812,11 +858,18 @@ td.row-actions {
   margin-block-end: 18px;
 }
 
+/* A long log opens on a week, with this under it to see more. */
+.show-more {
+  display: block;
+  margin: 12px 20px 16px;
+  font-weight: 700;
+}
+
 /* A short note under a table, inside the same card. */
 .table-note {
   padding: 12px 20px 18px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 /* On phones a table turns into a stack of rows: the row's name across the top, then each value under its column's name,
@@ -855,12 +908,17 @@ td.row-actions {
       display: flex;
     }
 
+    /* A blank cell would leave its heading standing alone. */
+    td[data-label]:empty {
+      display: none;
+    }
+
     td[data-label]::before {
       content: attr(data-label);
       display: block;
       margin-bottom: 2px;
       color: var(--muted);
-      font-size: 9px;
+      font-size: 10px;
       font-weight: 700;
       letter-spacing: 0.06em;
     }
@@ -880,8 +938,8 @@ td.row-actions {
   }
 }
 
-/* Below about 1100px, three balance cards in a row are too narrow for their rings. Two fit; phones already stack them. */
-@media (min-width: 621px) and (max-width: 1100px) {
+/* Two balance rings, then every type in the balance table below, so the design's third card has nothing left to show. Phones already stack them. */
+@media (min-width: 621px) {
   .leave-balance-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -907,7 +965,7 @@ td.row-actions {
   padding: 0;
   border: 0;
   background: none;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 /* The inbox's documents and bank details to check sit under its detail changes, with the design's 19px gap between cards. */
@@ -949,7 +1007,7 @@ app-quota-card > .card {
 .insight-label {
   margin: 16px 0 8px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -968,7 +1026,7 @@ app-quota-card > .card {
     grid-template-columns: minmax(84px, 1fr) minmax(60px, 2fr) auto 34px;
     gap: 10px;
     align-items: center;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   i {
@@ -1010,7 +1068,7 @@ app-quota-card > .card {
 
   dt {
     color: var(--muted);
-    font-size: 10px;
+    font-size: 11px;
   }
 
   dd {
@@ -1028,7 +1086,7 @@ app-quota-card > .card {
   padding: 7px 0;
   border-top: 1px solid var(--line);
   color: inherit;
-  font-size: 11px;
+  font-size: 12px;
   text-decoration: none;
 
   span {
@@ -1057,4 +1115,498 @@ a.insight-row:hover span {
   flex-wrap: wrap;
   gap: 8px;
   margin-inline-start: auto;
+}
+
+/* Performance: goals in a form, a goal on a card, and the running weight total. The design has no performance pages. */
+.goal-fields {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+
+  legend {
+    padding: 0 6px;
+    font-weight: 700;
+
+    small {
+      color: var(--muted);
+      font-weight: 600;
+    }
+  }
+}
+
+.goal-line {
+  display: grid;
+  gap: 2px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+
+  span {
+    color: var(--muted);
+    font-size: 13px;
+  }
+}
+
+.weight-total {
+  margin: 4px 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+
+  &.is-off {
+    color: var(--coral);
+    font-weight: 600;
+  }
+}
+
+.card-note {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* A tick box with its words beside it, inside forms whose labels otherwise stack. */
+label.check-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+
+  input {
+    width: auto;
+    accent-color: var(--aqua);
+  }
+}
+
+.step-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin-bottom: 14px;
+}
+
+/* A line under a table cell's main value, like when compensatory off runs out. */
+.cell-note {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* The leave form's day by day strip, like the grid on the paper leave form. */
+.day-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 10px 0 6px;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    justify-items: center;
+    min-width: 38px;
+    padding: 5px 4px;
+    border-radius: 8px;
+    background: #e3f6f3;
+    color: var(--aqua-dark);
+    font-variant-numeric: tabular-nums;
+  }
+
+  li.off {
+    background: #f1f4f5;
+    color: var(--muted);
+  }
+
+  small {
+    font-size: 10px;
+  }
+
+  strong {
+    font-size: 13px;
+  }
+
+  span {
+    font-size: 11px;
+    font-weight: 700;
+  }
+}
+
+/* A document's files, one link each, with a small cross to take a wrong one off. */
+.document-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+}
+
+.icon-button.small {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+
+/* A small select in a card heading, like HR asking someone for one more document. */
+.inline-select select {
+  width: auto;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: white;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+/* HR's "To collect" card sits under the holiday card, with the same space the design leaves between cards. */
+.to-collect {
+  margin-top: 19px;
+}
+
+/* Exit checklist rows: the item, where it stands, and HR's buttons. */
+.exit-checklist {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+}
+
+.history-row.exit-row {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+/* Why a menu action is waiting, under the disabled button. */
+.menu-note {
+  display: block;
+  padding: 0 12px 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* A one line add form under a list, like HR's exit items. */
+.inline-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+
+  label {
+    flex: 1;
+  }
+}
+
+/* The design has no performance plan. Five numbered sections, each a tile that opens on its own, so the page reads as a
+   short checklist rather than one long form. The number is the order people fill it in. */
+.plan-number {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--aqua-light);
+  color: var(--aqua-dark);
+  font: 800 13px "Manrope Variable";
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-status .plan-send {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 6px;
+
+  small {
+    color: var(--muted);
+    font-size: 13px;
+  }
+}
+
+.plan-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  margin: 16px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plan-tile {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  height: 100%;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: white;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--aqua);
+  }
+
+  strong {
+    font: 700 15px "Manrope Variable";
+  }
+}
+
+.plan-tile-text {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+
+  small {
+    color: var(--muted);
+    font-size: 13px;
+  }
+}
+
+.plan-count {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.plan-action {
+  flex: none;
+  color: var(--aqua-dark);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* The four steps an appraisal goes through, above the HOD's lists, so the tabs make sense at a glance. */
+.plan-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 13px;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+/* On phones the design turns row buttons into icons, but these have words only, so they keep them. The pill sits under
+   the name instead of on top of the button. */
+@media (max-width: 620px) {
+  .all-requests .large-request.plan-row > app-status-pill {
+    grid-row: 2;
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  /* With no detail cells, the buttons are the row's second block, which the design hides on phones. */
+  .all-requests .large-request.plan-row > div.request-actions {
+    display: flex;
+  }
+
+  .plan-row .request-actions.labeled button {
+    width: auto;
+    padding: 0 10px;
+    font-size: 11px;
+  }
+
+  .plan-steps {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The design has no disabled state for its main button. A button that can't be used yet looks it. */
+.primary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* A plan read back, numbered like the person's own page. */
+.plan-view {
+  display: grid;
+  gap: 16px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 4px;
+    font: 700 14px "Manrope Variable";
+  }
+
+  .card-note {
+    margin: 0;
+    padding-left: 38px;
+  }
+}
+
+.plan-entry {
+  display: grid;
+  gap: 2px;
+  padding: 8px 0 8px 38px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+
+  span {
+    color: var(--muted);
+    font-size: 13px;
+  }
+}
+
+/* One entry in a section form, with its cross in the corner to take it off. */
+.entry-fields {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 12px 44px 14px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+
+  legend {
+    padding: 0 6px;
+    font-weight: 700;
+  }
+}
+
+.entry-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: #fde9e4;
+    color: #c2472f;
+  }
+}
+
+/* Files picked for a document, each with its cross, before any is sent. */
+.picked-files {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+
+  li {
+    position: relative;
+    display: grid;
+    gap: 2px;
+    padding: 8px 44px 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+  }
+
+  small {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .entry-remove {
+    top: 50%;
+    translate: 0 -50%;
+  }
+}
+
+.add-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+/* An appraisal waiting for the person to accept it stands out until they do. */
+.card.needs-you {
+  border: 1px solid var(--aqua);
+}
+
+/* Onboarding tasks: the task and who does it by when, then the action or how late it is. */
+.onboarding-checklist {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  li > div {
+    display: grid;
+    gap: 2px;
+  }
+
+  strong {
+    font-size: 13px;
+  }
+
+  span {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  li.done strong {
+    color: var(--muted);
+    text-decoration: line-through;
+  }
+}
+
+/* One joiner on the HOD's onboarding card, separated from the next. */
+.onboarding-joiner + .onboarding-joiner {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.first-day-form {
+  margin-bottom: 8px;
 }

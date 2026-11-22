@@ -18,7 +18,7 @@ const backend = IS_SPRING
       timeout: 240_000,
     }
   : { command: `MOCK_PORT=${MOCK_PORT} npm run mock`, url: `http://localhost:${MOCK_PORT}/api/session/users` };
-const proxyTarget = IS_SPRING ? `USE_MOCK_BACKEND=false SPRING_PORT=${SPRING_PORT}` : `MOCK_PORT=${MOCK_PORT}`;
+const proxyTarget = IS_SPRING ? `SPRING_PORT=${SPRING_PORT}` : `USE_MOCK_BACKEND=true MOCK_PORT=${MOCK_PORT}`;
 
 export default defineConfig({
   testDir: './e2e',

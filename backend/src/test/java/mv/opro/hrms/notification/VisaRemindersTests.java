@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import mv.opro.hrms.ApiTest;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -22,8 +23,15 @@ class VisaRemindersTests {
     @Autowired
     JdbcTemplate jdbc;
 
+    // Uploaded copies remind on their own (DocumentRemindersTests). Pushed far out here so only the record's dates count.
+    @BeforeEach
+    void putCopiesFarAway() {
+        jdbc.update("update employee_document set expires_on = expires_on + interval '100 years' where expires_on is not null");
+    }
+
     @AfterEach
     void cleanUp() {
+        jdbc.update("update employee_document set expires_on = expires_on - interval '100 years' where expires_on is not null");
         jdbc.update("delete from visa_reminder");
         jdbc.update("delete from notification where id > ?", SEEDED_NOTIFICATIONS);
         jdbc.update("update visa set visa_expiry = '2026-12-20', medical_due_on = '2027-04-19', employment_approval_expiry = '2027-12-20' where employee_id = 'OPR-0018'");

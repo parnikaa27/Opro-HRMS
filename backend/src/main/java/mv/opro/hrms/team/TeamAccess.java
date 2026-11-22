@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 // The only gate to team data: a manager reaches their own active direct reports and nobody else,
 // and a super admin reaches everyone. The frontend hides these views, but this is what actually protects the data.
 @Component
-class TeamAccess {
+public class TeamAccess {
 
     private final People people;
 
@@ -18,7 +18,7 @@ class TeamAccess {
         this.people = people;
     }
 
-    List<Employee> reportsOf(Employee manager) {
+    public List<Employee> reportsOf(Employee manager) {
         List<Employee> reports = people.reportsOf(manager.getId());
         if (reports.isEmpty()) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Managers only");
@@ -26,7 +26,7 @@ class TeamAccess {
         return reports;
     }
 
-    List<Employee> everyoneFor(Employee reader) {
+    public List<Employee> everyoneFor(Employee reader) {
         if (!reader.isSuperAdmin()) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Super admins only");
         }

@@ -21,7 +21,7 @@ class EmployeePiecesApiTests {
 
     private static final byte[] JPEG = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0, 16, 'J', 'F', 'I', 'F'};
     private static final byte[] PDF = "%PDF-1.4 sick note".getBytes(StandardCharsets.US_ASCII);
-    private static final int SEEDED_FILES = 31;
+    private static final int SEEDED_FILES = 22;
     private static final int SEEDED_NOTIFICATIONS = 7;
 
     @LocalServerPort
@@ -41,7 +41,7 @@ class EmployeePiecesApiTests {
     void cleanUp() {
         jdbc.update("delete from employee_photo");
         jdbc.update("delete from leave_request where length(id) > 7");
-        jdbc.update("delete from stored_file where id not in (select file_id from employee_document where file_id is not null)");
+        jdbc.update("delete from stored_file where id not in (select file_id from document_file)");
         jdbc.update("delete from change_request where length(id) > 5");
         jdbc.update("delete from notification where id > ?", SEEDED_NOTIFICATIONS);
     }
@@ -60,18 +60,20 @@ class EmployeePiecesApiTests {
     void someoneSeesTheirOwnDocumentsAndDownloadsThem() throws Exception {
         String documents = arjun.get("/api/documents").body();
         assertThat(JsonPath.<List<String>>read(documents, "$[*].name"))
-                .containsExactly("Employment contract", "National ID", "Visa copy", "Health insurance", "Passport copy", "Educational certificates");
+                .containsExactly("Employment contract", "National ID", "Visa copy", "Passport copy", "Educational certificates");
         assertThat(JsonPath.<List<String>>read(documents, "$[?(@.name == 'Visa copy')].expiresOn")).containsExactly("2026-12-20");
         assertThat(JsonPath.<List<String>>read(documents, "$[?(@.name == 'National ID')].status")).containsExactly("missing");
 
-        HttpResponse<byte[]> file = arjun.getBytes("/api/documents/employment-contract/file");
+        String contract = JsonPath.<List<String>>read(documents, "$[?(@.type == 'employment-contract')].files[0].id").getFirst();
+        HttpResponse<byte[]> file = arjun.getBytes("/api/documents/employment-contract/files/" + contract);
 
         assertThat(file.statusCode()).isEqualTo(200);
         assertThat(file.headers().firstValue("Content-Type")).hasValue("application/pdf");
         assertThat(file.headers().firstValue("Content-Disposition")).hasValueSatisfying(value -> assertThat(value).startsWith("attachment"));
         assertThat(file.headers().firstValue("Content-Security-Policy")).hasValue("sandbox");
         assertThat(new String(file.body(), 0, 5, StandardCharsets.US_ASCII)).isEqualTo("%PDF-");
-        assertThat(arjun.getBytes("/api/documents/national-id/file").statusCode()).isEqualTo(404);
+        assertThat(arjun.getBytes("/api/documents/national-id/files/" + contract).statusCode()).isEqualTo(404);
+        assertThat(arjun.getBytes("/api/documents/visa-copy/files/" + contract).statusCode()).isEqualTo(404);
     }
 
     @Test

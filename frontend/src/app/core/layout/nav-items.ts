@@ -16,6 +16,7 @@ export const EMPLOYEE_NAV: readonly NavItem[] = [
   { label: 'Leave', path: '/leave', icon: 'palm' },
   { label: 'Calendar', path: '/calendar', icon: 'calendar' },
   { label: 'Documents', path: '/documents', icon: 'file' },
+  { label: 'Performance', path: '/performance', icon: 'target' },
 ];
 
 export const MANAGER_NAV: readonly NavItem[] = [
@@ -24,6 +25,7 @@ export const MANAGER_NAV: readonly NavItem[] = [
   { label: 'Attendance', path: '/team/attendance', icon: 'fingerprint' },
   { label: 'Leave', path: '/team/approvals', icon: 'userCheck', badge: 'approvals' },
   { label: 'Calendar', path: '/team/calendar', icon: 'calendar' },
+  { label: 'Performance', path: '/team/performance', icon: 'target' },
 ];
 
 export const COMPANY_NAV: readonly NavItem[] = [
@@ -32,6 +34,7 @@ export const COMPANY_NAV: readonly NavItem[] = [
   { label: 'Attendance', path: '/company/attendance', icon: 'fingerprint' },
   { label: 'Leave', path: '/company/leave', icon: 'userCheck', badge: 'approvals' },
   { label: 'Calendar', path: '/company/calendar', icon: 'calendar' },
+  { label: 'Performance', path: '/company/performance', icon: 'target' },
   { label: 'Reports', path: '/company/reports', icon: 'download' },
 ];
 
@@ -43,6 +46,7 @@ export const HR_NAV: readonly NavItem[] = [
   { label: 'Visas', path: '/hr/visas', icon: 'globe' },
   { label: 'Inbox', path: '/hr/inbox', icon: 'mail', badge: 'inbox' },
   { label: 'Announcements', path: '/hr/announcements', icon: 'sparkles' },
+  { label: 'Performance', path: '/hr/performance', icon: 'target' },
   { label: 'Policies', path: '/hr/policy', icon: 'file' },
   { label: 'Reports', path: '/hr/reports', icon: 'download' },
 ];

@@ -12,5 +12,7 @@ interface EmployeeDocumentRepository extends JpaRepository<EmployeeDocument, Str
 
     List<EmployeeDocument> findByStatusOrderByUpdatedOn(String status);
 
+    List<EmployeeDocument> findByStatusAndExpiresOnNotNull(String status);
+
     boolean existsByTypeCode(String typeCode);
 }

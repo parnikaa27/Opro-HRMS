@@ -5,9 +5,8 @@ import { MonthPicker } from '../../shared/ui/month-picker';
 import { maldivesToday, monthOf, yearOf } from '../../shared/utils/date-time';
 import { ExportFormat, exportReport } from '../../shared/utils/export';
 import { valueOr } from '../../shared/utils/resource';
-import { LeaveApi } from '../leave/leave-api';
 import { InsightsApi } from './insights-api';
-import { buildReport, MIX_BY, MixBy, ReportKind, REPORTS } from './reports';
+import { MIX_BY, MixBy, ReportKind, REPORTS } from './reports';
 
 const FORMATS: readonly { value: ExportFormat; label: string }[] = [
   { value: 'csv', label: 'CSV' },
@@ -70,7 +69,7 @@ const YEARS_BACK = 2;
           <p class="row-error" role="alert">That didn't save. Try again in a moment.</p>
         }
 
-        @if (facts.error()) {
+        @if (report.error()) {
           <p class="attendance-off">The reports didn't load. Refresh the page to try again.</p>
         } @else if (!table()) {
           <app-list-skeleton [count]="4" />
@@ -121,25 +120,11 @@ export class ReportsPage {
   protected readonly busy = signal(false);
   protected readonly failed = signal(false);
 
-  protected readonly facts = this.api.insights();
-  private readonly attendance = this.api.attendance(() => (this.kind() === 'attendance' ? this.month() : undefined));
-  private readonly types = inject(LeaveApi).types();
+  protected readonly report = this.api.report(() => ({ kind: this.kind(), year: this.year(), month: this.month(), by: this.mixBy() }));
 
   protected readonly about = computed(() => REPORTS.find(({ kind }) => kind === this.kind())?.about ?? '');
-  protected readonly table = computed(() => {
-    const facts = valueOr(this.facts, undefined);
-    if (!facts || (this.kind() === 'attendance' && this.attendance.isLoading())) {
-      return undefined;
-    }
-    const names = new Map(valueOr(this.types, []).map(({ code, name }) => [code, name]));
-    return buildReport(this.kind(), facts, {
-      year: this.year(),
-      month: this.month(),
-      mixBy: this.mixBy(),
-      attendance: valueOr(this.attendance, []),
-      typeName: (code) => names.get(code) ?? code,
-    });
-  });
+  // Undefined while a report loads, so the table never shows the last report's rows under a new tab.
+  protected readonly table = computed(() => (this.report.isLoading() ? undefined : valueOr(this.report, undefined)));
 
   protected readonly asMixBy = (value: string) => MIX_BY.find((option) => option.value === value)?.value ?? 'department';
 

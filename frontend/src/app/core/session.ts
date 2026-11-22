@@ -37,6 +37,8 @@ export class Session {
 
   async signIn(employeeId: string) {
     await firstValueFrom(this.http.post<void>('/api/session/login', { employeeId }));
+    // Someone else may have been signed in on this page. Load whoever this is now.
+    this.user.set(undefined);
     await this.restore();
     const saved = readPreference(VIEW_KEY, VIEWS, 'mine');
     const isAllowed = (saved === 'team' && this.isManager()) || (saved === 'hr' && this.isHr()) || (saved === 'company' && this.isSuperAdmin());

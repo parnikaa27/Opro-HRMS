@@ -41,6 +41,18 @@ describe('HrOverviewPage', () => {
     http.expectNone((request) => request.url.includes('leave-requests') || request.url.includes('corrections'));
   });
 
+  it('counts everything waiting in the inbox, the same as the sidebar badge', async () => {
+    const root = await render({
+      '/api/hr/documents': [{ type: 'national-id' }],
+      '/api/hr/bank-accounts': [{ employeeId: 'OPR-0018' }],
+      '/api/hr/approvals': { leave: [{ id: 'LR-1' }], corrections: [], homeDays: [], compOffs: [], overtime: [] },
+      '/api/hr/resignations': [{ id: 'RS-1' }],
+      '/api/hr/allowance-grants': [{ id: 'AG-1' }, { id: 'AG-2' }],
+    });
+
+    expect(texts(root, 'stat-inbox')).toEqual(['7']);
+  });
+
   it('lists who is on leave today, visa alerts and holidays to confirm soon', async () => {
     const root = await render();
 

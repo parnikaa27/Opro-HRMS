@@ -19,8 +19,17 @@ interface LeaveRequestRepository extends JpaRepository<LeaveRequest, String> {
 
     @Query("""
             select count(r) > 0 from LeaveRequest r
-            where r.employeeId = :employeeId and r.status in ('pending', 'approved') and r.fromDate <= :to and r.toDate >= :from""")
-    boolean overlaps(String employeeId, LocalDate from, LocalDate to);
+            where r.employeeId = :employeeId and r.status in ('pending', 'approved') and r.fromDate <= :to and r.toDate >= :from and r.id <> :exceptId""")
+    boolean overlaps(String employeeId, LocalDate from, LocalDate to, String exceptId);
+
+    @Query("""
+            select r from LeaveRequest r
+            where r.status in ('pending', 'approved') and r.fromDate <= :day and r.toDate >= :day""")
+    List<LeaveRequest> openOn(LocalDate day);
+
+    List<LeaveRequest> findByEmployeeIdAndTypeAndStatusIn(String employeeId, String type, Collection<String> statuses);
+
+    List<LeaveRequest> findByEmployeeIdAndTypeAndStatusAndFromDateBetween(String employeeId, String type, String status, LocalDate from, LocalDate to);
 
     @Query("""
             select coalesce(sum(r.days), 0) from LeaveRequest r

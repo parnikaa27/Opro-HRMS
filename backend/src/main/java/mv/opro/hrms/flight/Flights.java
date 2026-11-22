@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import mv.opro.hrms.common.ApiException;
@@ -63,7 +64,7 @@ public class Flights {
 
     public Year yearOf(String employeeId) {
         int year = today().getYear();
-        BigDecimal allowance = allowances.findById(new FlightAllowance.Key(employeeId, year)).map(FlightAllowance::getAmountUsd).orElse(null);
+        BigDecimal allowance = allowanceFor(employeeId, year).orElse(null);
         return new Year(year, allowance, total(employeeId, year), claims.findByEmployeeIdOrderByFlightDateDescIdDesc(employeeId));
     }
 
@@ -72,7 +73,7 @@ public class Flights {
     public FlightClaim claim(Employee employee, NewClaim claim) {
         employees.lockById(employee.getId());
         int year = claim.flightDate().getYear();
-        BigDecimal allowance = allowances.findById(new FlightAllowance.Key(employee.getId(), year)).map(FlightAllowance::getAmountUsd)
+        BigDecimal allowance = allowanceFor(employee.getId(), year)
                 .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "You don't have a flight allowance for " + year + ". Ask HR about it."));
         BigDecimal usd = toUsd(claim.amount(), claim.currency());
         BigDecimal left = allowance.subtract(total(employee.getId(), year));
@@ -113,6 +114,11 @@ public class Flights {
 
     public UUID receiptOfAnyone(String id) {
         return receipt(claims.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Claim not found")));
+    }
+
+    // A year HR hasn't set yet carries the last amount they set, so nobody has to set everyone again each January.
+    private Optional<BigDecimal> allowanceFor(String employeeId, int year) {
+        return allowances.findFirstByEmployeeIdAndAllowanceYearLessThanEqualOrderByAllowanceYearDesc(employeeId, year).map(FlightAllowance::getAmountUsd);
     }
 
     // Never below what's already claimed for that year.
