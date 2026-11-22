@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, linkedSignal } from '@angular/core';
 import { StatusPill, Tone } from '../../shared/ui/status-pill';
 
 export interface AttendanceRow {
@@ -29,7 +29,7 @@ export interface AttendanceRow {
           </tr>
         </thead>
         <tbody>
-          @for (row of rows(); track row.date) {
+          @for (row of shown(); track row.date) {
             <tr data-testid="attendance-row">
               <td>
                 <strong>{{ row.day }}</strong>
@@ -56,9 +56,30 @@ export interface AttendanceRow {
         </tbody>
       </table>
     </div>
+    @if (hidden() > 0) {
+      <button type="button" class="text-link show-more" (click)="showMore()" data-testid="show-more-days">Show {{ nextCount() }} more {{ nextCount() === 1 ? 'day' : 'days' }}</button>
+    } @else if (pageSize() && rows().length > (pageSize() ?? 0)) {
+      <button type="button" class="text-link show-more" (click)="showFewer()" data-testid="show-fewer-days">Show fewer</button>
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AttendanceTable {
   readonly rows = input.required<readonly AttendanceRow[]>();
+  // When set, the log opens on this many days and grows by as many each time, so the sections below stay in reach.
+  readonly pageSize = input<number>();
+
+  // Back to the first page whenever the month changes.
+  private readonly limit = linkedSignal({ source: this.rows, computation: () => this.pageSize() ?? Infinity });
+  protected readonly shown = computed(() => this.rows().slice(0, this.limit()));
+  protected readonly hidden = computed(() => this.rows().length - this.shown().length);
+  protected readonly nextCount = computed(() => Math.min(this.hidden(), this.pageSize() ?? 0));
+
+  protected showMore() {
+    this.limit.update((limit) => limit + (this.pageSize() ?? 0));
+  }
+
+  protected showFewer() {
+    this.limit.set(this.pageSize() ?? Infinity);
+  }
 }

@@ -858,6 +858,13 @@ td.row-actions {
   margin-block-end: 18px;
 }
 
+/* A long log opens on a week, with this under it to see more. */
+.show-more {
+  display: block;
+  margin: 12px 20px 16px;
+  font-weight: 700;
+}
+
 /* A short note under a table, inside the same card. */
 .table-note {
   padding: 12px 20px 18px;
@@ -1303,26 +1310,254 @@ label.check-label {
   }
 }
 
-/* A self review read back: each part's name over what they wrote. */
-.self-review {
+/* The design has no performance plan. Five numbered sections, each a tile that opens on its own, so the page reads as a
+   short checklist rather than one long form. The number is the order people fill it in. */
+.plan-number {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--aqua-light);
+  color: var(--aqua-dark);
+  font: 800 13px "Manrope Variable";
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-status .plan-send {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 6px;
+
+  small {
+    color: var(--muted);
+    font-size: 13px;
+  }
+}
+
+.plan-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  margin: 16px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plan-tile {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  height: 100%;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: white;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--aqua);
+  }
+
+  strong {
+    font: 700 15px "Manrope Variable";
+  }
+}
+
+.plan-tile-text {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+
+  small {
+    color: var(--muted);
+    font-size: 13px;
+  }
+}
+
+.plan-count {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.plan-action {
+  flex: none;
+  color: var(--aqua-dark);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* The four steps an appraisal goes through, above the HOD's lists, so the tabs make sense at a glance. */
+.plan-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 13px;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+/* On phones the design turns row buttons into icons, but these have words only, so they keep them. The pill sits under
+   the name instead of on top of the button. */
+@media (max-width: 620px) {
+  .all-requests .large-request.plan-row > app-status-pill {
+    grid-row: 2;
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  /* With no detail cells, the buttons are the row's second block, which the design hides on phones. */
+  .all-requests .large-request.plan-row > div.request-actions {
+    display: flex;
+  }
+
+  .plan-row .request-actions.labeled button {
+    width: auto;
+    padding: 0 10px;
+    font-size: 11px;
+  }
+
+  .plan-steps {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The design has no disabled state for its main button. A button that can't be used yet looks it. */
+.primary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* A plan read back, numbered like the person's own page. */
+.plan-view {
+  display: grid;
+  gap: 16px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 4px;
+    font: 700 14px "Manrope Variable";
+  }
+
+  .card-note {
+    margin: 0;
+    padding-left: 38px;
+  }
+}
+
+.plan-entry {
+  display: grid;
+  gap: 2px;
+  padding: 8px 0 8px 38px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+
+  span {
+    color: var(--muted);
+    font-size: 13px;
+  }
+}
+
+/* One entry in a section form, with its cross in the corner to take it off. */
+.entry-fields {
+  position: relative;
   display: grid;
   gap: 10px;
-  margin: 8px 0 0;
+  margin: 0 0 12px;
+  padding: 12px 44px 14px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
 
-  dt {
-    color: var(--muted);
-    font-size: 12px;
+  legend {
+    padding: 0 6px;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+  }
+}
+
+.entry-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: #fde9e4;
+    color: #c2472f;
+  }
+}
+
+/* Files picked for a document, each with its cross, before any is sent. */
+.picked-files {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+
+  li {
+    position: relative;
+    display: grid;
+    gap: 2px;
+    padding: 8px 44px 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 14px;
+    overflow-wrap: anywhere;
   }
 
-  dd {
-    margin: 2px 0 0;
-    color: var(--ink);
+  small {
+    color: var(--muted);
     font-size: 13px;
-    white-space: pre-line;
   }
+
+  .entry-remove {
+    top: 50%;
+    translate: 0 -50%;
+  }
+}
+
+.add-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
 }
 
 /* An appraisal waiting for the person to accept it stands out until they do. */

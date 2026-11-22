@@ -43,6 +43,8 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
   leaving: { heading: 'Last day saved', body: 'They keep access until then. Any leave booked after that day is cancelled.' },
 };
 
+const LOG_DAYS = 7;
+
 @Component({
   selector: 'app-hr-person-page',
   imports: [AdjustBalanceForm, AttendanceTable, ConfirmButton, Dialog, EmployeeCard, ExitCard, HrAllowancesCard, HrDocumentsCard, HrFlightCard, HrOnboardingCard, HrRecordCard, Icon, LeaveBalances, LeaveDaysForm, LeaveRequests, LeavingForm, ListSkeleton, PersonMenu, PhotoForm, RouterLink, SuccessState, VisaCard, VisaForm],
@@ -91,7 +93,7 @@ const SUCCESS: Record<Action, { heading: string; body: string }> = {
           <div class="main-column">
             <section class="card full-table">
               <div class="card-heading"><div><span class="eyebrow">THIS MONTH</span><h2>Attendance log</h2></div></div>
-              <app-attendance-table [rows]="rows()" />
+              <app-attendance-table [rows]="rows()" [pageSize]="logDays" />
             </section>
             <app-leave-requests [requests]="requests()" [types]="typeList()" [isReadOnly]="true" heading="Their leave requests" certificatePath="/api/hr/leave-requests" />
             <section class="card request-history">
@@ -189,6 +191,8 @@ export class HrPersonPage {
   });
   protected readonly typeList = computed(() => valueOr(this.types, []));
   protected readonly isTypesLoading = computed(() => this.types.isLoading());
+  // A week at a time, so the rest of the page isn't pushed far below a month of days.
+  protected readonly logDays = LOG_DAYS;
   protected readonly rows = computed(() =>
     valueOr(this.attendance, [])
       .filter((day) => day.date <= this.today && day.status !== 'weekend')

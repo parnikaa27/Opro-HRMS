@@ -85,7 +85,7 @@ describe('app shell', () => {
       '/api/company/comp-offs?status=pending': [],
     });
 
-    expect(navLabels(page)).toEqual(['People', 'Dashboard', 'Attendance', 'Leave 3', 'Calendar', 'Reports']);
+    expect(navLabels(page)).toEqual(['People', 'Dashboard', 'Attendance', 'Leave 3', 'Calendar', 'Performance', 'Reports']);
     expect([...page.querySelectorAll('.role-switch button')].map((button) => text(button))).toEqual(['Employee', 'HOD', 'Super admin']);
     expect(page.querySelector('[data-testid=view-company]')?.getAttribute('aria-pressed')).toBe('true');
   });

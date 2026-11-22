@@ -34,10 +34,10 @@
       "port": 8080
     },
     {
-      "name": "frontend-on-spring",
+      "name": "frontend-on-mock",
       "runtimeExecutable": "env",
       "runtimeArgs": [
-        "USE_MOCK_BACKEND=false",
+        "USE_MOCK_BACKEND=true",
         "npm",
         "--prefix",
         "frontend",

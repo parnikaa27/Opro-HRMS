@@ -22,9 +22,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// Probation reviews and appraisals. HR opens a cycle; each person writes their goals, which their HOD and then HR
-// approve, and a self review. Then the HOD appraises them, the only rater, and the person accepts the rating.
-// Callers check the person is the HOD's report.
+// Probation reviews and appraisals. HR opens a cycle; each person writes a plan (goals, certifications, learning,
+// accomplishments and strengths), which their HOD and then HR approve. Then the HOD appraises them, the only rater, and
+// the person accepts the rating. Callers check the person is the HOD's report, or that a super admin is stepping in.
 @Service
 @Transactional(readOnly = true)
 public class Performance {
@@ -32,6 +32,11 @@ public class Performance {
     public record Review(String outcome, LocalDate extendedTo, String comments) {}
 
     public record GoalPlan(String title, String measure, int weight) {}
+
+    // targetOn is for certifications only.
+    public record EntryPlan(String title, String details, LocalDate targetOn) {}
+
+    static final String CERTIFICATION = "certification";
 
     public record GoalRating(String goalId, int rating, String comment) {}
 
@@ -46,18 +51,21 @@ public class Performance {
     private final GoalRepository goals;
     private final AppraisalRepository appraisals;
     private final AppraisalFormRepository forms;
+    private final PerformanceEntryRepository entries;
     private final EmployeeRepository employees;
     private final People people;
     private final Notifications notifications;
     private final Clock clock;
 
     Performance(ProbationReviewRepository reviews, AppraisalCycleRepository cycles, GoalRepository goals, AppraisalRepository appraisals,
-            AppraisalFormRepository forms, EmployeeRepository employees, People people, Notifications notifications, Clock clock) {
+            AppraisalFormRepository forms, PerformanceEntryRepository entries, EmployeeRepository employees, People people, Notifications notifications,
+            Clock clock) {
         this.reviews = reviews;
         this.cycles = cycles;
         this.goals = goals;
         this.appraisals = appraisals;
         this.forms = forms;
+        this.entries = entries;
         this.employees = employees;
         this.people = people;
         this.notifications = notifications;
@@ -90,10 +98,10 @@ public class Performance {
         String due = cycle.getName() + ", due " + Wording.date(dueOn, today()) + ".";
         people.active().forEach(person -> {
             if (person.getManagerId() != null) {
-                notifications.tell(person.getId(), Notification.Kind.PERFORMANCE, "HR opened " + due + " Write your goals and KPIs on Performance.");
+                notifications.tell(person.getId(), Notification.Kind.PERFORMANCE, "HR opened " + due + " Write your plan on Performance and send it to your HOD.");
             }
             if (!people.reportsOf(person.getId()).isEmpty()) {
-                notifications.tell(person.getId(), Notification.Kind.PERFORMANCE, "HR opened " + due + " Approve your team's goals, then appraise them.");
+                notifications.tell(person.getId(), Notification.Kind.PERFORMANCE, "HR opened " + due + " Approve your team's plans, then appraise them.");
             }
         });
         return cycle;
@@ -132,6 +140,11 @@ public class Performance {
         return cycles.findById(id);
     }
 
+    public Map<String, List<PerformanceEntry>> entriesOf(String cycleId, Collection<String> employeeIds) {
+        return entries.findByCycleIdAndEmployeeIdInOrderBySectionAscSortOrderAsc(cycleId, employeeIds).stream()
+                .collect(Collectors.groupingBy(PerformanceEntry::getEmployeeId));
+    }
+
     public Optional<AppraisalForm> formOf(String cycleId, String employeeId) {
         return forms.findByCycleIdAndEmployeeId(cycleId, employeeId);
     }
@@ -144,10 +157,7 @@ public class Performance {
     @Transactional
     public List<Goal> writeGoals(Employee me, List<GoalPlan> plans) {
         AppraisalCycle cycle = requireOpen();
-        AppraisalForm form = formFor(cycle, me);
-        if (!form.canEditGoals()) {
-            throw new ApiException(HttpStatus.CONFLICT, "Your goals are with your HOD or HR, or already approved.");
-        }
+        requireEditable(formFor(cycle, me));
         if (plans.stream().mapToInt(GoalPlan::weight).sum() != FULL_WEIGHT) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Goal weights need to add up to 100%.");
         }
@@ -159,31 +169,43 @@ public class Performance {
                 .toList());
     }
 
-    // Sends their goals to their HOD.
+    // Saving a section replaces its entries. The plan stays a draft until sent.
     @Transactional
-    public AppraisalForm submitGoals(Employee me) {
+    public List<PerformanceEntry> writeEntries(Employee me, String section, List<EntryPlan> plans) {
         AppraisalCycle cycle = requireOpen();
-        AppraisalForm form = formFor(cycle, me);
-        if (!form.canEditGoals()) {
-            throw new ApiException(HttpStatus.CONFLICT, "Your goals are with your HOD or HR, or already approved.");
-        }
+        requireEditable(formFor(cycle, me));
+        entries.deleteByCycleIdAndEmployeeIdAndSection(cycle.getId(), me.getId(), section);
+        entries.flush();
+        return entries.saveAll(IntStream.range(0, plans.size())
+                .mapToObj(index -> new PerformanceEntry(Ids.next("PE"), cycle.getId(), me.getId(), section, plans.get(index).title().strip(),
+                        blankToNull(plans.get(index).details()), CERTIFICATION.equals(section) ? plans.get(index).targetOn() : null, index))
+                .toList());
+    }
+
+    // Sends the whole plan to their HOD. Goals are needed; the other sections can be empty.
+    @Transactional
+    public AppraisalForm submit(Employee me) {
+        AppraisalCycle cycle = requireOpen();
+        AppraisalForm form = requireEditable(formFor(cycle, me));
         if (goalsOf(cycle.getId(), me.getId()).isEmpty()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Write at least one goal first.");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Add at least one goal first.");
         }
-        form.submitGoals(today());
-        if (me.getManagerId() != null) {
-            notifications.tell(me.getManagerId(), Notification.Kind.PERFORMANCE, me.getFullName() + " sent their goals for " + cycle.getName()
-                    + ". Approve them or send them back from Performance.");
-        }
+        form.submit(today());
+        notifications.tell(me.getManagerId(), Notification.Kind.PERFORMANCE, me.getFullName() + " sent their plan for " + cycle.getName()
+                + ". Approve it or send it back from Performance.");
         return form;
     }
 
-    // The HOD's step. Approving passes the goals to HR, unless the HOD is HR. Sending them back needs a note.
+    // The HOD's step, or a super admin's standing in for them. Approving passes the plan to HR, unless they are HR.
+    // Sending it back needs a note.
     @Transactional
-    public AppraisalForm decideGoalsAsHod(Employee hod, String employeeId, boolean isApproved, String note) {
+    public AppraisalForm decideAsHod(Employee hod, String employeeId, boolean isApproved, String note) {
         AppraisalCycle cycle = requireOpen();
-        AppraisalForm form = formOf(cycle.getId(), employeeId).filter(found -> AppraisalForm.SUBMITTED.equals(found.getGoalsStatus()))
-                .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "Their goals aren't waiting for you."));
+        if (hod.getId().equals(employeeId)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Your own plan goes to your HOD.");
+        }
+        AppraisalForm form = formOf(cycle.getId(), employeeId).filter(found -> AppraisalForm.SUBMITTED.equals(found.getStatus()))
+                .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "Their plan isn't waiting for an HOD."));
         if (!isApproved) {
             return sendBack(hod, form, cycle, note);
         }
@@ -192,35 +214,23 @@ public class Performance {
         }
         form.approveForHod(hod.getId(), today());
         String name = people.namesOf(List.of(employeeId)).get(employeeId);
-        notifications.tell(employeeId, Notification.Kind.PERFORMANCE, hod.getFullName() + " approved your goals for " + cycle.getName() + ". They now wait for HR.");
+        notifications.tell(employeeId, Notification.Kind.PERFORMANCE, hod.getFullName() + " approved your plan for " + cycle.getName() + ". It now waits for HR.");
         people.active().stream().filter(Employee::isHr).filter(hr -> !hr.getId().equals(employeeId))
-                .forEach(hr -> notifications.tell(hr.getId(), Notification.Kind.PERFORMANCE, hod.getFullName() + " approved " + name + "'s goals for "
-                        + cycle.getName() + ". Approve them from Performance."));
+                .forEach(hr -> notifications.tell(hr.getId(), Notification.Kind.PERFORMANCE, hod.getFullName() + " approved " + name + "'s plan for "
+                        + cycle.getName() + ". Approve it from Performance."));
         return form;
     }
 
-    // HR's step, never on their own goals.
+    // HR's step, never on their own plan.
     @Transactional
-    public AppraisalForm decideGoalsAsHr(Employee hr, String employeeId, boolean isApproved, String note) {
+    public AppraisalForm decideAsHr(Employee hr, String employeeId, boolean isApproved, String note) {
         AppraisalCycle cycle = requireOpen();
         if (hr.getId().equals(employeeId)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "Your own goals go to another HR person.");
+            throw new ApiException(HttpStatus.FORBIDDEN, "Your own plan goes to another HR person.");
         }
-        AppraisalForm form = formOf(cycle.getId(), employeeId).filter(found -> AppraisalForm.HOD_APPROVED.equals(found.getGoalsStatus()))
-                .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "Their goals aren't waiting for HR."));
+        AppraisalForm form = formOf(cycle.getId(), employeeId).filter(found -> AppraisalForm.HOD_APPROVED.equals(found.getStatus()))
+                .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "Their plan isn't waiting for HR."));
         return isApproved ? approve(hr, form, cycle) : sendBack(hr, form, cycle, note);
-    }
-
-    // Their accomplishments, strengths, learning and plan for certifications, which the HOD reads and comments on.
-    // Theirs to change until they're appraised.
-    @Transactional
-    public AppraisalForm writeSelfReview(Employee me, AppraisalForm.SelfReview review) {
-        AppraisalCycle cycle = requireOpen();
-        refuseIfAppraised(cycle, me.getId());
-        AppraisalForm form = formFor(cycle, me);
-        form.review(new AppraisalForm.SelfReview(blankToNull(review.accomplishments()), blankToNull(review.strengths()), blankToNull(review.learning()),
-                blankToNull(review.certifications())), today());
-        return form;
     }
 
     private AppraisalForm formFor(AppraisalCycle cycle, Employee me) {
@@ -230,9 +240,16 @@ public class Performance {
         return formOf(cycle.getId(), me.getId()).orElseGet(() -> forms.save(new AppraisalForm(Ids.next("AF"), cycle.getId(), me.getId())));
     }
 
+    private static AppraisalForm requireEditable(AppraisalForm form) {
+        if (!form.canEdit()) {
+            throw new ApiException(HttpStatus.CONFLICT, "Your plan is with your HOD or HR, or already approved.");
+        }
+        return form;
+    }
+
     private AppraisalForm approve(Employee by, AppraisalForm form, AppraisalCycle cycle) {
-        form.decideGoals(true, by.getId(), today(), null);
-        notifications.tell(form.getEmployeeId(), Notification.Kind.PERFORMANCE, "Your goals for " + cycle.getName() + " are approved.");
+        form.decide(true, by.getId(), today(), null);
+        notifications.tell(form.getEmployeeId(), Notification.Kind.PERFORMANCE, "Your plan for " + cycle.getName() + " is approved.");
         return form;
     }
 
@@ -241,19 +258,22 @@ public class Performance {
         if (clean == null) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Say what to change, so they can fix it.");
         }
-        form.decideGoals(false, by.getId(), today(), clean);
-        notifications.tell(form.getEmployeeId(), Notification.Kind.PERFORMANCE, by.getFullName() + " sent back your goals for " + cycle.getName() + ": "
-                + Wording.sentence(clean) + " Change them on Performance and send them again.");
+        form.decide(false, by.getId(), today(), clean);
+        notifications.tell(form.getEmployeeId(), Notification.Kind.PERFORMANCE, by.getFullName() + " sent back your plan for " + cycle.getName() + ": "
+                + Wording.sentence(clean) + " Change it on Performance and send it again.");
         return form;
     }
 
-    // Final once saved, once their goals are approved. Every goal gets a rating; the HOD can comment on their self review.
+    // Final once saved, once their plan is approved. Every goal gets a rating; the HOD can comment on what they wrote.
     @Transactional
     public Appraisal appraise(Employee hod, String employeeId, Rating rating) {
         AppraisalCycle cycle = requireOpen();
+        if (hod.getId().equals(employeeId)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Your own appraisal is your HOD's.");
+        }
         refuseIfAppraised(cycle, employeeId);
-        if (!formOf(cycle.getId(), employeeId).map(form -> AppraisalForm.APPROVED.equals(form.getGoalsStatus())).orElse(false)) {
-            throw new ApiException(HttpStatus.CONFLICT, "Their goals need approving by you and HR first.");
+        if (!formOf(cycle.getId(), employeeId).map(form -> AppraisalForm.APPROVED.equals(form.getStatus())).orElse(false)) {
+            throw new ApiException(HttpStatus.CONFLICT, "Their plan needs approving by their HOD and HR first.");
         }
         Map<String, GoalRating> given = rating.goals().stream().collect(Collectors.toMap(GoalRating::goalId, Function.identity(), (first, second) -> second));
         List<Goal> theirs = goalsOf(cycle.getId(), employeeId);

@@ -16,6 +16,8 @@ import { EmployeeCard } from '../profile/employee-card';
 import { TeamApi, ViewScope } from './team-api';
 import { TeamGrantsCard } from '../allowance/team-grants-card';
 
+const LOG_DAYS = 7;
+
 @Component({
   selector: 'app-team-member-page',
   imports: [AttendanceTable, EmployeeCard, Icon, LeaveBalances, LeaveRequests, ListSkeleton, MonthPicker, RouterLink, TeamGrantsCard, VisaCard],
@@ -56,7 +58,7 @@ import { TeamGrantsCard } from '../allowance/team-grants-card';
                 </div>
                 <app-month-picker [(month)]="month" [latest]="currentMonth" />
               </div>
-              <app-attendance-table [rows]="rows()" />
+              <app-attendance-table [rows]="rows()" [pageSize]="logDays" />
             </section>
             <app-leave-requests [requests]="requests()" [types]="typeList()" [isReadOnly]="true" heading="Their leave requests" />
             @if (scope() === 'team') {
@@ -96,6 +98,8 @@ export class TeamMemberPage {
     return error instanceof HttpErrorResponse && error.status === HttpStatusCode.NotFound;
   });
   protected readonly typeList = computed(() => valueOr(this.types, []));
+  // A week at a time, so the rest of the page isn't pushed far below a month of days.
+  protected readonly logDays = LOG_DAYS;
   protected readonly rows = computed(() =>
     valueOr(this.attendance, [])
       .filter((day) => day.employeeId === this.employeeId() && day.date <= this.today && day.status !== 'weekend')

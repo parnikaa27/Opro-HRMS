@@ -5,7 +5,7 @@ import { FieldError } from '../../../shared/ui/field-error';
 import { ModalHeading } from '../../../shared/ui/modal-heading';
 import { formatFullDate } from '../../../shared/utils/date-time';
 import { serverReason } from '../../../shared/utils/form-submit';
-import { PerformanceApi } from '../performance-api';
+import { PerformanceApi, PerformanceScope } from '../performance-api';
 
 const FAILED = "That didn't save. Try again in a moment.";
 
@@ -47,6 +47,7 @@ export class ProbationReviewForm {
   readonly employeeId = input.required<string>();
   readonly name = input.required<string>();
   readonly endsOn = input.required<string>();
+  readonly scope = input<PerformanceScope>('team');
   readonly saved = output();
   readonly cancelled = output();
 
@@ -64,7 +65,7 @@ export class ProbationReviewForm {
     return submit(this.reviewForm, async () => {
       const { outcome, extendedTo, comments } = this.draft();
       try {
-        await this.api.reviewProbation(this.employeeId(), { outcome, ...(outcome === 'extended' && { extendedTo }), comments: comments.trim() });
+        await this.api.reviewProbation(this.employeeId(), { outcome, ...(outcome === 'extended' && { extendedTo }), comments: comments.trim() }, this.scope());
         this.saved.emit();
       } catch (error) {
         console.error('Saving a probation review failed', error);

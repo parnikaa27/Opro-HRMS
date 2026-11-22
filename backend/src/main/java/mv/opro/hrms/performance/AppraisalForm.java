@@ -4,7 +4,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import java.time.LocalDate;
 
-// One person's part of a cycle: the goals they write, approved by their HOD and then HR, and their self review.
+// One person's plan for a cycle: their goals and the four other sections, sent together to their HOD and then HR.
 @Entity
 public class AppraisalForm {
 
@@ -14,26 +14,18 @@ public class AppraisalForm {
     static final String APPROVED = "approved";
     static final String REJECTED = "rejected";
 
-    // What the person writes about their year. Each part is optional.
-    public record SelfReview(String accomplishments, String strengths, String learning, String certifications) {}
-
     @Id
     private String id;
 
     private String cycleId;
     private String employeeId;
-    private String goalsStatus;
-    private LocalDate goalsSubmittedOn;
+    private String status;
+    private LocalDate submittedOn;
     private String hodApprovedBy;
     private LocalDate hodApprovedOn;
-    private String goalsDecidedBy;
-    private LocalDate goalsDecidedOn;
-    private String goalsNote;
-    private String accomplishments;
-    private String strengths;
-    private String learning;
-    private String certifications;
-    private LocalDate selfReviewedOn;
+    private String decidedBy;
+    private LocalDate decidedOn;
+    private String note;
 
     protected AppraisalForm() {}
 
@@ -41,55 +33,47 @@ public class AppraisalForm {
         this.id = id;
         this.cycleId = cycleId;
         this.employeeId = employeeId;
-        this.goalsStatus = DRAFT;
+        this.status = DRAFT;
     }
 
     // Draft, or sent back: theirs to change.
-    boolean canEditGoals() {
-        return DRAFT.equals(goalsStatus) || REJECTED.equals(goalsStatus);
+    boolean canEdit() {
+        return DRAFT.equals(status) || REJECTED.equals(status);
     }
 
-    void submitGoals(LocalDate on) {
-        goalsStatus = SUBMITTED;
-        goalsSubmittedOn = on;
+    void submit(LocalDate on) {
+        status = SUBMITTED;
+        submittedOn = on;
         hodApprovedBy = null;
         hodApprovedOn = null;
-        goalsDecidedBy = null;
-        goalsDecidedOn = null;
-        goalsNote = null;
+        decidedBy = null;
+        decidedOn = null;
+        note = null;
     }
 
     void approveForHod(String by, LocalDate on) {
-        goalsStatus = HOD_APPROVED;
+        status = HOD_APPROVED;
         hodApprovedBy = by;
         hodApprovedOn = on;
     }
 
-    void decideGoals(boolean isApproved, String by, LocalDate on, String note) {
-        goalsStatus = isApproved ? APPROVED : REJECTED;
-        goalsDecidedBy = by;
-        goalsDecidedOn = on;
-        goalsNote = note;
-    }
-
-    void review(SelfReview review, LocalDate on) {
-        accomplishments = review.accomplishments();
-        strengths = review.strengths();
-        learning = review.learning();
-        certifications = review.certifications();
-        selfReviewedOn = on;
+    void decide(boolean isApproved, String by, LocalDate on, String reason) {
+        status = isApproved ? APPROVED : REJECTED;
+        decidedBy = by;
+        decidedOn = on;
+        note = reason;
     }
 
     public String getEmployeeId() {
         return employeeId;
     }
 
-    public String getGoalsStatus() {
-        return goalsStatus;
+    public String getStatus() {
+        return status;
     }
 
-    public LocalDate getGoalsSubmittedOn() {
-        return goalsSubmittedOn;
+    public LocalDate getSubmittedOn() {
+        return submittedOn;
     }
 
     public String getHodApprovedBy() {
@@ -100,23 +84,15 @@ public class AppraisalForm {
         return hodApprovedOn;
     }
 
-    public String getGoalsDecidedBy() {
-        return goalsDecidedBy;
+    public String getDecidedBy() {
+        return decidedBy;
     }
 
-    public LocalDate getGoalsDecidedOn() {
-        return goalsDecidedOn;
+    public LocalDate getDecidedOn() {
+        return decidedOn;
     }
 
-    public String getGoalsNote() {
-        return goalsNote;
-    }
-
-    public SelfReview getSelfReview() {
-        return new SelfReview(accomplishments, strengths, learning, certifications);
-    }
-
-    public LocalDate getSelfReviewedOn() {
-        return selfReviewedOn;
+    public String getNote() {
+        return note;
     }
 }

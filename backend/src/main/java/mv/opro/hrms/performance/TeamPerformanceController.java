@@ -30,15 +30,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Team performance", description = "An HOD's direct reports in the open appraisal cycle: approve the goals they write, appraise them, and review probation before it ends.")
+@Tag(name = "Team performance", description = "An HOD's direct reports in the open appraisal cycle, or everyone for a super admin standing in for an HOD: approve the plans they send, appraise them, and review probation before it ends.")
 @RestController
 class TeamPerformanceController {
 
     private static final int LOWEST = 1;
     private static final int HIGHEST = 5;
+    private static final String COMPANY = "company";
 
-    record Member(String employeeId, String fullName, String designation, LocalDate probationEndsOn, FormResponse form, List<GoalResponse> goals,
-            AppraisalResponse appraisal) {}
+    record Member(String employeeId, String fullName, String designation, String managerName, LocalDate probationEndsOn, FormResponse form,
+            List<GoalResponse> goals, List<EntryResponse> entries, AppraisalResponse appraisal) {}
 
     record Team(CycleResponse cycle, List<Member> people) {}
 
@@ -65,40 +66,43 @@ class TeamPerformanceController {
         this.people = people;
     }
 
-    @GetMapping("/api/team/performance")
-    Team team() {
+    @GetMapping("/api/{scope:team|company}/performance")
+    Team team(@PathVariable String scope) {
         Employee me = currentUser.get();
-        List<Employee> reports = access.reportsOf(me);
+        // A super admin sees everyone who has an HOD, but never themselves.
+        List<Employee> reports = inScope(scope, me).stream().filter(person -> person.getManagerId() != null && !person.getId().equals(me.getId())).toList();
+        Map<String, String> managers = people.namesOf(reports.stream().map(Employee::getManagerId).collect(Collectors.toSet()));
         AppraisalCycle cycle = performance.openCycle().orElse(null);
         if (cycle == null) {
-            return new Team(null, reports.stream().map(person -> member(person, null, List.of(), null)).toList());
+            return new Team(null, reports.stream().map(person -> member(person, managers, null, List.of(), List.of(), null)).toList());
         }
         List<String> ids = reports.stream().map(Employee::getId).toList();
         Map<String, List<Goal>> goals = performance.goalsOf(cycle.getId(), ids);
+        Map<String, List<PerformanceEntry>> entries = performance.entriesOf(cycle.getId(), ids);
         Map<String, AppraisalForm> forms = performance.formsOf(cycle.getId(), ids);
         Map<String, Appraisal> appraisals = performance.appraisalsIn(cycle.getId());
-        Map<String, String> names = people.namesOf(forms.values().stream().flatMap(form -> Stream.of(form.getHodApprovedBy(), form.getGoalsDecidedBy()))
-                .filter(Objects::nonNull).collect(Collectors.toSet()));
+        Map<String, String> names = people.namesOf(Stream.concat(forms.values().stream().flatMap(form -> Stream.of(form.getHodApprovedBy(), form.getDecidedBy())),
+                appraisals.values().stream().map(Appraisal::getAppraisedBy)).filter(Objects::nonNull).collect(Collectors.toSet()));
         return new Team(CycleResponse.of(cycle), reports.stream().map(person -> {
             List<Goal> theirs = goals.getOrDefault(person.getId(), List.of());
             Appraisal appraisal = appraisals.get(person.getId());
-            return member(person, FormResponse.of(forms.get(person.getId()), names), theirs,
-                    appraisal == null ? null : AppraisalResponse.of(appraisal, cycle.getName(), me.getFullName(), theirs));
+            return member(person, managers, FormResponse.of(forms.get(person.getId()), names), theirs, entries.getOrDefault(person.getId(), List.of()),
+                    appraisal == null ? null : AppraisalResponse.of(appraisal, cycle.getName(), names.get(appraisal.getAppraisedBy()), theirs));
         }).toList());
     }
 
-    // Approve the goals they sent, or send them back with a note.
-    @PostMapping("/api/team/performance/{employeeId}/goals/decision")
-    ResponseEntity<Void> decideGoals(@PathVariable String employeeId, @Valid @RequestBody DecisionBody body) {
+    // Approve the plan they sent, or send it back with a note.
+    @PostMapping("/api/{scope:team|company}/performance/{employeeId}/decision")
+    ResponseEntity<Void> decide(@PathVariable String scope, @PathVariable String employeeId, @Valid @RequestBody DecisionBody body) {
         Employee me = currentUser.get();
-        performance.decideGoalsAsHod(me, reportOf(me, employeeId).getId(), "approved".equals(body.decision()), body.note());
+        performance.decideAsHod(me, personIn(scope, me, employeeId).getId(), "approved".equals(body.decision()), body.note());
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/api/team/performance/{employeeId}/appraisal")
-    AppraisalResponse appraise(@PathVariable String employeeId, @Valid @RequestBody AppraisalBody body) {
+    @PostMapping("/api/{scope:team|company}/performance/{employeeId}/appraisal")
+    AppraisalResponse appraise(@PathVariable String scope, @PathVariable String employeeId, @Valid @RequestBody AppraisalBody body) {
         Employee me = currentUser.get();
-        String id = reportOf(me, employeeId).getId();
+        String id = personIn(scope, me, employeeId).getId();
         Appraisal appraisal = performance.appraise(me, id, new Performance.Rating(body.rating(), body.comments(), body.recommendsPromotion(),
                 body.incrementPercent(), body.goals().stream().map(goal -> new Performance.GoalRating(goal.goalId(), goal.rating(), goal.comment())).toList(),
                 body.selfReviewComment()));
@@ -106,21 +110,26 @@ class TeamPerformanceController {
         return AppraisalResponse.of(appraisal, cycleName, me.getFullName(), performance.goalsOf(appraisal.getCycleId(), id));
     }
 
-    @PostMapping("/api/team/performance/{employeeId}/probation-review")
-    ProbationReviewResponse review(@PathVariable String employeeId, @Valid @RequestBody ReviewBody body) {
+    @PostMapping("/api/{scope:team|company}/performance/{employeeId}/probation-review")
+    ProbationReviewResponse review(@PathVariable String scope, @PathVariable String employeeId, @Valid @RequestBody ReviewBody body) {
         Employee me = currentUser.get();
-        Employee person = reportOf(me, employeeId);
+        Employee person = personIn(scope, me, employeeId);
         ProbationReview review = performance.review(me, person.getId(), new Performance.Review(body.outcome(), body.extendedTo(), body.comments()));
         return ProbationReviewResponse.of(review, Map.of(person.getId(), person.getFullName(), me.getId(), me.getFullName()));
     }
 
-    private Employee reportOf(Employee me, String employeeId) {
-        return access.reportsOf(me).stream().filter(person -> person.getId().equals(employeeId)).findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Not one of your reports"));
+    private List<Employee> inScope(String scope, Employee me) {
+        return COMPANY.equals(scope) ? access.everyoneFor(me) : access.reportsOf(me);
     }
 
-    private static Member member(Employee person, FormResponse form, List<Goal> goals, AppraisalResponse appraisal) {
-        return new Member(person.getId(), person.getFullName(), person.getDesignation(), person.getProbationEndsOn(), form,
-                goals.stream().map(GoalResponse::of).toList(), appraisal);
+    private Employee personIn(String scope, Employee me, String employeeId) {
+        return inScope(scope, me).stream().filter(person -> person.getId().equals(employeeId) && !person.getId().equals(me.getId())).findFirst()
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, COMPANY.equals(scope) ? "Nobody at Opro with that id" : "Not one of your reports"));
+    }
+
+    private static Member member(Employee person, Map<String, String> managers, FormResponse form, List<Goal> goals, List<PerformanceEntry> entries,
+            AppraisalResponse appraisal) {
+        return new Member(person.getId(), person.getFullName(), person.getDesignation(), managers.get(person.getManagerId()), person.getProbationEndsOn(), form,
+                goals.stream().map(GoalResponse::of).toList(), entries.stream().map(EntryResponse::of).toList(), appraisal);
     }
 }

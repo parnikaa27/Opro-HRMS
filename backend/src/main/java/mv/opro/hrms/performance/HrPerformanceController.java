@@ -29,7 +29,7 @@ class HrPerformanceController {
 
     // Someone appraised in the latest cycle, or still to be.
     record Row(String employeeId, String fullName, String department, String managerName, FormResponse form, List<GoalResponse> goals,
-            AppraisalResponse appraisal) {}
+            List<EntryResponse> entries, AppraisalResponse appraisal) {}
 
     record Overview(List<CycleResponse> cycles, List<Row> people, List<ProbationReviewResponse> probationReviews) {}
 
@@ -60,15 +60,17 @@ class HrPerformanceController {
         List<Row> rows = performance.latestCycle().map(cycle -> {
             Map<String, List<Goal>> goals = performance.goalsOf(cycle.getId(), appraised.stream().map(Employee::getId).toList());
             Map<String, AppraisalForm> forms = performance.formsOf(cycle.getId(), appraised.stream().map(Employee::getId).toList());
+            Map<String, List<PerformanceEntry>> entries = performance.entriesOf(cycle.getId(), appraised.stream().map(Employee::getId).toList());
             Map<String, Appraisal> appraisals = performance.appraisalsIn(cycle.getId());
             Map<String, String> deciders = people.namesOf(Stream.concat(appraisals.values().stream().map(Appraisal::getAppraisedBy),
-                    forms.values().stream().flatMap(form -> Stream.of(form.getHodApprovedBy(), form.getGoalsDecidedBy()))).filter(Objects::nonNull)
+                    forms.values().stream().flatMap(form -> Stream.of(form.getHodApprovedBy(), form.getDecidedBy()))).filter(Objects::nonNull)
                     .collect(Collectors.toSet()));
             return appraised.stream().map(person -> {
                 List<Goal> theirs = goals.getOrDefault(person.getId(), List.of());
                 Appraisal appraisal = appraisals.get(person.getId());
                 return new Row(person.getId(), person.getFullName(), person.getDepartment(), names.get(person.getManagerId()),
                         FormResponse.of(forms.get(person.getId()), deciders), theirs.stream().map(GoalResponse::of).toList(),
+                        entries.getOrDefault(person.getId(), List.of()).stream().map(EntryResponse::of).toList(),
                         appraisal == null ? null : AppraisalResponse.of(appraisal, cycle.getName(), deciders.get(appraisal.getAppraisedBy()), theirs));
             }).toList();
         }).orElse(List.of());
@@ -82,10 +84,10 @@ class HrPerformanceController {
         return CycleResponse.of(performance.open(me, body.name(), body.dueOn()));
     }
 
-    // HR's step on goals the HOD approved: approve, or send back with a note.
-    @PostMapping("/api/hr/performance/{employeeId}/goals/decision")
-    ResponseEntity<Void> decideGoals(@PathVariable String employeeId, @Valid @RequestBody DecisionBody body) {
-        performance.decideGoalsAsHr(access.require(currentUser.get()), employeeId, "approved".equals(body.decision()), body.note());
+    // HR's step on a plan the HOD approved: approve, or send back with a note.
+    @PostMapping("/api/hr/performance/{employeeId}/decision")
+    ResponseEntity<Void> decide(@PathVariable String employeeId, @Valid @RequestBody DecisionBody body) {
+        performance.decideAsHr(access.require(currentUser.get()), employeeId, "approved".equals(body.decision()), body.note());
         return ResponseEntity.noContent().build();
     }
 

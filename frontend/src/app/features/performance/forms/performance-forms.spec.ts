@@ -72,8 +72,7 @@ describe('Performance forms', () => {
       expect(request.request.body).toEqual({ goals: [{ title: 'Fewer incidents', measure: 'No lost time', weight: 100 }] });
       request.flush([]);
       await settle();
-      http.expectOne('/api/performance/goals/submit').flush({});
-      await settle();
+      http.expectNone('/api/performance/submit');
       expect(saved).toHaveBeenCalled();
     });
 
@@ -120,7 +119,7 @@ describe('Performance forms', () => {
       vi.spyOn(console, 'error').mockImplementation(() => undefined);
       const { root } = await render(AppraisalForm, { employeeId: 'OPR-0021', name: 'Rohit Verma', goals: [] });
       expect(root.querySelector('[data-testid=goal-average]')).toBeNull();
-      expect(text(root.querySelector('[data-testid=self-review-empty]') as HTMLElement)).toBe("They haven't written one.");
+      expect(text(root.querySelector('[data-testid=their-self-review]') as HTMLElement)).toContain('2 Plan for certifications Nothing added.');
       fill(root, 'appraisal-comments', 'Steady.');
       fill(root, 'recommend-increment', '5');
       await submit(root);

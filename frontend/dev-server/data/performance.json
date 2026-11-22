@@ -78,23 +78,48 @@
     {
       "cycleId": "AY-2026",
       "employeeId": "OPR-0018",
-      "goalsStatus": "approved",
-      "accomplishments": "Handed over phase 1 of the Hulhumalé site two weeks early.",
-      "strengths": "Keeping subcontractors on schedule.",
-      "learning": "A site safety course in Malé.",
-      "certifications": "NEBOSH International General Certificate by June.",
-      "selfReviewedOn": "2026-11-11"
+      "status": "approved"
     },
     {
       "cycleId": "AY-2026",
       "employeeId": "OPR-0023",
-      "goalsStatus": "approved"
+      "status": "approved"
     },
     {
       "cycleId": "AY-2026",
       "employeeId": "OPR-0021",
-      "goalsStatus": "submitted",
-      "goalsSubmittedOn": "2026-11-11"
+      "status": "submitted",
+      "submittedOn": "2026-11-11"
+    }
+  ],
+  "entries": [
+    {
+      "id": "PE-18ACC",
+      "cycleId": "AY-2026",
+      "employeeId": "OPR-0018",
+      "section": "accomplishment",
+      "title": "Handed over phase 1 of the Hulhumalé site two weeks early."
+    },
+    {
+      "id": "PE-18STR",
+      "cycleId": "AY-2026",
+      "employeeId": "OPR-0018",
+      "section": "strength",
+      "title": "Keeping subcontractors on schedule."
+    },
+    {
+      "id": "PE-18LEA",
+      "cycleId": "AY-2026",
+      "employeeId": "OPR-0018",
+      "section": "learning",
+      "title": "A site safety course in Malé."
+    },
+    {
+      "id": "PE-18CER",
+      "cycleId": "AY-2026",
+      "employeeId": "OPR-0018",
+      "section": "certification",
+      "title": "NEBOSH International General Certificate by June."
     }
   ]
 }

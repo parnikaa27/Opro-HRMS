@@ -10,6 +10,7 @@ const attendancePage = () => import('./features/team/team-attendance-page').then
 const memberPage = () => import('./features/team/team-member-page').then((page) => page.TeamMemberPage);
 const employeePage = () => import('./features/hr/hr-employee-page').then((page) => page.HrEmployeePage);
 const calendarPage = () => import('./features/calendar/calendar-page').then((page) => page.CalendarPage);
+const teamPerformancePage = () => import('./features/performance/team-performance-page').then((page) => page.TeamPerformancePage);
 
 export const routes: Routes = [
   {
@@ -58,7 +59,7 @@ export const routes: Routes = [
           { path: 'approvals', title: 'Approvals · Opro HRMS', loadComponent: approvalsPage, data: { scope: 'team' } },
           { path: 'attendance', title: 'Team attendance · Opro HRMS', loadComponent: attendancePage, data: { scope: 'team' } },
           { path: 'calendar', title: 'Team calendar · Opro HRMS', loadComponent: calendarPage, data: { showsTeamLeave: true, scope: 'team' } },
-          { path: 'performance', title: 'Team performance · Opro HRMS', loadComponent: () => import('./features/performance/team-performance-page').then((page) => page.TeamPerformancePage) },
+          { path: 'performance', title: 'Team performance · Opro HRMS', loadComponent: teamPerformancePage, data: { scope: 'team' } },
           { path: ':employeeId', title: 'Team member · Opro HRMS', loadComponent: memberPage, data: { scope: 'team' } },
         ],
       },
@@ -72,6 +73,7 @@ export const routes: Routes = [
           { path: 'attendance', title: 'Company attendance · Opro HRMS', loadComponent: attendancePage, data: { scope: 'company' } },
           { path: 'leave', title: 'All leave · Opro HRMS', loadComponent: approvalsPage, data: { scope: 'company' } },
           { path: 'calendar', title: 'Who’s away · Opro HRMS', loadComponent: calendarPage, data: { showsTeamLeave: true, scope: 'company' } },
+          { path: 'performance', title: 'Performance · Opro HRMS', loadComponent: teamPerformancePage, data: { scope: 'company' } },
           { path: ':employeeId', title: 'Person · Opro HRMS', loadComponent: memberPage, data: { scope: 'company' } },
         ],
       },

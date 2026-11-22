@@ -13,7 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-// The dev seed opens "2026 appraisals": Arjun's (OPR-0018) goals are approved and he wrote a self review, Rohit's (OPR-0021) wait for
+// The dev seed opens "2026 appraisals": Arjun's (OPR-0018) plan is approved, with an entry in each section, Rohit's (OPR-0021) wait for
 // Vikram (OPR-0004), and Karan (OPR-0023) is appraised. All three are Vikram's. Kavya (OPR-0027), also his, is on probation until
 // 20 December and hasn't started. Ananya (OPR-0002) is HR. Today is Thursday 12 November 2026.
 @ApiTest
@@ -43,9 +43,10 @@ class PerformanceApiTests {
         jdbc.update("delete from appraisal where id <> 'AP-1'");
         jdbc.update("delete from goal where id not in ('GL-1', 'GL-2', 'GL-3', 'GL-4', 'GL-5', 'GL-6')");
         jdbc.update("delete from appraisal_form where employee_id not in ('OPR-0018', 'OPR-0023', 'OPR-0021')");
-        jdbc.update("update appraisal_form set goals_status = 'submitted', hod_approved_by = null, hod_approved_on = null, goals_decided_by = null, "
-                + "goals_decided_on = null, goals_note = null where employee_id = 'OPR-0021'");
-        jdbc.update("update appraisal_form set goals_status = 'approved' where employee_id = 'OPR-0018'");
+        jdbc.update("update appraisal_form set status = 'submitted', hod_approved_by = null, hod_approved_on = null, decided_by = null, "
+                + "decided_on = null, note = null where employee_id = 'OPR-0021'");
+        jdbc.update("update appraisal_form set status = 'approved' where employee_id = 'OPR-0018'");
+        jdbc.update("delete from performance_entry where employee_id <> 'OPR-0018'");
         jdbc.update("update goal set rating = null, comment = null where id in ('GL-1', 'GL-2')");
         jdbc.update("delete from appraisal_cycle where id <> 'AY-2026'");
         jdbc.update("update appraisal_cycle set closed_on = null");
@@ -79,8 +80,8 @@ class PerformanceApiTests {
         String opened = ananya.post("/api/hr/appraisal-cycles", "{\"name\":\"Mid year\",\"dueOn\":\"2027-02-28\"}").body();
 
         assertThat(JsonPath.<String>read(opened, "$.name")).isEqualTo("Mid year");
-        assertThat(notificationsOf(vikram)).contains("HR opened Mid year, due 28 February 2027. Approve your team's goals, then appraise them.");
-        assertThat(notificationsOf(as("OPR-0018"))).contains("HR opened Mid year, due 28 February 2027. Write your goals and KPIs on Performance.");
+        assertThat(notificationsOf(vikram)).contains("HR opened Mid year, due 28 February 2027. Approve your team's plans, then appraise them.");
+        assertThat(notificationsOf(as("OPR-0018"))).contains("HR opened Mid year, due 28 February 2027. Write your plan on Performance and send it to your HOD.");
     }
 
     @Test
@@ -99,54 +100,77 @@ class PerformanceApiTests {
         ApiClient kavya = as("OPR-0027");
         String uneven = TWO_GOALS.replace("\"weight\":40", "\"weight\":30");
         assertThat(kavya.put("/api/performance/goals", uneven).body()).isEqualTo("{\"message\":\"Goal weights need to add up to 100%.\"}");
-        assertThat(kavya.post("/api/performance/goals/submit", "{}").body()).isEqualTo("{\"message\":\"Write at least one goal first.\"}");
+        assertThat(kavya.post("/api/performance/submit", "{}").body()).isEqualTo("{\"message\":\"Add at least one goal first.\"}");
 
         assertThat(JsonPath.<List<Integer>>read(kavya.put("/api/performance/goals", TWO_GOALS).body(), "$[*].weight")).containsExactly(60, 40);
-        assertThat(JsonPath.<String>read(kavya.post("/api/performance/goals/submit", "{}").body(), "$.goalsStatus")).isEqualTo("submitted");
+        assertThat(JsonPath.<String>read(kavya.post("/api/performance/submit", "{}").body(), "$.status")).isEqualTo("submitted");
 
         assertThat(kavya.put("/api/performance/goals", TWO_GOALS).statusCode()).isEqualTo(409);
-        assertThat(notificationsOf(vikram)).contains("Kavya Menon sent their goals for 2026 appraisals. Approve them or send them back from Performance.");
+        assertThat(notificationsOf(vikram)).contains("Kavya Menon sent their plan for 2026 appraisals. Approve it or send it back from Performance.");
         assertThat(as("OPR-0001").put("/api/performance/goals", TWO_GOALS).body()).isEqualTo("{\"message\":\"You have no HOD to appraise you.\"}");
     }
 
     @Test
     void theHodApprovesThenHrAndASentBackOneCanBeChanged() throws Exception {
-        String decision = "/api/team/performance/OPR-0021/goals/decision";
+        String decision = "/api/team/performance/OPR-0021/decision";
         assertThat(vikram.post(decision, "{\"decision\":\"rejected\"}").statusCode()).isEqualTo(400);
         vikram.post(decision, "{\"decision\":\"rejected\",\"note\":\"Add a customs goal\"}");
         ApiClient rohit = as("OPR-0021");
         assertThat(notificationsOf(rohit))
-                .contains("Vikram Singh sent back your goals for 2026 appraisals: Add a customs goal. Change them on Performance and send them again.");
+                .contains("Vikram Singh sent back your plan for 2026 appraisals: Add a customs goal. Change it on Performance and send it again.");
 
         rohit.put("/api/performance/goals", TWO_GOALS);
-        rohit.post("/api/performance/goals/submit", "{}");
+        rohit.post("/api/performance/submit", "{}");
         assertThat(vikram.post(decision, "{\"decision\":\"approved\"}").statusCode()).isEqualTo(204);
-        assertThat(JsonPath.<List<String>>read(ananya.get("/api/hr/performance").body(), "$.people[?(@.employeeId == 'OPR-0021')].form.goalsStatus"))
+        assertThat(JsonPath.<List<String>>read(ananya.get("/api/hr/performance").body(), "$.people[?(@.employeeId == 'OPR-0021')].form.status"))
                 .containsExactly("hod-approved");
         assertThat(vikram.post(decision, "{\"decision\":\"approved\"}").statusCode()).isEqualTo(409);
 
-        assertThat(ananya.post("/api/hr/performance/OPR-0021/goals/decision", "{\"decision\":\"approved\"}").statusCode()).isEqualTo(204);
-        assertThat(JsonPath.<String>read(rohit.get("/api/performance").body(), "$.form.goalsStatus")).isEqualTo("approved");
-        assertThat(notificationsOf(rohit)).contains("Your goals for 2026 appraisals are approved.");
+        assertThat(ananya.post("/api/hr/performance/OPR-0021/decision", "{\"decision\":\"approved\"}").statusCode()).isEqualTo(204);
+        assertThat(JsonPath.<String>read(rohit.get("/api/performance").body(), "$.form.status")).isEqualTo("approved");
+        assertThat(notificationsOf(rohit)).contains("Your plan for 2026 appraisals is approved.");
     }
 
     @Test
-    void theSelfReviewIsTheirsUntilTheyAreAppraised() throws Exception {
+    void eachSectionHoldsAsManyEntriesAsTheyLikeUntilThePlanIsSent() throws Exception {
         ApiClient kavya = as("OPR-0027");
-        String review = "{\"accomplishments\":\"Moved the team onto the new system\",\"strengths\":\"Patience\",\"learning\":\"\",\"certifications\":\"PMP\"}";
+        String certifications = """
+                {"entries":[{"title":"PMP","details":"Through the Malé chapter","targetOn":"2027-06-30"},{"title":"ITIL Foundation"}]}""";
 
-        String saved = kavya.put("/api/performance/self-review", review).body();
+        String saved = kavya.put("/api/performance/sections/certification", certifications).body();
+        kavya.put("/api/performance/sections/strength", "{\"entries\":[{\"title\":\"Patience\",\"targetOn\":\"2027-01-01\"}]}");
 
-        assertThat(JsonPath.<String>read(saved, "$.accomplishments")).isEqualTo("Moved the team onto the new system");
-        assertThat(JsonPath.<String>read(saved, "$.selfReviewedOn")).isEqualTo("2026-11-12");
-        assertThat(saved).doesNotContain("\"learning\"");
-        assertThat(as("OPR-0023").put("/api/performance/self-review", review).statusCode()).isEqualTo(409);
+        assertThat(JsonPath.<List<String>>read(saved, "$[*].title")).containsExactly("PMP", "ITIL Foundation");
+        String mine = kavya.get("/api/performance").body();
+        assertThat(JsonPath.<List<String>>read(mine, "$.entries[?(@.section == 'certification')].targetOn")).containsExactly("2027-06-30");
+        assertThat(JsonPath.<List<Object>>read(mine, "$.entries[?(@.section == 'strength')].targetOn")).isEmpty();
+        assertThat(kavya.put("/api/performance/sections/hobbies", certifications).statusCode()).isEqualTo(404);
+        assertThat(kavya.put("/api/performance/sections/strength", "{\"entries\":[{\"title\":\"\"}]}").statusCode()).isEqualTo(400);
+
+        kavya.put("/api/performance/goals", TWO_GOALS);
+        kavya.post("/api/performance/submit", "{}");
+        assertThat(kavya.put("/api/performance/sections/strength", "{\"entries\":[]}").statusCode()).isEqualTo(409);
+        assertThat(JsonPath.<List<String>>read(vikram.get("/api/team/performance").body(), "$.people[?(@.employeeId == 'OPR-0027')].entries[*].title"))
+                .containsExactly("PMP", "ITIL Foundation", "Patience");
+    }
+
+    @Test
+    void aSuperAdminStandsInForTheHodButNeverForThemselves() throws Exception {
+        ApiClient rajesh = as("OPR-0001");
+
+        String everyone = rajesh.get("/api/company/performance").body();
+        assertThat(JsonPath.<List<String>>read(everyone, "$.people[?(@.employeeId == 'OPR-0021')].managerName")).containsExactly("Vikram Singh");
+        assertThat(JsonPath.<List<String>>read(everyone, "$.people[*].employeeId")).doesNotContain("OPR-0001");
+
+        assertThat(rajesh.post("/api/company/performance/OPR-0021/decision", "{\"decision\":\"approved\"}").statusCode()).isEqualTo(204);
+        assertThat(notificationsOf(as("OPR-0021"))).contains("Rajesh Sharma approved your plan for 2026 appraisals. It now waits for HR.");
+        assertThat(vikram.get("/api/company/performance").statusCode()).isEqualTo(403);
     }
 
     @Test
     void anAppraisalRatesEveryGoalOnceAndThePersonAcceptsIt() throws Exception {
         assertThat(vikram.post("/api/team/performance/OPR-0021/appraisal", appraisalOfArjun("[]")).body())
-                .isEqualTo("{\"message\":\"Their goals need approving by you and HR first.\"}");
+                .isEqualTo("{\"message\":\"Their plan needs approving by their HOD and HR first.\"}");
         assertThat(vikram.post("/api/team/performance/OPR-0018/appraisal", appraisalOfArjun("[{\"goalId\":\"GL-1\",\"rating\":4}]")).statusCode()).isEqualTo(400);
 
         String saved = vikram.post("/api/team/performance/OPR-0018/appraisal", appraisalOfArjun(
@@ -158,7 +182,6 @@ class PerformanceApiTests {
 
         ApiClient arjun = as("OPR-0018");
         assertThat(notificationsOf(arjun)).contains("Vikram Singh finished your 2026 appraisals. Read it on Performance and accept your rating.");
-        assertThat(arjun.put("/api/performance/self-review", "{\"strengths\":\"Late change\"}").statusCode()).isEqualTo(409);
         String id = JsonPath.read(saved, "$.id");
         assertThat(JsonPath.<String>read(arjun.post("/api/performance/appraisals/" + id + "/accept", "{}").body(), "$.acceptedOn")).isEqualTo("2026-11-12");
         assertThat(as("OPR-0021").post("/api/performance/appraisals/" + id + "/accept", "{}").statusCode()).isEqualTo(404);
@@ -169,7 +192,7 @@ class PerformanceApiTests {
         String karan = as("OPR-0023").get("/api/performance").body();
 
         assertThat(JsonPath.<List<String>>read(karan, "$.goals[*].id")).containsExactly("GL-3", "GL-4");
-        assertThat(JsonPath.<String>read(karan, "$.form.goalsStatus")).isEqualTo("approved");
+        assertThat(JsonPath.<String>read(karan, "$.form.status")).isEqualTo("approved");
         assertThat(JsonPath.<String>read(karan, "$.appraisals[0].appraisedByName")).isEqualTo("Vikram Singh");
         assertThat(karan).doesNotContain("recommendsPromotion", "incrementPercent");
     }
@@ -196,7 +219,7 @@ class PerformanceApiTests {
         assertThat(JsonPath.<List<String>>read(overview, "$.cycles[*].name")).containsExactly("2026 appraisals");
         assertThat(JsonPath.<List<Double>>read(overview, "$.people[?(@.employeeId == 'OPR-0023')].appraisal.incrementPercent")).containsExactly(8.0);
         assertThat(JsonPath.<List<String>>read(overview, "$.people[?(@.employeeId == 'OPR-0018')].goals[*].id")).containsExactly("GL-1", "GL-2");
-        assertThat(JsonPath.<List<String>>read(overview, "$.people[?(@.employeeId == 'OPR-0018')].form.certifications"))
+        assertThat(JsonPath.<List<String>>read(overview, "$.people[?(@.employeeId == 'OPR-0018')].entries[?(@.section == 'certification')].title"))
                 .containsExactly("NEBOSH International General Certificate by June.");
         assertThat(JsonPath.<List<String>>read(overview, "$.people[*].employeeId")).doesNotContain("OPR-0001");
         assertThat(vikram.get("/api/hr/performance").statusCode()).isEqualTo(403);

@@ -107,44 +107,44 @@ npm 11 blocks install scripts by default. Leave them blocked: the Angular build 
 
 ## Run the app
 
-Two terminals, both inside `frontend/`. (Or in the Claude desktop app, the `mock-api` and `frontend` entries in `.claude/launch.json` start the same two servers.)
+The portal runs on Spring and PostgreSQL: every screen reads from and writes to the database. Three terminals. (Or in the Claude desktop app, the `spring-api` and `frontend` entries in `.claude/launch.json` start Spring and the app.)
+
+Start the database, from `backend/` (Docker Desktop running):
+
+```bash
+docker compose up -d
+```
+
+Then Spring, from `backend/`:
+
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+Then the app, from `frontend/`:
+
+```bash
+npm start
+```
+
+Open `http://localhost:4200`. Calls to `/api` are proxied to Spring on `http://localhost:8080`.
+
+Spring keeps what you do in the database. To start again from the seed data, run this inside `backend/` (it removes only the `opro-hrms` project's volume):
+
+```bash
+docker compose down -v && docker compose up -d
+```
+
+### On the mock instead
+
+The JSON mock is only for the Netlify demo and the second e2e run, and for frontend work without Java. It keeps changes in memory until it restarts, and never moves leave balances. From `frontend/`:
 
 ```bash
 npm run mock
 ```
 
 ```bash
-npm start
-```
-
-Open `http://localhost:4200`. Calls to `/api` are proxied to the mock on port 4300.
-
-Everything you change (approving leave, applying, cancelling, asking for punch fixes) is kept in memory and resets when you restart the mock. Leave balances in the mock never move, because counting days is the backend's job.
-
-### Against the real backend
-
-Start the database and Spring, from `backend/`:
-
-```bash
-docker compose up -d
-```
-
-```bash
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
-```
-
-Then the frontend, from `frontend/`:
-
-```bash
-USE_MOCK_BACKEND=false npm start
-```
-
-That sends `/api` to Spring on `http://localhost:8080` instead. Nothing else changes. Every page works end to end on Spring, the HR view included.
-
-Unlike the mock, Spring keeps what you do in the database. To start again from the seed data, run this inside `backend/` (it removes only the `opro-hrms` project's volume):
-
-```bash
-docker compose down -v && docker compose up -d
+USE_MOCK_BACKEND=true npm start
 ```
 
 To see a working day on a weekend, pin Spring's clock the way `MOCK_NOW` pins the mock's: add `-Dspring-boot.run.jvmArguments="-Dopro.fixed-time=2026-11-12T10:30:00+05:00"`.
@@ -219,9 +219,9 @@ Everyone has an Indian name. Sneha and Karan are Maldivian nationals, so they se
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `USE_MOCK_BACKEND` | `true` | `true` sends `/api` to the mock, `false` sends it to Spring |
+| `USE_MOCK_BACKEND` | unset | `true` sends `/api` to the mock; anything else sends it to Spring |
 | `MOCK_PORT` | `4300` | Port for the mock API |
-| `SPRING_PORT` | `8080` | Port the proxy sends `/api` to when `USE_MOCK_BACKEND=false` |
+| `SPRING_PORT` | `8080` | Port the proxy sends `/api` to, unless `USE_MOCK_BACKEND=true` |
 | `E2E_BACKEND` | unset | `spring` runs the e2e journeys against Spring instead of the mock (`npm run test:e2e:spring` sets it) |
 | `MOCK_NOW` | unset | Pins the mock's clock, for example `MOCK_NOW=2026-11-12T15:10:00+05:00 npm run mock`. Handy on weekends, when every screen shows days off |
 

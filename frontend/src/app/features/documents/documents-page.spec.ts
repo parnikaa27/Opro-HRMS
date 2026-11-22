@@ -67,7 +67,7 @@ describe('DocumentsPage', () => {
     expect(http.match('/api/documents')).toHaveLength(1);
   });
 
-  it('uploads both pages of a new passport copy with its dates, one after the other, then reloads', async () => {
+  it('lists the files picked with a cross each, then uploads the pages left, one after the other, and reloads', async () => {
     const root = await render();
     click(root, 'upload-document');
 
@@ -78,8 +78,14 @@ describe('DocumentsPage', () => {
     expect(text(root.querySelector('dialog[open]') as HTMLElement)).toContain('Enter the date it expires.');
 
     const input = root.querySelector('[data-testid=document-file]') as HTMLInputElement;
-    Object.defineProperty(input, 'files', { value: [pdf('front.pdf'), pdf('back.pdf')], configurable: true });
+    Object.defineProperty(input, 'files', { value: [pdf('front.pdf'), pdf('wrong.pdf'), pdf('back.pdf')], configurable: true });
     input.dispatchEvent(new Event('change'));
+    await settle();
+    expect(texts(root, 'picked-file').map((line) => line.split(' ')[0])).toEqual(['front.pdf', 'wrong.pdf', 'back.pdf']);
+    expect(texts(root, 'document-submit')).toEqual(['Upload 3 files']);
+    root.querySelectorAll<HTMLButtonElement>('[data-testid=remove-picked-file]')[1].click();
+    await settle();
+    expect(texts(root, 'picked-file').map((line) => line.split(' ')[0])).toEqual(['front.pdf', 'back.pdf']);
     fill(root, 'document-issued', '2021-07-01');
     fill(root, 'document-expiry', '2031-06-30');
     (root.querySelector('[data-testid=document-submit]') as HTMLButtonElement).click();
@@ -102,7 +108,8 @@ describe('DocumentsPage', () => {
     TestBed.tick();
 
     pickFile(root, 'document-file', new File(['x'], 'notes.txt', { type: 'text/plain' }));
-    expect(text(root.querySelector('#document-file-note') as HTMLElement)).toBe('Attach a PDF, JPG or PNG under 5 MB.');
+    expect(text(root.querySelector('#document-file-note') as HTMLElement)).toBe('Left out notes.txt. Each file has to be a PDF, JPG or PNG under 5 MB.');
+    expect(root.querySelector('[data-testid=picked-files]')).toBeNull();
     pickFile(root, 'document-file', pdf());
     (root.querySelector('[data-testid=document-submit]') as HTMLButtonElement).click();
     await settle();

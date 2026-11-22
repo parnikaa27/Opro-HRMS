@@ -702,6 +702,23 @@
 :root[data-theme='dark'] .inline-select select {
   background: #19242c;
 }
+:root[data-theme='dark'] .plan-number {
+  color: #5ac6ba;
+}
+:root[data-theme='dark'] .plan-tile {
+  background: #19242c;
+}
+:root[data-theme='dark'] .plan-action {
+  color: #5ac6ba;
+}
+:root[data-theme='dark'] .entry-remove:hover,
+:root[data-theme='dark'] .entry-remove:focus-visible {
+  background: #392a26;
+}
+:root[data-theme='dark'] .entry-remove:hover,
+:root[data-theme='dark'] .entry-remove:focus-visible {
+  color: #ff8c74;
+}
 @media (max-width: 860px) {
 :root[data-theme='dark'] .mobile-menu {
   color: #deedf8;
@@ -1410,6 +1427,23 @@
 }
 :root:not([data-theme='light']) .inline-select select {
   background: #19242c;
+}
+:root:not([data-theme='light']) .plan-number {
+  color: #5ac6ba;
+}
+:root:not([data-theme='light']) .plan-tile {
+  background: #19242c;
+}
+:root:not([data-theme='light']) .plan-action {
+  color: #5ac6ba;
+}
+:root:not([data-theme='light']) .entry-remove:hover,
+:root:not([data-theme='light']) .entry-remove:focus-visible {
+  background: #392a26;
+}
+:root:not([data-theme='light']) .entry-remove:hover,
+:root:not([data-theme='light']) .entry-remove:focus-visible {
+  color: #ff8c74;
 }
 @media (max-width: 860px) {
 :root:not([data-theme='light']) .mobile-menu {

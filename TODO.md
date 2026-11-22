@@ -45,7 +45,7 @@ Being built in batches, one PR each. Leave, documents, exit, the performance cha
 - [ ] **Exchange rates:** MVR 15.42 and INR 88 per USD are starting values. HR can change them in Policies.
 - [ ] **Footer:** legal name, address, HR email, and the Privacy and HR policy links in `frontend/src/app/core/config.ts`.
 - [ ] **Overtime:** 30 minutes past the shift is the placeholder minimum, and whether overtime is paid (at what rate) or taken as time off. Payroll needs the rate.
-- [ ] **Performance:** the 1 to 5 scale and its words, and whether appraisals should rate company competencies too. Accepting a rating is required with no way to disagree; if staff ever need to record a disagreement, that's a small change.
+- [ ] **Performance:** the 1 to 5 scale and its words, and whether appraisals should rate company competencies too. Whether a plan should need anything besides goals before it's sent (today only goals are required). Accepting a rating is required with no way to disagree; if staff ever need to record a disagreement, that's a small change.
 - [ ] **Leave notice:** the paper form asks a month ahead for scheduled leave. Set "Asked for (days ahead)" on annual leave in Policies, and on any other type that needs it. Nothing has notice until then.
 - [ ] **Flight entitlement and salary advance ticks on leave requests:** today they're shown to the HOD and HR only. Should ticking the flight box start a flight claim, and who acts on a salary advance before payroll exists?
 - [ ] **Leaving without resigning** (a contract ending, a dismissal): today the return checklist only applies to someone who resigned. Should HR tick items off for everyone who leaves? And is there a minimum notice period between resigning and the last day?
@@ -100,7 +100,7 @@ What the document asks for, against what's built. "Done" means built and tested;
 
 **8. Performance**
 - Done: probation reviews, appraisal cycles HR opens, goals with measures and weights, HOD appraisals rated 1 to 5, promotion and increment recommendations, a performance section on the dashboard.
-- Done since: goals and KPIs the employee writes (approved by the HOD, then HR), a self review (accomplishments, strengths, learning and development, certifications) the HOD comments on, and accepting the rating.
+- Done since: a plan the employee writes in five numbered sections (goals and KPIs, certifications, learning and development, accomplishments, strengths), as many entries each as they like, sent in one go and approved by the HOD (or a super admin standing in) and then HR; the HOD's lists sorted by what's needed; accepting the rating.
 - Not yet: 360° feedback, company competencies to rate against, acting on recommendations (needs payroll), a performance report.
 
 **9. Learning and development**: not started (calendar, nominations, attendance, feedback, certificates, hours, competency matrix).

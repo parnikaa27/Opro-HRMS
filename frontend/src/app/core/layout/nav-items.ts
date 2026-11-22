@@ -34,6 +34,7 @@ export const COMPANY_NAV: readonly NavItem[] = [
   { label: 'Attendance', path: '/company/attendance', icon: 'fingerprint' },
   { label: 'Leave', path: '/company/leave', icon: 'userCheck', badge: 'approvals' },
   { label: 'Calendar', path: '/company/calendar', icon: 'calendar' },
+  { label: 'Performance', path: '/company/performance', icon: 'target' },
   { label: 'Reports', path: '/company/reports', icon: 'download' },
 ];
 

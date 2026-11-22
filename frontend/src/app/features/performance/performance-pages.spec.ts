@@ -30,11 +30,16 @@ describe('Performance pages', () => {
   describe('MyPerformancePage', () => {
     const MINE: MyPerformance = {
       cycle: CYCLE,
-      form: { goalsStatus: 'approved', accomplishments: 'Cut reply times', certifications: 'CX certificate' },
+      form: { status: 'approved', decidedByName: 'Ananya Iyer', decidedOn: '2026-11-11' },
       goals: [{ id: 'GL-3', title: 'Faster replies', measure: 'Under 4 hours', weight: 100 }],
+      entries: [
+        { id: 'PE-1', section: 'accomplishment', title: 'Cut reply times' },
+        { id: 'PE-2', section: 'certification', title: 'CX certificate', details: 'Online', targetOn: '2027-06-30' },
+      ],
       appraisals: [{ ...KARAN_APPRAISAL, recommendsPromotion: undefined, incrementPercent: undefined, selfReviewComment: 'Go for the certificate.' }],
       probationReviews: [{ id: 'PR-1', employeeId: 'OPR-0023', probationEnded: '2026-08-01', outcome: 'extended', extendedTo: '2026-11-01', comments: 'More time', reviewedByName: 'Vikram Singh', reviewedOn: '2026-07-20' }],
     };
+    const DRAFT: MyPerformance = { cycle: CYCLE, goals: [], entries: [], appraisals: [], probationReviews: [] };
 
     const render = async (mine: MyPerformance = MINE) => {
       const fixture = TestBed.createComponent(MyPerformancePage);
@@ -42,17 +47,17 @@ describe('Performance pages', () => {
       return fixture.nativeElement as HTMLElement;
     };
 
-    it('shows goals, the appraisal with each goal rated, and the probation review', async () => {
+    it('shows the plan as five numbered sections, the appraisal with each goal rated, and the probation review', async () => {
       const root = await render();
 
-      expect(texts(root, 'my-goal')).toEqual(['Faster replies Under 4 hours · 100%']);
-      expect(text(root.querySelector('[data-testid=goals-status]') as HTMLElement)).toBe('Approved');
-      expect(root.querySelector('[data-testid=write-goals]')).toBeNull();
-      expect(text(root.querySelector('[data-testid=self-review]') as HTMLElement)).toBe('Accomplishments Cut reply times Plan for certifications CX certificate');
-      expect(text(root.querySelector('[data-testid=self-review-comment-shown]') as HTMLElement)).toBe('On your self review: “Go for the certificate.”');
-      // Appraised in this cycle, so the self review is final.
-      expect(root.querySelector('[data-testid=write-self-review]')).toBeNull();
-      expect(text(root.querySelector('[data-testid=my-appraisal]') as HTMLElement)).toContain('4, Exceeds expectations');
+      expect(texts(root, 'plan-count')).toEqual(['1 added: Faster replies', '1 added: CX certificate', 'Nothing added yet', '1 added: Cut reply times', 'Nothing added yet']);
+      // Appraised in this cycle, so the plan is final and only opens to read.
+      expect(text(root.querySelector('[data-testid=plan-status-pill]') as HTMLElement)).toBe('Appraised');
+      expect(root.querySelector('[data-testid=send-plan]')).toBeNull();
+      click(root, 'plan-tile-certification');
+      await settle();
+      expect(text(root.querySelector('[data-testid=plan-view]') as HTMLElement)).toBe('2 Plan for certifications CX certificate Online · By 30 June 2027');
+      expect(text(root.querySelector('[data-testid=self-review-comment-shown]') as HTMLElement)).toBe('On your plan: “Go for the certificate.”');
       expect(text(root.querySelector('[data-testid=my-appraisal]') as HTMLElement)).toContain('Faster replies 4, Exceeds expectations · Under 3 hours since August.');
       expect(text(root.querySelector('[data-testid=my-probation]') as HTMLElement)).toContain('Extended until 1 November 2026');
     });
@@ -69,55 +74,65 @@ describe('Performance pages', () => {
       expect(http.match('/api/performance')).toHaveLength(1);
     });
 
-    it('writes goals while a draft or sent back, and shows why they came back', async () => {
-      const root = await render({
-        cycle: CYCLE, form: { goalsStatus: 'rejected', goalsNote: 'Add a customs goal', goalsDecidedByName: 'Vikram Singh' }, goals: [], appraisals: [], probationReviews: [],
-      });
+    it('says what happens next at each step', async () => {
+      const waiting = await render({ ...DRAFT, form: { status: 'hod-approved', hodApprovedByName: 'Vikram Singh', hodApprovedOn: '2026-11-11' } });
+      expect(text(waiting.querySelector('[data-testid=plan-next]') as HTMLElement)).toBe('Vikram Singh approved it on 11 Nov. It’s with HR now.'.replace('’', "'"));
 
-      expect(text(root.querySelector('[data-testid=goals-note-shown]') as HTMLElement)).toBe('Vikram Singh sent them back: “Add a customs goal”');
-      click(root, 'write-goals');
+      const earlier = await render({ ...DRAFT, form: { status: 'approved' } });
+      expect(text(earlier.querySelector('[data-testid=plan-next]') as HTMLElement)).toBe('Approved. Your HOD appraises you against it at the end of the cycle.');
+
+      const back = await render({ ...DRAFT, form: { status: 'rejected', note: 'Add a customs goal', decidedByName: 'Vikram Singh', decidedOn: '2026-11-12' } });
+      expect(text(back.querySelector('[data-testid=plan-note-shown]') as HTMLElement)).toBe('Vikram Singh sent it back: “Add a customs goal”');
+    });
+
+    it('saves goals as a draft, and sends the plan only once there are goals', async () => {
+      const root = await render(DRAFT);
+      expect((root.querySelector('[data-testid=send-plan]') as HTMLButtonElement).disabled).toBe(true);
+
+      click(root, 'plan-tile-goals');
+      await settle();
       fill(root, 'goal-title', 'Clear customs faster');
       fill(root, 'goal-measure', 'Within 3 days');
-      click(root, 'goals-submit');
+      click(root, 'goals-save');
       await settle();
       const written = http.expectOne('/api/performance/goals');
       expect(written.request.body).toEqual({ goals: [{ title: 'Clear customs faster', measure: 'Within 3 days', weight: 100 }] });
       written.flush([]);
       await settle();
-      http.expectOne('/api/performance/goals/submit').flush({});
-      await settle();
+      http.expectNone('/api/performance/submit');
+      await respond(http, { '/api/performance': { ...DRAFT, goals: [{ id: 'GL-9', title: 'Clear customs faster', measure: 'Within 3 days', weight: 100 }] } });
 
+      click(root, 'send-plan');
+      await settle();
+      http.expectOne('/api/performance/submit').flush({});
+      await settle();
       expect(http.match('/api/performance')).toHaveLength(1);
     });
 
-    it('saves goals as a draft without sending them', async () => {
-      const root = await render({ cycle: CYCLE, goals: [], appraisals: [], probationReviews: [] });
+    it('adds several entries to a section, takes one off with its cross, and drops empty ones', async () => {
+      const root = await render(DRAFT);
 
-      click(root, 'write-goals');
-      fill(root, 'goal-title', 'Clear customs faster');
-      fill(root, 'goal-measure', 'Within 3 days');
-      click(root, 'goals-draft');
+      click(root, 'plan-tile-certification');
       await settle();
-      http.expectOne('/api/performance/goals').flush([]);
+      fill(root, 'entry-title', 'PMP');
+      fill(root, 'entry-target', '2027-06-30');
+      click(root, 'add-entry');
+      click(root, 'add-entry');
       await settle();
-
-      http.expectNone('/api/performance/goals/submit');
-    });
-
-    it('writes the self review', async () => {
-      const root = await render({ cycle: CYCLE, form: { goalsStatus: 'submitted' }, goals: [], appraisals: [], probationReviews: [] });
-      expect(text(root.querySelector('[data-testid=goals-status]') as HTMLElement)).toBe('Waiting for the HOD');
-
-      click(root, 'write-self-review');
-      fill(root, 'review-strengths', ' Patience ');
-      click(root, 'review-submit');
+      const titles = root.querySelectorAll<HTMLInputElement>('[data-testid=entry-title]');
+      titles[1].value = 'Wrong one';
+      titles[1].dispatchEvent(new Event('input'));
+      await settle();
+      root.querySelectorAll<HTMLButtonElement>('[data-testid=remove-entry]')[1].click();
+      await settle();
+      click(root, 'entries-save');
       await settle();
 
-      expect(http.expectOne('/api/performance/self-review').request.body).toEqual({ accomplishments: '', strengths: 'Patience', learning: '', certifications: '' });
+      expect(http.expectOne('/api/performance/sections/certification').request.body).toEqual({ entries: [{ title: 'PMP', targetOn: '2027-06-30' }] });
     });
 
     it('explains an empty year, and a failed load', async () => {
-      const empty = await render({ goals: [], appraisals: [], probationReviews: [] });
+      const empty = await render({ goals: [], entries: [], appraisals: [], probationReviews: [] });
       expect(text(empty)).toContain('No appraisal cycle is open right now.');
 
       const fixture = TestBed.createComponent(MyPerformancePage);
@@ -131,64 +146,96 @@ describe('Performance pages', () => {
       cycle: CYCLE,
       people: [
         {
-          employeeId: 'OPR-0018', fullName: 'Arjun Reddy', designation: 'Site Engineer', form: { goalsStatus: 'approved', strengths: 'Scheduling' },
-          goals: [{ id: 'GL-1', title: 'Hand over', measure: 'Snag list', weight: 100 }],
+          employeeId: 'OPR-0018', fullName: 'Arjun Reddy', designation: 'Site Engineer', managerName: 'Vikram Singh', form: { status: 'approved' },
+          goals: [{ id: 'GL-1', title: 'Hand over', measure: 'Snag list', weight: 100 }], entries: [{ id: 'PE-1', section: 'strength', title: 'Scheduling' }],
         },
-        { employeeId: 'OPR-0023', fullName: 'Karan Mehta', designation: 'Lead', form: { goalsStatus: 'approved' }, goals: KARAN_APPRAISAL.goals, appraisal: KARAN_APPRAISAL },
-        { employeeId: 'OPR-0021', fullName: 'Rohit Verma', designation: 'Coordinator', form: { goalsStatus: 'submitted' }, goals: [{ id: 'GL-5', title: 'Freight', measure: '3 days', weight: 100 }] },
-        { employeeId: 'OPR-0027', fullName: 'Kavya Menon', designation: 'Officer', probationEndsOn: '2026-12-20', goals: [] },
+        { employeeId: 'OPR-0023', fullName: 'Karan Mehta', designation: 'Lead', form: { status: 'approved' }, goals: KARAN_APPRAISAL.goals, entries: [], appraisal: KARAN_APPRAISAL },
+        {
+          employeeId: 'OPR-0021', fullName: 'Rohit Verma', designation: 'Coordinator', form: { status: 'submitted', submittedOn: '2026-11-11' },
+          goals: [{ id: 'GL-5', title: 'Freight', measure: '3 days', weight: 100 }], entries: [{ id: 'PE-2', section: 'learning', title: 'Customs rules', details: 'Course' }],
+        },
+        { employeeId: 'OPR-0027', fullName: 'Kavya Menon', designation: 'Officer', probationEndsOn: '2026-12-20', goals: [], entries: [] },
       ],
     };
 
-    const render = async (team: TeamPerformance = TEAM) => {
+    const render = async (team: TeamPerformance = TEAM, scope: 'team' | 'company' = 'team') => {
       const fixture = TestBed.createComponent(TeamPerformancePage);
-      await respond(http, { '/api/team/performance': team });
-      return fixture;
+      fixture.componentRef.setInput('scope', scope);
+      await respond(http, { [`/api/${scope}/performance`]: team });
+      return fixture.nativeElement as HTMLElement;
     };
 
-    it('lists probation to review and each person in the cycle', async () => {
-      const root = (await render()).nativeElement as HTMLElement;
+    it('opens on plans to approve, with a tab for each stage', async () => {
+      const root = await render();
 
       expect(texts(root, 'probation-row')).toEqual(['KM Kavya Menon Officer PROBATION ENDS 20 December 2026 Review']);
-      expect(texts(root, 'team-appraisal-row')).toEqual([
-        'AR Arjun Reddy Site Engineer GOALS 1 goal, approved RATING Not yet Appraise',
-        'KM Karan Mehta Lead GOALS 1 goal, approved RATING 4, Exceeds expectations Not accepted yet',
-        'RV Rohit Verma Coordinator GOALS 1 goal, waiting for the hod RATING Not yet Review goals',
-        'KM Kavya Menon Officer GOALS Not written yet RATING Not yet Waiting for their goals',
-      ]);
+      expect(texts(root, 'team-appraisal-row')).toEqual(['RV Rohit Verma Coordinator Sent 11 Nov Review plan']);
+      click(root, 'tab-appraise');
+      expect(texts(root, 'team-appraisal-row')).toEqual(['AR Arjun Reddy Site Engineer Plan approved Appraise']);
+      click(root, 'tab-waiting');
+      expect(texts(root, 'team-appraisal-row')).toEqual(['KM Kavya Menon Officer Not sent yet View plan']);
+      click(root, 'tab-done');
+      expect(texts(root, 'team-appraisal-row')).toEqual(['KM Karan Mehta Lead Rated 4, not accepted yet View plan']);
     });
 
-    it('approves goals someone sent, or sends them back with what to change', async () => {
-      const root = (await render()).nativeElement as HTMLElement;
+    it('shows the whole plan, and sends it back with what to change', async () => {
+      const root = await render();
 
-      click(root, 'review-goals');
-      expect(texts(root, 'goal-to-decide')).toEqual(['Freight 3 days · 100%']);
-      click(root, 'send-back-goals');
+      click(root, 'review-plan');
+      await settle();
+      expect(texts(root, 'plan-view-section')).toEqual([
+        '1 Goals and KPIs Freight 3 days · 100%',
+        '2 Plan for certifications Nothing added.',
+        '3 Learning and development Customs rules Course',
+        '4 Accomplishments Nothing added.',
+        '5 Strengths Nothing added.',
+      ]);
+      click(root, 'send-back-plan');
       click(root, 'confirm-send-back');
       await settle();
       expect(text(root.querySelector('dialog[open]') as HTMLElement)).toContain('Say what to change, so they can fix it.');
-      fill(root, 'goals-note', 'Add a customs goal');
+      fill(root, 'plan-note', 'Add a customs goal');
       click(root, 'confirm-send-back');
       await settle();
-      const sentBack = http.expectOne('/api/team/performance/OPR-0021/goals/decision');
+      const sentBack = http.expectOne('/api/team/performance/OPR-0021/decision');
       expect(sentBack.request.body).toEqual({ decision: 'rejected', note: 'Add a customs goal' });
       sentBack.flush(null);
       await settle();
 
-      expect(http.match('/api/team/performance')).toHaveLength(1);
+      // The tab picked stays picked when the list reloads.
+      click(root, 'tab-waiting');
+      const [rohit] = TEAM.people.filter(({ employeeId }) => employeeId === 'OPR-0021');
+      const others = TEAM.people.filter(({ employeeId }) => employeeId !== 'OPR-0021');
+      await respond(http, { '/api/team/performance': { ...TEAM, people: [...others, { ...rohit, form: { status: 'rejected', decidedOn: '2026-11-12', note: 'Add a customs goal' } }] } });
+      expect(texts(root, 'team-appraisal-row')).toEqual(['KM Kavya Menon Officer Not sent yet View plan', 'RV Rohit Verma Coordinator Sent back 12 Nov View plan']);
     });
 
-    it('shows their self review in the appraisal, with room to comment', async () => {
-      const root = (await render()).nativeElement as HTMLElement;
+    it('shows the rest of their plan in the appraisal, with room to comment', async () => {
+      const root = await render();
 
+      click(root, 'tab-appraise');
       click(root, 'appraise');
       await settle();
 
-      expect(text(root.querySelector('[data-testid=their-self-review]') as HTMLElement)).toContain('Strengths Scheduling');
+      expect(text(root.querySelector('[data-testid=their-self-review]') as HTMLElement)).toContain('5 Strengths Scheduling');
+    });
+
+    it('lets a super admin step in, naming each person’s HOD', async () => {
+      const root = await render(TEAM, 'company');
+
+      click(root, 'tab-appraise');
+      expect(texts(root, 'team-appraisal-row')).toEqual(['AR Arjun Reddy Site Engineer, HOD Vikram Singh Plan approved Appraise']);
+      click(root, 'tab-approve');
+      click(root, 'review-plan');
+      await settle();
+      click(root, 'approve-plan');
+      await settle();
+
+      expect(http.expectOne('/api/company/performance/OPR-0021/decision').request.body).toEqual({ decision: 'approved' });
     });
 
     it('opens the probation form', async () => {
-      const root = (await render()).nativeElement as HTMLElement;
+      const root = await render();
 
       click(root, 'review-probation');
       await settle();
@@ -196,8 +243,7 @@ describe('Performance pages', () => {
     });
 
     it('says when no cycle is open', async () => {
-      const root = (await render({ people: [] })).nativeElement as HTMLElement;
-
+      const root = await render({ people: [] });
       expect(text(root)).toContain('No appraisal cycle is open. HR opens one each year');
       expect(root.querySelector('[data-testid=probation-card]')).toBeNull();
     });
@@ -208,11 +254,12 @@ describe('Performance pages', () => {
       cycles: [CYCLE],
       people: [
         {
-          employeeId: 'OPR-0018', fullName: 'Arjun Reddy', department: 'Operations', managerName: 'Vikram Singh', form: { goalsStatus: 'hod-approved', hodApprovedByName: 'Vikram Singh' },
+          employeeId: 'OPR-0018', fullName: 'Arjun Reddy', department: 'Operations', managerName: 'Vikram Singh', form: { status: 'hod-approved', hodApprovedByName: 'Vikram Singh', hodApprovedOn: '2026-11-11' },
           goals: [{ id: 'GL-1', title: 'Hand over', measure: 'Snag list', weight: 60 }, { id: 'GL-2', title: 'Safety', measure: 'No incidents', weight: 40 }],
+          entries: [],
         },
         {
-          employeeId: 'OPR-0023', fullName: 'Karan Mehta', department: 'Operations', managerName: 'Vikram Singh', form: { goalsStatus: 'approved' }, goals: KARAN_APPRAISAL.goals,
+          employeeId: 'OPR-0023', fullName: 'Karan Mehta', department: 'Operations', managerName: 'Vikram Singh', form: { status: 'approved' }, goals: KARAN_APPRAISAL.goals, entries: [],
           appraisal: { ...KARAN_APPRAISAL, acceptedOn: '2026-11-12' },
         },
       ],
@@ -230,8 +277,8 @@ describe('Performance pages', () => {
 
       expect(text(root.querySelector('[data-testid=cycle-progress]') as HTMLElement)).toBe('1 of 2 appraised. Due 31 January 2027.');
       expect(texts(root, 'hr-appraisal-row')).toEqual([
-        'Arjun Reddy Operations Vikram Singh 2, waiting for hr Not yet Not yet Not yet',
-        'Karan Mehta Operations Vikram Singh 1, approved 4, Exceeds expectations Promotion, 8% increment 12 Nov',
+        'Arjun Reddy Operations Vikram Singh Waiting for HR Not yet Not yet Not yet',
+        'Karan Mehta Operations Vikram Singh Approved 4, Exceeds expectations Promotion, 8% increment 12 Nov',
       ]);
       expect(texts(root, 'probation-review')).toEqual(['Kavya Menon by Vikram Singh, 12 Nov OUTCOME Confirmed COMMENTS Settled in well']);
       expect(root.querySelector('app-cycle-form')).toBeNull();
@@ -241,18 +288,18 @@ describe('Performance pages', () => {
       const [, karan] = OVERVIEW.people;
       const root = await render({ ...OVERVIEW, people: [{ ...karan, appraisal: { ...KARAN_APPRAISAL, recommendsPromotion: false, incrementPercent: undefined } }] });
 
-      expect(texts(root, 'hr-appraisal-row')).toEqual(['Karan Mehta Operations Vikram Singh 1, approved 4, Exceeds expectations None Not yet']);
+      expect(texts(root, 'hr-appraisal-row')).toEqual(['Karan Mehta Operations Vikram Singh Approved 4, Exceeds expectations None Not yet']);
     });
 
-    it('approves goals the HOD approved', async () => {
+    it('approves plans the HOD approved', async () => {
       const root = await render();
-      expect(texts(root, 'goals-for-hr-row')).toEqual(['Arjun Reddy Approved by Vikram Singh GOALS 2 Review goals']);
+      expect(texts(root, 'plan-for-hr-row')).toEqual(['Arjun Reddy Operations HOD APPROVED Vikram Singh, 11 Nov Review plan']);
 
-      click(root, 'review-goals');
-      click(root, 'approve-goals');
+      click(root, 'review-plan');
+      click(root, 'approve-plan');
       await settle();
 
-      expect(http.expectOne('/api/hr/performance/OPR-0018/goals/decision').request.body).toEqual({ decision: 'approved' });
+      expect(http.expectOne('/api/hr/performance/OPR-0018/decision').request.body).toEqual({ decision: 'approved' });
     });
 
     it('closes the open cycle after asking', async () => {
@@ -287,6 +334,7 @@ describe('Performance pages', () => {
 
       expect(root.querySelector('app-cycle-form')).not.toBeNull();
       expect(text(root)).toContain('No probation reviews yet.');
+      expect(text(root)).toContain('No plans waiting for HR.');
     });
   });
 });

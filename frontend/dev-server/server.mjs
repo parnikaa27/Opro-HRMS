@@ -875,49 +875,58 @@ const appraisalView = (appraisal) => ({
   appraisedByName: nameOf(appraisal.appraisedBy),
   goals: goalsOf(appraisal.cycleId, appraisal.employeeId),
 });
-// The recommendations are the HOD's advice to HR, so the person's own view leaves them out.
-// Someone's part of a cycle: where their goals stand, and their self review.
+// Someone's plan in a cycle: goals and four sections of entries, sent to their HOD and then HR together.
+const SECTIONS = ['certification', 'learning', 'accomplishment', 'strength'];
+const entriesOf = (cycleId, employeeId) =>
+  db.performance.entries
+    .filter((entry) => entry.cycleId === cycleId && entry.employeeId === employeeId)
+    .map(({ id, section, title, details, targetOn }) => ({ id, section, title, ...(details && { details }), ...(targetOn && { targetOn }) }));
 const formOf = (cycleId, employeeId) => db.performance.forms.find((form) => form.cycleId === cycleId && form.employeeId === employeeId);
 const formView = (cycleId, employeeId) => {
-  const { cycleId: _cycle, employeeId: _employee, hodApprovedBy, goalsDecidedBy, ...form } = formOf(cycleId, employeeId) ?? { goalsStatus: 'draft' };
-  return { ...form, ...(hodApprovedBy && { hodApprovedByName: nameOf(hodApprovedBy) }), ...(goalsDecidedBy && { goalsDecidedByName: nameOf(goalsDecidedBy) }) };
+  const { cycleId: _cycle, employeeId: _employee, hodApprovedBy, decidedBy, ...form } = formOf(cycleId, employeeId) ?? { status: 'draft' };
+  return { ...form, ...(hodApprovedBy && { hodApprovedByName: nameOf(hodApprovedBy) }), ...(decidedBy && { decidedByName: nameOf(decidedBy) }) };
 };
 const saveForm = (cycleId, employeeId, changes) => {
-  const form = { goalsStatus: 'draft', ...formOf(cycleId, employeeId), cycleId, employeeId, ...changes };
+  const form = { status: 'draft', ...formOf(cycleId, employeeId), cycleId, employeeId, ...changes };
   db.performance.forms = [...db.performance.forms.filter((entry) => !(entry.cycleId === cycleId && entry.employeeId === employeeId)), form];
   return form;
 };
-const requireOwnForm = (user) => {
+// The person's own plan, while it's theirs to change.
+const requireEditablePlan = (user) => {
   if (!user.managerId) {
     throw new HttpError(409, 'You have no HOD to appraise you.');
   }
   const cycle = requireOpenCycle();
-  return { cycle, form: formOf(cycle.id, user.id) ?? { goalsStatus: 'draft' } };
+  if (!['draft', 'rejected'].includes(formOf(cycle.id, user.id)?.status ?? 'draft')) {
+    throw new HttpError(409, 'Your plan is with your HOD or HR, or already approved.');
+  }
+  return cycle;
 };
-const finishGoals = (user, cycle, employeeId, body) => {
+const finishPlan = (user, cycle, employeeId, body) => {
   if (body.decision !== 'approved') {
     const note = String(body.note ?? '').trim();
     if (!note) {
       throw new HttpError(400, 'Say what to change, so they can fix it.');
     }
-    saveForm(cycle.id, employeeId, { goalsStatus: 'rejected', goalsDecidedBy: user.id, goalsDecidedOn: today(), goalsNote: note });
-    notify(employeeId, 'performance', `${user.fullName} sent back your goals for ${cycle.name}: ${sentence(note)} Change them on Performance and send them again.`);
+    saveForm(cycle.id, employeeId, { status: 'rejected', decidedBy: user.id, decidedOn: today(), note });
+    notify(employeeId, 'performance', `${user.fullName} sent back your plan for ${cycle.name}: ${sentence(note)} Change it on Performance and send it again.`);
     return undefined;
   }
-  saveForm(cycle.id, employeeId, { goalsStatus: 'approved', goalsDecidedBy: user.id, goalsDecidedOn: today() });
-  notify(employeeId, 'performance', `Your goals for ${cycle.name} are approved.`);
+  saveForm(cycle.id, employeeId, { status: 'approved', decidedBy: user.id, decidedOn: today() });
+  notify(employeeId, 'performance', `Your plan for ${cycle.name} is approved.`);
   return undefined;
 };
+// The recommendations are the HOD's advice to HR, so the person's own view leaves them out.
 const ownView = (appraisal) => {
   const { recommendsPromotion: _promotion, incrementPercent: _increment, ...rest } = appraisalView(appraisal);
   return rest;
 };
 const reviewView = (review) => ({ ...review, employeeName: nameOf(review.employeeId), reviewedByName: nameOf(review.reviewedBy) });
-const reportOf = (user, employeeId) => {
-  requireManager(user);
-  const person = reportsOf(user).find(({ id }) => id === employeeId);
+// A report of the HOD's, or anyone else at Opro for a super admin standing in. Never themselves.
+const personIn = (user, scope, employeeId) => {
+  const person = peopleIn(user, scope).find(({ id }) => id === employeeId && id !== user.id);
   if (!person) {
-    throw new HttpError(404, 'Not one of your reports');
+    throw new HttpError(404, scope === 'company' ? 'Nobody at Opro with that id' : 'Not one of your reports');
   }
   return person;
 };
@@ -2079,6 +2088,7 @@ const routes = [
     return {
       ...(cycle && { cycle, form: formView(cycle.id, user.id) }),
       goals: cycle ? goalsOf(cycle.id, user.id) : [],
+      entries: cycle ? entriesOf(cycle.id, user.id) : [],
       appraisals: db.performance.appraisals.filter(({ employeeId }) => employeeId === user.id).sort((first, second) => second.appraisedOn.localeCompare(first.appraisedOn)).map(ownView),
       probationReviews: db.performance.probationReviews.filter(({ employeeId }) => employeeId === user.id).map(reviewView),
     };
@@ -2094,10 +2104,7 @@ const routes = [
   }],
   // Someone writes their own goals while they're a draft or sent back. Saving replaces them.
   ['PUT', /^\/api\/performance\/goals$/, ({ user, body }) => {
-    const { cycle, form } = requireOwnForm(user);
-    if (!['draft', 'rejected'].includes(form.goalsStatus)) {
-      throw new HttpError(409, 'Your goals are with your HOD or HR, or already approved.');
-    }
+    const cycle = requireEditablePlan(user);
     const plans = Array.isArray(body.goals) ? body.goals : [];
     if (plans.length === 0 || plans.some(({ title, measure, weight }) => !String(title ?? '').trim() || !String(measure ?? '').trim() || !(weight >= 1 && weight <= 100))) {
       throw new HttpError(400, 'Give each goal a title, a measure and a weight');
@@ -2112,63 +2119,69 @@ const routes = [
     saveForm(cycle.id, user.id, {});
     return goalsOf(cycle.id, user.id);
   }],
-  ['POST', /^\/api\/performance\/goals\/submit$/, ({ user }) => {
-    const { cycle, form } = requireOwnForm(user);
-    if (!['draft', 'rejected'].includes(form.goalsStatus)) {
-      throw new HttpError(409, 'Your goals are with your HOD or HR, or already approved.');
+  // Saving a section replaces its entries. A certification keeps its target date; nothing else has one.
+  ['PUT', /^\/api\/performance\/sections\/(certification|learning|accomplishment|strength)$/, ({ user, params: [section], body }) => {
+    const cycle = requireEditablePlan(user);
+    const plans = Array.isArray(body.entries) ? body.entries : [];
+    if (plans.length > 20 || plans.some(({ title }) => !String(title ?? '').trim())) {
+      throw new HttpError(400, 'Title is needed.');
     }
+    db.performance.entries = [
+      ...db.performance.entries.filter((entry) => !(entry.cycleId === cycle.id && entry.employeeId === user.id && entry.section === section)),
+      ...plans.map(({ title, details, targetOn }) => ({
+        id: `PE-${randomUUID().slice(0, 6)}`, cycleId: cycle.id, employeeId: user.id, section, title: title.trim(),
+        ...(String(details ?? '').trim() && { details: details.trim() }), ...(section === 'certification' && targetOn && { targetOn }),
+      })),
+    ];
+    saveForm(cycle.id, user.id, {});
+    return entriesOf(cycle.id, user.id).filter((entry) => entry.section === section);
+  }],
+  // Sends the whole plan to their HOD. Goals are needed; the other sections can be empty.
+  ['POST', /^\/api\/performance\/submit$/, ({ user }) => {
+    const cycle = requireEditablePlan(user);
     if (goalsOf(cycle.id, user.id).length === 0) {
-      throw new HttpError(400, 'Write at least one goal first.');
+      throw new HttpError(400, 'Add at least one goal first.');
     }
-    saveForm(cycle.id, user.id, { goalsStatus: 'submitted', goalsSubmittedOn: today(), hodApprovedBy: undefined, hodApprovedOn: undefined, goalsDecidedBy: undefined, goalsDecidedOn: undefined, goalsNote: undefined });
-    notify(user.managerId, 'performance', `${user.fullName} sent their goals for ${cycle.name}. Approve them or send them back from Performance.`);
+    saveForm(cycle.id, user.id, { status: 'submitted', submittedOn: today(), hodApprovedBy: undefined, hodApprovedOn: undefined, decidedBy: undefined, decidedOn: undefined, note: undefined });
+    notify(user.managerId, 'performance', `${user.fullName} sent their plan for ${cycle.name}. Approve it or send it back from Performance.`);
     return formView(cycle.id, user.id);
   }],
-  ['PUT', /^\/api\/performance\/self-review$/, ({ user, body }) => {
-    const { cycle } = requireOwnForm(user);
-    refuseIfAppraised(cycle, user.id);
-    const text = (value) => String(value ?? '').trim() || undefined;
-    saveForm(cycle.id, user.id, {
-      accomplishments: text(body.accomplishments), strengths: text(body.strengths), learning: text(body.learning), certifications: text(body.certifications), selfReviewedOn: today(),
-    });
-    return formView(cycle.id, user.id);
-  }],
-  ['GET', /^\/api\/team\/performance$/, ({ user }) => {
-    requireManager(user);
+  // A super admin sees everyone with an HOD, never themselves.
+  ['GET', /^\/api\/(team|company)\/performance$/, ({ user, params: [scope] }) => {
     const cycle = openCycle();
     return {
       ...(cycle && { cycle }),
-      people: reportsOf(user).map(({ id, fullName, designation, probationEndsOn }) => {
+      people: peopleIn(user, scope).filter(({ id, managerId }) => managerId && id !== user.id).map(({ id, fullName, designation, managerId, probationEndsOn }) => {
         const appraisal = cycle && db.performance.appraisals.find((entry) => entry.cycleId === cycle.id && entry.employeeId === id);
         return {
-          employeeId: id, fullName, designation, ...(probationEndsOn && { probationEndsOn }), ...(cycle && { form: formView(cycle.id, id) }),
-          goals: cycle ? goalsOf(cycle.id, id) : [], ...(appraisal && { appraisal: appraisalView(appraisal) }),
+          employeeId: id, fullName, designation, managerName: nameOf(managerId), ...(probationEndsOn && { probationEndsOn }), ...(cycle && { form: formView(cycle.id, id) }),
+          goals: cycle ? goalsOf(cycle.id, id) : [], entries: cycle ? entriesOf(cycle.id, id) : [], ...(appraisal && { appraisal: appraisalView(appraisal) }),
         };
       }),
     };
   }],
-  // The HOD's step: approving passes the goals to HR, unless the HOD is HR.
-  ['POST', /^\/api\/team\/performance\/([\w-]+)\/goals\/decision$/, ({ user, params: [id], body }) => {
-    const person = reportOf(user, id);
+  // The HOD's step, or a super admin's for them: approving passes the plan to HR, unless they are HR.
+  ['POST', /^\/api\/(team|company)\/performance\/([\w-]+)\/decision$/, ({ user, params: [scope, id], body }) => {
+    const person = personIn(user, scope, id);
     const cycle = requireOpenCycle();
-    if (formOf(cycle.id, person.id)?.goalsStatus !== 'submitted') {
-      throw new HttpError(409, "Their goals aren't waiting for you.");
+    if (formOf(cycle.id, person.id)?.status !== 'submitted') {
+      throw new HttpError(409, "Their plan isn't waiting for an HOD.");
     }
     if (body.decision !== 'approved' || user.roles.includes('HR')) {
-      return finishGoals(user, cycle, person.id, body);
+      return finishPlan(user, cycle, person.id, body);
     }
-    saveForm(cycle.id, person.id, { goalsStatus: 'hod-approved', hodApprovedBy: user.id, hodApprovedOn: today() });
-    notify(person.id, 'performance', `${user.fullName} approved your goals for ${cycle.name}. They now wait for HR.`);
+    saveForm(cycle.id, person.id, { status: 'hod-approved', hodApprovedBy: user.id, hodApprovedOn: today() });
+    notify(person.id, 'performance', `${user.fullName} approved your plan for ${cycle.name}. It now waits for HR.`);
     activeEmployees().filter((employee) => employee.roles.includes('HR') && employee.id !== person.id)
-      .forEach((hr) => notify(hr.id, 'performance', `${user.fullName} approved ${person.fullName}'s goals for ${cycle.name}. Approve them from Performance.`));
+      .forEach((hr) => notify(hr.id, 'performance', `${user.fullName} approved ${person.fullName}'s plan for ${cycle.name}. Approve it from Performance.`));
     return undefined;
   }],
-  ['POST', /^\/api\/team\/performance\/([\w-]+)\/appraisal$/, ({ user, params: [id], body }) => {
-    const person = reportOf(user, id);
+  ['POST', /^\/api\/(team|company)\/performance\/([\w-]+)\/appraisal$/, ({ user, params: [scope, id], body }) => {
+    const person = personIn(user, scope, id);
     const cycle = requireOpenCycle();
     refuseIfAppraised(cycle, person.id);
-    if (formOf(cycle.id, person.id)?.goalsStatus !== 'approved') {
-      throw new HttpError(409, 'Their goals need approving by you and HR first.');
+    if (formOf(cycle.id, person.id)?.status !== 'approved') {
+      throw new HttpError(409, 'Their plan needs approving by their HOD and HR first.');
     }
     const given = new Map((body.goals ?? []).map((goal) => [goal.goalId, goal]));
     const theirs = db.performance.goals.filter((goal) => goal.cycleId === cycle.id && goal.employeeId === person.id);
@@ -2190,8 +2203,8 @@ const routes = [
     notify(person.id, 'performance', `${user.fullName} finished your ${cycle.name}. Read it on Performance and accept your rating.`);
     return appraisalView(appraisal);
   }],
-  ['POST', /^\/api\/team\/performance\/([\w-]+)\/probation-review$/, ({ user, params: [id], body }) => {
-    const person = reportOf(user, id);
+  ['POST', /^\/api\/(team|company)\/performance\/([\w-]+)\/probation-review$/, ({ user, params: [scope, id], body }) => {
+    const person = personIn(user, scope, id);
     if (!person.probationEndsOn) {
       throw new HttpError(409, "They aren't on probation.");
     }
@@ -2232,24 +2245,25 @@ const routes = [
         ? activeEmployees().filter(({ managerId }) => managerId).map(({ id, fullName, department, managerId }) => {
           const appraisal = db.performance.appraisals.find((entry) => entry.cycleId === cycle.id && entry.employeeId === id);
           return {
-            employeeId: id, fullName, department, managerName: nameOf(managerId), form: formView(cycle.id, id), goals: goalsOf(cycle.id, id), ...(appraisal && { appraisal: appraisalView(appraisal) }),
+            employeeId: id, fullName, department, managerName: nameOf(managerId), form: formView(cycle.id, id), goals: goalsOf(cycle.id, id), entries: entriesOf(cycle.id, id),
+            ...(appraisal && { appraisal: appraisalView(appraisal) }),
           };
         })
         : [],
       probationReviews: db.performance.probationReviews.map(reviewView),
     };
   }],
-  // HR's step on goals the HOD approved, never their own.
-  ['POST', /^\/api\/hr\/performance\/([\w-]+)\/goals\/decision$/, ({ user, params: [id], body }) => {
+  // HR's step on a plan the HOD approved, never their own.
+  ['POST', /^\/api\/hr\/performance\/([\w-]+)\/decision$/, ({ user, params: [id], body }) => {
     requireHr(user);
     if (id === user.id) {
-      throw new HttpError(403, 'Your own goals go to another HR person.');
+      throw new HttpError(403, 'Your own plan goes to another HR person.');
     }
     const cycle = requireOpenCycle();
-    if (formOf(cycle.id, id)?.goalsStatus !== 'hod-approved') {
-      throw new HttpError(409, "Their goals aren't waiting for HR.");
+    if (formOf(cycle.id, id)?.status !== 'hod-approved') {
+      throw new HttpError(409, "Their plan isn't waiting for HR.");
     }
-    return finishGoals(user, cycle, id, body);
+    return finishPlan(user, cycle, id, body);
   }],
   ['POST', /^\/api\/hr\/appraisal-cycles$/, ({ user, body }) => {
     requireHr(user);
@@ -2264,10 +2278,10 @@ const routes = [
     const due = `${cycle.name}, due ${sayDateFromToday(cycle.dueOn)}.`;
     activeEmployees().forEach((person) => {
       if (person.managerId) {
-        notify(person.id, 'performance', `HR opened ${due} Write your goals and KPIs on Performance.`);
+        notify(person.id, 'performance', `HR opened ${due} Write your plan on Performance and send it to your HOD.`);
       }
       if (reportsOf(person).length > 0) {
-        notify(person.id, 'performance', `HR opened ${due} Approve your team's goals, then appraise them.`);
+        notify(person.id, 'performance', `HR opened ${due} Approve your team's plans, then appraise them.`);
       }
     });
     return cycle;

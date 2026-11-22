@@ -19,25 +19,32 @@ export interface Goal {
 
 export type GoalPlan = Pick<Goal, 'title' | 'measure' | 'weight'>;
 
-// What the person writes about their year. The HOD comments on it when appraising.
-export interface SelfReview {
-  accomplishments?: string;
-  strengths?: string;
-  learning?: string;
-  certifications?: string;
+// The four sections of a plan besides goals. Each holds as many entries as the person adds.
+export type PlanSection = 'certification' | 'learning' | 'accomplishment' | 'strength';
+
+// A certification has a target date; a strength is a title only.
+export interface PlanEntry {
+  id: string;
+  section: PlanSection;
+  title: string;
+  details?: string;
+  targetOn?: string;
 }
 
-// Where someone's goals stand: draft and rejected are theirs to change, submitted waits for their HOD, hod-approved
-// for HR. Plus their self review.
-export interface CycleForm extends SelfReview {
-  goalsStatus: 'draft' | 'submitted' | 'hod-approved' | 'approved' | 'rejected';
-  goalsSubmittedOn?: string;
+export type EntryPlan = Pick<PlanEntry, 'title' | 'details' | 'targetOn'>;
+
+export type PlanStatus = 'draft' | 'submitted' | 'hod-approved' | 'approved' | 'rejected';
+
+// Where someone's plan (goals and the four sections, sent together) stands: draft and rejected are theirs to change,
+// submitted waits for their HOD, hod-approved for HR.
+export interface CycleForm {
+  status: PlanStatus;
+  submittedOn?: string;
   hodApprovedByName?: string;
   hodApprovedOn?: string;
-  goalsDecidedByName?: string;
-  goalsDecidedOn?: string;
-  goalsNote?: string;
-  selfReviewedOn?: string;
+  decidedByName?: string;
+  decidedOn?: string;
+  note?: string;
 }
 
 // Final once the HOD saves it. The recommendations are only sent to the HOD and HR. The person has to accept it.
@@ -90,6 +97,7 @@ export interface MyPerformance {
   cycle?: AppraisalCycle;
   form?: CycleForm;
   goals: Goal[];
+  entries: PlanEntry[];
   appraisals: Appraisal[];
   probationReviews: ProbationReview[];
 }
@@ -98,9 +106,12 @@ export interface TeamMemberPerformance {
   employeeId: string;
   fullName: string;
   designation: string;
+  // Their HOD, for a super admin looking across Opro.
+  managerName?: string;
   probationEndsOn?: string;
   form?: CycleForm;
   goals: Goal[];
+  entries: PlanEntry[];
   appraisal?: Appraisal;
 }
 
@@ -116,6 +127,7 @@ export interface HrPerformanceRow {
   managerName?: string;
   form?: CycleForm;
   goals: Goal[];
+  entries: PlanEntry[];
   appraisal?: Appraisal;
 }
 

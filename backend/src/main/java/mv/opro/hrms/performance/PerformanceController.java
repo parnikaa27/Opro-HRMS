@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -22,21 +23,23 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Performance", description = "Your own goals and self review in the open appraisal cycle, your appraisals (accept the rating once you've read it) and your probation reviews.")
+@Tag(name = "Performance", description = "Your own plan in the open appraisal cycle (goals, certifications, learning, accomplishments and strengths, sent together to your HOD and then HR), your appraisals (accept the rating once you've read it) and your probation reviews.")
 @RestController
 class PerformanceController {
 
-    record Mine(CycleResponse cycle, FormResponse form, List<GoalResponse> goals, List<AppraisalResponse> appraisals, List<ProbationReviewResponse> probationReviews) {}
+    record Mine(CycleResponse cycle, FormResponse form, List<GoalResponse> goals, List<EntryResponse> entries, List<AppraisalResponse> appraisals,
+            List<ProbationReviewResponse> probationReviews) {}
 
     record GoalBody(@NotBlank @Size(max = 120) String title, @NotBlank @Size(max = 300) String measure, @Min(1) @Max(100) int weight) {}
 
     record GoalsBody(@NotNull @Size(min = 1, max = MAX_GOALS) List<@Valid GoalBody> goals) {}
 
-    record SelfReviewBody(@Size(max = MAX_TEXT) String accomplishments, @Size(max = MAX_TEXT) String strengths, @Size(max = MAX_TEXT) String learning,
-            @Size(max = MAX_TEXT) String certifications) {}
+    record EntryBody(@NotBlank @Size(max = 120) String title, @Size(max = 1000) String details, LocalDate targetOn) {}
+
+    record EntriesBody(@NotNull @Size(max = MAX_ENTRIES) List<@Valid EntryBody> entries) {}
 
     private static final int MAX_GOALS = 10;
-    private static final int MAX_TEXT = 2000;
+    private static final int MAX_ENTRIES = 20;
 
     private final CurrentUser currentUser;
     private final Performance performance;
@@ -58,6 +61,8 @@ class PerformanceController {
                 .collect(Collectors.toSet()));
         return new Mine(CycleResponse.of(open), open == null ? null : formResponse(open, me),
                 open == null ? List.of() : performance.goalsOf(open.getId(), me.getId()).stream().map(GoalResponse::of).toList(),
+                open == null ? List.of() : performance.entriesOf(open.getId(), List.of(me.getId())).getOrDefault(me.getId(), List.of()).stream()
+                        .map(EntryResponse::of).toList(),
                 appraisals.stream().map(appraisal -> response(appraisal, names)).toList(),
                 reviews.stream().map(review -> ProbationReviewResponse.of(review, names)).toList());
     }
@@ -69,17 +74,18 @@ class PerformanceController {
                 .toList()).stream().map(GoalResponse::of).toList();
     }
 
-    @PostMapping("/api/performance/goals/submit")
-    FormResponse submitGoals() {
-        Employee me = currentUser.get();
-        performance.submitGoals(me);
-        return formResponse(performance.openCycle().orElseThrow(), me);
+    // section is certification, learning, accomplishment or strength. Saving replaces its entries.
+    @PutMapping("/api/performance/sections/{section:certification|learning|accomplishment|strength}")
+    List<EntryResponse> writeSection(@PathVariable String section, @Valid @RequestBody EntriesBody body) {
+        return performance.writeEntries(currentUser.get(), section, body.entries().stream()
+                .map(entry -> new Performance.EntryPlan(entry.title(), entry.details(), entry.targetOn())).toList()).stream().map(EntryResponse::of).toList();
     }
 
-    @PutMapping("/api/performance/self-review")
-    FormResponse selfReview(@Valid @RequestBody SelfReviewBody body) {
+    // Sends the whole plan to their HOD.
+    @PostMapping("/api/performance/submit")
+    FormResponse submit() {
         Employee me = currentUser.get();
-        performance.writeSelfReview(me, new AppraisalForm.SelfReview(body.accomplishments(), body.strengths(), body.learning(), body.certifications()));
+        performance.submit(me);
         return formResponse(performance.openCycle().orElseThrow(), me);
     }
 
@@ -91,7 +97,7 @@ class PerformanceController {
 
     private FormResponse formResponse(AppraisalCycle cycle, Employee me) {
         AppraisalForm form = performance.formOf(cycle.getId(), me.getId()).orElse(null);
-        return FormResponse.of(form, form == null ? Map.of() : people.namesOf(Stream.of(form.getHodApprovedBy(), form.getGoalsDecidedBy())
+        return FormResponse.of(form, form == null ? Map.of() : people.namesOf(Stream.of(form.getHodApprovedBy(), form.getDecidedBy())
                 .filter(Objects::nonNull).collect(Collectors.toSet())));
     }
 

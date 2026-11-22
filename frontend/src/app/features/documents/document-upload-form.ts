@@ -3,6 +3,7 @@ import { FormField, form, required, submit, validate } from '@angular/forms/sign
 import { CompanyApi } from '../../core/company-api';
 import { DocumentEntry } from '../../models/company';
 import { FieldError } from '../../shared/ui/field-error';
+import { Icon } from '../../shared/ui/icon';
 import { ModalHeading } from '../../shared/ui/modal-heading';
 import { addDays, maldivesToday } from '../../shared/utils/date-time';
 import { serverReason } from '../../shared/utils/form-submit';
@@ -10,19 +11,37 @@ import { HrApi } from '../hr/hr-api';
 import { CERTIFICATE_ACCEPT, certificateProblem } from '../leave/leave-api';
 
 const FAILED = "That didn't upload. Check your connection and try again.";
+const KILOBYTE = 1024;
 
-// Uploads one or more files of a document: someone's own, or HR's copy for the person in employeeId.
+// "240 KB" or "1.2 MB", for the list of files picked.
+const sizeOf = ({ size }: File) => (size < KILOBYTE * KILOBYTE ? `${Math.max(1, Math.round(size / KILOBYTE))} KB` : `${(size / KILOBYTE / KILOBYTE).toFixed(1)} MB`);
+
+// Uploads one or more files of a document: someone's own, or HR's copy for the person in employeeId. Each file picked
+// is listed with a cross, so a wrong one comes off before anything is sent.
 @Component({
   selector: 'app-document-upload-form',
-  imports: [FieldError, FormField, ModalHeading],
+  imports: [FieldError, FormField, Icon, ModalHeading],
   template: `
     <app-modal-heading eyebrow="DOCUMENTS" [heading]="'Upload ' + document().name.toLowerCase()" [intro]="intro()" />
     <form novalidate (submit)="save($event)">
       <label>
-        Files
+        {{ files().length ? 'Add more files' : 'Files' }}
         <input type="file" multiple [accept]="accept" (change)="pick($event)" data-testid="document-file" aria-describedby="document-file-note" />
       </label>
-      <p class="modal-intro" id="document-file-note">{{ fileProblem() ?? 'PDF, JPG or PNG, each under 5 MB. Pick several for a document with more than one page.' }}</p>
+      <p class="modal-intro" id="document-file-note">{{ fileProblem() ?? 'PDF, JPG or PNG, each under 5 MB. Pick several at once for a document with more than one page.' }}</p>
+      @if (files().length) {
+        <ul class="picked-files" aria-label="Files to upload" data-testid="picked-files">
+          @for (file of files(); track $index; let index = $index) {
+            <li data-testid="picked-file">
+              <span>{{ file.name }}</span>
+              <small>{{ sizeOf(file) }}</small>
+              <button type="button" class="entry-remove" (click)="remove(index)" [attr.aria-label]="'Take off ' + file.name" data-testid="remove-picked-file">
+                <app-icon name="x" [size]="16" />
+              </button>
+            </li>
+          }
+        </ul>
+      }
       <div class="form-row">
         <label>Starts on <input type="date" [max]="today" [formField]="uploadForm.issuedOn" data-testid="document-issued" aria-describedby="document-issued-error" /></label>
         @if (document().hasExpiry) {
@@ -39,7 +58,7 @@ const FAILED = "That didn't upload. Check your connection and try again.";
       }
       <div class="modal-actions">
         <button type="button" class="secondary-button" (click)="cancelled.emit()">Cancel</button>
-        <button type="submit" class="primary-button" [disabled]="uploadForm().submitting()" data-testid="document-submit">{{ uploadForm().submitting() ? 'Uploading…' : 'Upload' }}</button>
+        <button type="submit" class="primary-button" [disabled]="uploadForm().submitting()" data-testid="document-submit">{{ uploadForm().submitting() ? 'Uploading…' : files().length > 1 ? 'Upload ' + files().length + ' files' : 'Upload' }}</button>
       </div>
     </form>
   `,
@@ -62,7 +81,8 @@ export class DocumentUploadForm {
   );
   protected readonly failure = signal<string | undefined>(undefined);
   protected readonly fileProblem = signal<string | undefined>(undefined);
-  private readonly files = signal<readonly File[]>([]);
+  protected readonly files = signal<readonly File[]>([]);
+  protected readonly sizeOf = sizeOf;
   // Starts with the copy on file's dates, so adding a page is just picking the file.
   protected readonly draft = linkedSignal(() => ({ issuedOn: this.document().issuedOn ?? '', expiresOn: this.document().expiresOn ?? '' }));
   protected readonly uploadForm = form(this.draft, (path) => {
@@ -72,11 +92,21 @@ export class DocumentUploadForm {
     validate(path.expiresOn, ({ value }) => (value() && value() < this.tomorrow ? { kind: 'past', message: 'It has to expire after today.' } : undefined));
   });
 
+  // Each pick adds to the list. A file that can't be sent is left out, and says why.
   protected pick(event: Event) {
-    const picked = event.target instanceof HTMLInputElement ? [...(event.target.files ?? [])] : [];
-    const problem = picked.map(certificateProblem).find(Boolean);
-    this.fileProblem.set(problem);
-    this.files.set(problem ? [] : picked);
+    if (!(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    const picked = [...(event.target.files ?? [])];
+    const refused = picked.filter((file) => certificateProblem(file));
+    this.fileProblem.set(refused.length ? `Left out ${refused.map(({ name }) => name).join(', ')}. Each file has to be a PDF, JPG or PNG under 5 MB.` : undefined);
+    this.files.update((files) => [...files, ...picked.filter((file) => !certificateProblem(file))]);
+    // So the same file can be picked again after taking it off.
+    event.target.value = '';
+  }
+
+  protected remove(index: number) {
+    this.files.update((files) => files.filter((_, position) => position !== index));
   }
 
   protected save(event: Event) {
@@ -95,9 +125,11 @@ export class DocumentUploadForm {
       const dates = { issuedOn, ...(hasExpiry && { expiresOn }) };
       const employeeId = this.employeeId();
       try {
-        // One at a time, in the order picked, so the pages keep their order.
+        // One at a time, in the order picked, so the pages keep their order. Each one sent leaves the list, so trying
+        // again after a failure doesn't send it twice.
         for (const file of files) {
           await (employeeId ? this.hr.uploadDocumentFor(employeeId, type, file, dates) : this.company.uploadDocument(type, file, dates));
+          this.files.update((left) => left.filter((each) => each !== file));
         }
         this.saved.emit();
       } catch (error) {

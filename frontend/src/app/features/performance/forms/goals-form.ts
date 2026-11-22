@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSign
 import { applyEach, FormField, form, max, min, required, submit } from '@angular/forms/signals';
 import { Goal, GoalPlan } from '../../../models/performance';
 import { FieldError } from '../../../shared/ui/field-error';
+import { Icon } from '../../../shared/ui/icon';
 import { ModalHeading } from '../../../shared/ui/modal-heading';
 import { serverReason } from '../../../shared/utils/form-submit';
 import { PerformanceApi } from '../performance-api';
@@ -10,17 +11,22 @@ const MAX_GOALS = 10;
 const FULL_WEIGHT = 100;
 const FAILED = "That didn't save. Try again in a moment.";
 
-// Someone writes their own goals and KPIs for the open cycle, weighted to 100%. Saving replaces what was there; sending
-// passes them to their HOD, then HR.
+// Someone writes their own goals and KPIs for the open cycle, weighted to 100%. Saving replaces what was there and keeps
+// it as a draft; the whole plan goes to their HOD from the page.
 @Component({
   selector: 'app-goals-form',
-  imports: [FieldError, FormField, ModalHeading],
+  imports: [FieldError, FormField, Icon, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="PERFORMANCE" heading="Your goals" intro="Say how each goal will be measured, so the rating at the end of the year is easy to agree on. Your HOD approves them, then HR." />
+    <app-modal-heading eyebrow="YOUR PLAN" heading="Goals and KPIs" intro="Say how each goal will be measured, so the rating at the end of the year is easy to agree on. Weights add up to 100%." />
     <form novalidate (submit)="save($event)">
       @for (goal of goalsForm.goals; track $index; let index = $index) {
-        <fieldset class="goal-fields" data-testid="goal-fields">
+        <fieldset class="entry-fields" data-testid="goal-fields">
           <legend>Goal {{ index + 1 }}</legend>
+          @if (draft().goals.length > 1) {
+            <button type="button" class="entry-remove" (click)="remove(index)" [attr.aria-label]="'Remove goal ' + (index + 1)" data-testid="remove-goal">
+              <app-icon name="x" [size]="16" />
+            </button>
+          }
           <label>Goal <input [formField]="goal.title" placeholder="Hand over phase 2 of the site" data-testid="goal-title" [attr.aria-describedby]="'goal-title-error-' + index" /></label>
           <app-field-error [id]="'goal-title-error-' + index" [errors]="goal.title().errors()" [isTouched]="goal.title().touched()" />
           <div class="form-row">
@@ -28,13 +34,10 @@ const FAILED = "That didn't save. Try again in a moment.";
             <label>Weight (%) <input type="number" [formField]="goal.weight" data-testid="goal-weight" /></label>
           </div>
           <app-field-error [id]="'goal-measure-error-' + index" [errors]="goal.measure().errors()" [isTouched]="goal.measure().touched()" />
-          @if (draft().goals.length > 1) {
-            <button type="button" class="text-link" (click)="remove(index)" data-testid="remove-goal">Remove this goal</button>
-          }
         </fieldset>
       }
       @if (draft().goals.length < maxGoals) {
-        <button type="button" class="text-link" (click)="add()" data-testid="add-goal">Add another goal</button>
+        <button type="button" class="secondary-button add-entry" (click)="add()" data-testid="add-goal"><app-icon name="plus" [size]="16" /> Add another goal</button>
       }
       <p class="weight-total" [class.is-off]="total() !== fullWeight" data-testid="weight-total">Weights add up to {{ total() }}%{{ total() === fullWeight ? '' : ', they need to make 100%' }}</p>
       @if (failure()) {
@@ -42,8 +45,7 @@ const FAILED = "That didn't save. Try again in a moment.";
       }
       <div class="modal-actions">
         <button type="button" class="secondary-button" (click)="cancelled.emit()">Cancel</button>
-        <button type="button" class="secondary-button" [disabled]="goalsForm().submitting()" (click)="save($event, false)" data-testid="goals-draft">Save draft</button>
-        <button type="submit" class="primary-button" [disabled]="goalsForm().submitting()" data-testid="goals-submit">Send to my HOD</button>
+        <button type="submit" class="primary-button" [disabled]="goalsForm().submitting()" data-testid="goals-save">Save</button>
       </div>
     </form>
   `,
@@ -80,7 +82,7 @@ export class GoalsForm {
     this.draft.update(({ goals }) => ({ goals: goals.filter((_, position) => position !== index) }));
   }
 
-  protected save(event: Event, isSending = true) {
+  protected save(event: Event) {
     event.preventDefault();
     this.failure.set(undefined);
     return submit(this.goalsForm, async () => {
@@ -90,9 +92,6 @@ export class GoalsForm {
       }
       try {
         await this.api.writeGoals(this.draft().goals.map(({ title, measure, weight }) => ({ title: title.trim(), measure: measure.trim(), weight: Number(weight) })));
-        if (isSending) {
-          await this.api.submitGoals();
-        }
         this.saved.emit();
       } catch (error) {
         console.error('Saving goals failed', error);
