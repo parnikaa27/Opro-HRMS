@@ -1,14 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Session } from '../../core/session';
 import { AttendanceStatus } from '../../models/attendance';
 import { Avatar } from '../../shared/ui/avatar';
 import { Icon } from '../../shared/ui/icon';
 import { WelcomeBanner } from '../../shared/ui/welcome-banner';
-import { addDays, daysUntil, formatBannerDate, formatShortDate, maldivesHour, maldivesToday, yearOf } from '../../shared/utils/date-time';
+import { addDays, daysUntil, formatBannerDate, formatShortDate, maldivesToday, yearOf } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { plural } from '../../shared/utils/text';
-import { greetingFor } from '../dashboard/dashboard-page';
 import { HolidaysApi } from '../holidays/holidays-api';
 import { visaAlertsFor } from '../team/visa-alerts';
 import { DocumentsToCollect } from './documents-to-collect';
@@ -24,37 +22,37 @@ const IN_OFFICE: readonly AttendanceStatus[] = ['present', 'late', 'half-day', '
   selector: 'app-hr-overview-page',
   imports: [Avatar, DocumentsToCollect, Icon, OnboardingProgressCard, RouterLink, WelcomeBanner],
   template: `
-    <app-welcome-banner [dateLabel]="dateLabel" [heading]="greeting + ', ' + firstName() + '.'" [line]="line()" />
+    <app-welcome-banner [dateLabel]="dateLabel" heading="HR overview" [line]="line()" />
 
     <div class="manager-stats">
       <a class="stat-card" routerLink="/hr/people">
-        <div class="stat-icon aqua"><app-icon name="users" /></div>
+        <div class="stat-icon"><app-icon name="users" /></div>
         <div>
-          <span>PEOPLE</span>
+          <span>People</span>
           <strong data-testid="stat-people">{{ people().length }}</strong>
           <small><i></i> {{ inToday() }} in today</small>
         </div>
       </a>
       <a class="stat-card" routerLink="/hr/people">
-        <div class="stat-icon amber"><app-icon name="palm" /></div>
+        <div class="stat-icon"><app-icon name="palm" /></div>
         <div>
-          <span>ON LEAVE TODAY</span>
+          <span>On leave today</span>
           <strong data-testid="stat-on-leave">{{ onLeave().length }}</strong>
           <small>Approved by their HODs</small>
         </div>
       </a>
       <a class="stat-card" routerLink="/hr/visas">
-        <div class="stat-icon coral"><app-icon name="globe" /></div>
+        <div class="stat-icon"><app-icon name="globe" /></div>
         <div>
-          <span>VISAS TO ACT ON</span>
+          <span>Visas to act on</span>
           <strong data-testid="stat-visas">{{ visaAlerts().length }}</strong>
           <small>Expiring or expired</small>
         </div>
       </a>
       <a class="stat-card" routerLink="/hr/inbox">
-        <div class="stat-icon violet"><app-icon name="mail" /></div>
+        <div class="stat-icon"><app-icon name="mail" /></div>
         <div>
-          <span>INBOX</span>
+          <span>Inbox</span>
           <strong data-testid="stat-inbox">{{ inbox.count() }}</strong>
           <small>Waiting for you</small>
         </div>
@@ -65,7 +63,7 @@ const IN_OFFICE: readonly AttendanceStatus[] = ['present', 'late', 'half-day', '
       <section class="card requests-section">
         <div class="card-heading">
           <div>
-            <span class="eyebrow">ACROSS OPRO</span>
+            <span class="eyebrow">Across Opro</span>
             <h2>On leave today</h2>
           </div>
           <a routerLink="/hr/people" class="text-link">People <app-icon name="arrow" [size]="15" /></a>
@@ -88,7 +86,7 @@ const IN_OFFICE: readonly AttendanceStatus[] = ['present', 'late', 'half-day', '
       <section class="card visa-alerts">
         <div class="card-heading">
           <div>
-            <span class="eyebrow">COMPLIANCE</span>
+            <span class="eyebrow">Compliance</span>
             <h2>Visa alerts</h2>
           </div>
           @if (visaAlerts().length) {
@@ -114,7 +112,7 @@ const IN_OFFICE: readonly AttendanceStatus[] = ['present', 'late', 'half-day', '
     <section class="card card-pad hr-confirm">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">COMING UP</span>
+          <span class="eyebrow">Coming up</span>
           <h2>Holiday dates to confirm</h2>
         </div>
         <a routerLink="/hr/calendar" class="text-link">Holiday calendar <app-icon name="arrow" [size]="15" /></a>
@@ -140,7 +138,6 @@ const IN_OFFICE: readonly AttendanceStatus[] = ['present', 'late', 'half-day', '
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HrOverviewPage {
-  private readonly session = inject(Session);
   private readonly hr = inject(HrApi);
   private readonly holidaysApi = inject(HolidaysApi);
   protected readonly today = maldivesToday();
@@ -149,9 +146,7 @@ export class HrOverviewPage {
   private readonly thisYear = this.holidaysApi.forYear(() => String(yearOf(this.today)));
   private readonly nextYear = this.holidaysApi.forYear(() => String(yearOf(this.today) + 1));
 
-  protected readonly greeting = greetingFor(maldivesHour());
-  protected readonly dateLabel = formatBannerDate(this.today).toUpperCase();
-  protected readonly firstName = computed(() => this.session.user()?.fullName.split(' ')[0] ?? '');
+  protected readonly dateLabel = formatBannerDate(this.today);
   protected readonly preview = PREVIEW;
 
   protected readonly people = computed(() => valueOr(this.everyone, []));

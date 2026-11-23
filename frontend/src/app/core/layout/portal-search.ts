@@ -26,7 +26,7 @@ const MAX_RESULTS = 6;
     <input
       #box
       aria-label="Search"
-      placeholder="Search anything..."
+      placeholder="Search"
       role="combobox"
       aria-controls="search-results"
       aria-autocomplete="list"

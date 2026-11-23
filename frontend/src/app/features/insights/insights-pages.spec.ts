@@ -85,7 +85,7 @@ describe('insights pages', () => {
       expect(texts(root.querySelector('[data-testid=workforce]') as HTMLElement, 'breakdown-row').slice(0, 2)).toEqual(['Expatriates 1 50%', 'Maldivians 1 50%']);
       expect(text(root.querySelector('[data-testid=leave]') as HTMLElement)).toContain('Annual leave used 50%');
       expect(text(root.querySelector('[data-testid=performance]') as HTMLElement)).toBe(
-        'PERFORMANCE 2026 appraisals On probation 1 Appraised 1 of 2 Average rating 4.0 Rated 4 or 5 1 Recommended for promotion 1',
+        'Performance 2026 appraisals On probation 1 Appraised 1 of 2 Average rating 4.0 Rated 4 or 5 1 Recommended for promotion 1',
       );
     });
 

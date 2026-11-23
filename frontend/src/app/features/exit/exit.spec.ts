@@ -146,7 +146,7 @@ describe('exit', () => {
 
     it('approves with the exit date, starting on the day they asked for', async () => {
       const root = await render();
-      expect(texts(root, 'waiting-resignation')[0]).toContain('Arjun Reddy Approved by Vikram Singh · “Moving back home” LAST DAY ASKED FOR 31 December 2026');
+      expect(texts(root, 'waiting-resignation')[0]).toContain('Arjun Reddy Approved by Vikram Singh · “Moving back home” Last day asked for 31 December 2026');
 
       click(root, 'approve');
       expect((root.querySelector('[data-testid=exit-date-input]') as HTMLInputElement).value).toBe('2026-12-31');

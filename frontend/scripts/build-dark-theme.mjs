@@ -1,4 +1,4 @@
-// Writes src/styles/dark.css from the light stylesheets, so dark mode follows the Figma design as it changes.
+// Writes src/styles/dark.css from the light stylesheets, so dark mode follows the light design as it changes.
 // Run `npm run theme:dark` after changing colours in portal.css or styles.css. `--check` fails if dark.css is stale.
 // Node built ins only.
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -6,8 +6,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const SOURCES = ['src/styles/portal.css', 'src/styles.css'];
 const OUTPUT = 'src/styles/dark.css';
 
-// Pieces that are dark on purpose in the design (navy sidebar, staff card, aqua banner and buttons) stay as they are.
-const KEEP = /\.sidebar|\.location-|\.workspace-label|\.welcome|\.sun\b|\.island|\.wave|\.id-card|\.id-top|\.id-profile|\.portrait-|\.id-details|\.id-footer|\.primary-button|\.approve\b|\.success-state > div|\.today span|backdrop/;
+// Pieces that are dark on purpose (navy sidebar, staff card, title band and buttons) stay as they are.
+const KEEP = /\.sidebar|\.location-|\.workspace-label|\.welcome|\.id-card|\.id-top|\.id-profile|\.portrait-|\.id-details|\.id-footer|\.primary-button|\.approve\b|\.success-state > div|\.today span|backdrop/;
 
 // The dark surfaces, as OKLCH lightness: page, then cards a step above it, then lines a step above that.
 const PAGE = 0.19;

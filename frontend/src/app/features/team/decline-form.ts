@@ -25,7 +25,7 @@ import { ModalHeading } from '../../shared/ui/modal-heading';
 })
 export class DeclineForm {
   readonly name = input.required<string>();
-  readonly eyebrow = input('TEAM MANAGEMENT');
+  readonly eyebrow = input('Team management');
   readonly placeholder = input('Two others are off that week. Could you move it by a few days?');
   readonly heading = input<string>();
   readonly confirmLabel = input('Decline');

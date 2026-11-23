@@ -17,7 +17,7 @@ import { RequestScope, TeamApi, TeamMember } from './team-api';
     <div class="page-view">
       <div class="page-title">
         <div>
-          <span class="eyebrow">DIRECTORY</span>
+          <span class="eyebrow">Directory</span>
           <h1>People</h1>
           <p>{{ scope() === 'team' ? 'Your team members and their current work status.' : 'Everyone at Opro and where they are today.' }}</p>
         </div>

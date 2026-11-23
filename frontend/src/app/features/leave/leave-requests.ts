@@ -21,7 +21,7 @@ const STATUS: Record<LeaveStatus, { label: string; tone: Tone }> = {
     <section class="card request-history">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">REQUEST HISTORY</span>
+          <span class="eyebrow">Request history</span>
           <h2>{{ heading() }}</h2>
         </div>
       </div>

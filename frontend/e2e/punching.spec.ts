@@ -3,7 +3,7 @@ import { expect, Page, test } from '@playwright/test';
 const signInAs = async (page: Page, employeeId: string) => {
   await page.goto('/login');
   await page.getByTestId(`login-as-${employeeId}`).click();
-  await expect(page.getByTestId('greeting')).toBeVisible();
+  await expect(page.getByTestId('page-heading')).toBeVisible();
 };
 
 // Everyone in the seed data has already punched today, so each journey starts with a new starter HR adds that morning.

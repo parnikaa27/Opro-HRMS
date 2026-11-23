@@ -48,7 +48,7 @@ const NOTES: Record<VisaReader, Record<ExpiryStatus | 'passport' | 'missing', st
     <section class="card visa-card" data-testid="visa-card">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">WORK VISA</span>
+          <span class="eyebrow">Work visa</span>
           <h2>Visa status</h2>
         </div>
         @if (visaState(); as state) {

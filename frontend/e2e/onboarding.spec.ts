@@ -3,7 +3,7 @@ import { expect, Page, test } from '@playwright/test';
 const signInAs = async (page: Page, employeeId: string) => {
   await page.goto('/login');
   await page.getByTestId(`login-as-${employeeId}`).click();
-  await expect(page.getByTestId('greeting')).toBeVisible();
+  await expect(page.getByTestId('page-heading')).toBeVisible();
 };
 
 test('a new joiner, their HOD and HR each tick their onboarding tasks, and the HOD picks a buddy', async ({ page }) => {

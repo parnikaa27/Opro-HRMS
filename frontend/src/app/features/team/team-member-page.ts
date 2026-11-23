@@ -85,8 +85,8 @@ export class TeamMemberPage {
 
   protected readonly currentMonth = monthOf(this.today);
   protected readonly month = signal(this.currentMonth);
-  protected readonly monthLabel = computed(() => (this.month() === this.currentMonth ? 'THIS MONTH' : formatMonth(this.month()).toUpperCase()));
-  protected readonly eyebrow = computed(() => (this.scope() === 'company' ? 'PEOPLE' : 'TEAM MEMBER'));
+  protected readonly monthLabel = computed(() => (this.month() === this.currentMonth ? 'This month' : formatMonth(this.month())));
+  protected readonly eyebrow = computed(() => (this.scope() === 'company' ? 'People' : 'Team member'));
   protected readonly member = this.api.member(this.employeeId, this.scope);
   private readonly attendance = this.api.attendance(this.month, this.scope);
   private readonly leave = this.api.leaveRequests({ scope: this.scope });

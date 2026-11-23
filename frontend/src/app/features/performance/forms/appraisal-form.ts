@@ -16,7 +16,7 @@ const FAILED = "That didn't save. Try again in a moment.";
   selector: 'app-appraisal-form',
   imports: [FieldError, FormField, ModalHeading, PlanView],
   template: `
-    <app-modal-heading eyebrow="PERFORMANCE" [heading]="'Appraise ' + name()" intro="Once saved it can't be changed, and they're told it's ready to read." />
+    <app-modal-heading eyebrow="Performance" [heading]="'Appraise ' + name()" intro="Once saved it can't be changed, and they're told it's ready to read." />
     <form novalidate (submit)="save($event)">
       @for (goal of appraisalForm.goals; track $index; let index = $index) {
         <fieldset class="goal-fields" data-testid="rate-goal">

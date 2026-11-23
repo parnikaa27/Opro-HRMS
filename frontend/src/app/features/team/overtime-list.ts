@@ -16,8 +16,8 @@ import { formatDayShort, formatDuration } from '../../shared/utils/date-time';
           <strong>{{ claim.employeeName }}</strong>
           <span>Stayed past the shift</span>
         </div>
-        <div><small>DATE</small><strong>{{ formatDayShort(claim.date) }}</strong></div>
-        <div><small>OVERTIME</small><strong>{{ claim.minutes ? formatDuration(claim.minutes) : 'Under 30 minutes now' }}</strong></div>
+        <div><small>Date</small><strong>{{ formatDayShort(claim.date) }}</strong></div>
+        <div><small>Overtime</small><strong>{{ claim.minutes ? formatDuration(claim.minutes) : 'Under 30 minutes now' }}</strong></div>
         <div class="request-actions labeled">
           <button type="button" class="decline" [disabled]="busyId() === claim.id" (click)="declined.emit(claim)" data-testid="reject"><app-icon name="x" [size]="16" /> Decline</button>
           <button type="button" class="approve" [disabled]="busyId() === claim.id || !claim.minutes" (click)="approved.emit(claim)" data-testid="approve"><app-icon name="check" [size]="16" /> Approve</button>

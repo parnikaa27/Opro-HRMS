@@ -12,7 +12,7 @@ const FIELDS = ['Phone number', 'Emergency contact', 'Blood group', 'Name', 'Som
   selector: 'app-change-request-form',
   imports: [FormField, FieldError, Icon, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="YOUR PROFILE" heading="Ask HR to change your details" intro="HR keeps your record, so changes go through them. They'll update it and let you know." />
+    <app-modal-heading eyebrow="Your profile" heading="Ask HR to change your details" intro="HR keeps your record, so changes go through them. They'll update it and let you know." />
     <form novalidate (submit)="save($event)">
       <label>
         What needs changing?

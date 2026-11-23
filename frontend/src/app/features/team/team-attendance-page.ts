@@ -20,7 +20,7 @@ import { TeamApi, ViewScope } from './team-api';
     <div class="page-view">
       <div class="page-title">
         <div>
-          <span class="eyebrow">ATTENDANCE RECORDS</span>
+          <span class="eyebrow">Attendance records</span>
           <h1>{{ scope() === 'company' ? 'Company attendance' : 'Team attendance' }}</h1>
           <p>Monitor attendance, work hours and anomalies across {{ scope() === 'company' ? 'Opro' : 'your team' }}.</p>
         </div>
@@ -46,12 +46,12 @@ import { TeamApi, ViewScope } from './team-api';
               <table class="stacks">
                 <thead>
                   <tr>
-                    <th scope="col">PERSON</th>
-                    <th scope="col">DAYS PRESENT</th>
-                    <th scope="col">LATE</th>
-                    <th scope="col">MISSED</th>
-                    <th scope="col">WORK HOURS</th>
-                    <th scope="col">{{ isCurrentMonth() ? 'TODAY' : 'ON TIME' }}</th>
+                    <th scope="col">Person</th>
+                    <th scope="col">Days present</th>
+                    <th scope="col">Late</th>
+                    <th scope="col">Missed</th>
+                    <th scope="col">Work hours</th>
+                    <th scope="col">{{ isCurrentMonth() ? 'Today' : 'On time' }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -63,11 +63,11 @@ import { TeamApi, ViewScope } from './team-api';
                           <span><strong>{{ row.name }}</strong></span>
                         </a>
                       </td>
-                      <td data-label="DAYS PRESENT">{{ row.present }} / {{ row.workingDays }}</td>
-                      <td data-label="LATE">{{ row.late }}</td>
-                      <td data-label="MISSED">{{ row.missed }}</td>
-                      <td data-label="WORK HOURS"><b>{{ row.hours }}</b></td>
-                      <td [attr.data-label]="isCurrentMonth() ? 'TODAY' : 'ON TIME'">
+                      <td data-label="Days present">{{ row.present }} / {{ row.workingDays }}</td>
+                      <td data-label="Late">{{ row.late }}</td>
+                      <td data-label="Missed">{{ row.missed }}</td>
+                      <td data-label="Work hours"><b>{{ row.hours }}</b></td>
+                      <td [attr.data-label]="isCurrentMonth() ? 'Today' : 'On time'">
                         @if (isCurrentMonth() && row.today; as today) {
                           <app-status-pill [tone]="status(today).tone">{{ status(today).label }}</app-status-pill>
                         } @else {
@@ -96,7 +96,7 @@ export class TeamAttendancePage {
   protected readonly currentMonth = monthOf(this.today);
   protected readonly month = signal(this.currentMonth);
   protected readonly isCurrentMonth = computed(() => this.month() === this.currentMonth);
-  protected readonly monthLabel = computed(() => formatMonth(this.month()).toUpperCase());
+  protected readonly monthLabel = computed(() => formatMonth(this.month()));
   protected readonly attendance = inject(TeamApi).attendance(this.month, this.scope);
 
   private readonly days = computed(() => valueOr(this.attendance, []).filter(({ date }) => date <= this.today));

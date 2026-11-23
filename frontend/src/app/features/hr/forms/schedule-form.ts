@@ -19,7 +19,7 @@ const toMinutes = (time: string) => {
   selector: 'app-schedule-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="WORK SCHEDULE" heading="Change the schedule" intro="Starts on the date you pick. Days already worked keep the rules they were worked under." />
+    <app-modal-heading eyebrow="Work schedule" heading="Change the schedule" intro="Starts on the date you pick. Days already worked keep the rules they were worked under." />
     <form novalidate (submit)="save($event)">
       <label>Starts on <input type="date" [formField]="scheduleForm.effectiveFrom" [min]="tomorrow" data-testid="schedule-from" aria-describedby="schedule-from-error" /></label>
       <app-field-error id="schedule-from-error" [errors]="scheduleForm.effectiveFrom().errors()" [isTouched]="scheduleForm.effectiveFrom().touched()" />

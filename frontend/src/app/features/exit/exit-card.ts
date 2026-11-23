@@ -13,7 +13,7 @@ import { itemStatus } from './exit-status';
   imports: [StatusPill],
   template: `
     <section class="card request-history" data-testid="exit-card">
-      <div class="card-heading"><div><span class="eyebrow">LEAVING OPRO</span><h2>Exit checklist</h2></div></div>
+      <div class="card-heading"><div><span class="eyebrow">Leaving Opro</span><h2>Exit checklist</h2></div></div>
       <p class="card-note">
         Resigned on {{ formatFullDate(resignation().submittedOn) }}: “{{ resignation().reason }}” Exit date {{ formatFullDate(resignation().exitOn ?? resignation().releaseOn) }}.
       </p>

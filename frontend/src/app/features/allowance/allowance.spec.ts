@@ -168,7 +168,7 @@ describe('allowances', () => {
 
     it('approves in one click and declines with a reason', async () => {
       const root = await render();
-      expect(texts(root, 'waiting-grant')[0]).toContain('Rohit Verma From Vikram Singh · “Taxis during the ferry strike” TRANSPORT MVR 750.5');
+      expect(texts(root, 'waiting-grant')[0]).toContain('Rohit Verma From Vikram Singh · “Taxis during the ferry strike” Transport MVR 750.5');
 
       click(root, 'approve');
       const approved = http.expectOne('/api/hr/allowance-grants/AG-1/decision');

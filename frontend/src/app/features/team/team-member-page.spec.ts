@@ -57,7 +57,7 @@ describe('TeamMemberPage', () => {
     });
     const root = fixture.nativeElement as HTMLElement;
     expect(root.querySelector('.back-link')?.getAttribute('href')).toBe('/company');
-    expect(text(root.querySelector('.eyebrow') as HTMLElement)).toBe('PEOPLE');
+    expect(text(root.querySelector('.eyebrow') as HTMLElement)).toBe('People');
 
     const picker = root.querySelector('[data-testid=month-picker]') as HTMLSelectElement;
     picker.value = '2026-10';
@@ -67,7 +67,7 @@ describe('TeamMemberPage', () => {
     });
 
     expect(texts(root, 'attendance-row')).toEqual(['Monday 5 Oct, Mon — — — Present']);
-    expect(text(root)).toContain('OCTOBER 2026');
+    expect(text(root)).toContain('October 2026');
   });
 
   it('says so when the person is not on the team', async () => {

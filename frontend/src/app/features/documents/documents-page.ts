@@ -17,7 +17,7 @@ import { DocumentUploadForm } from './document-upload-form';
     <div class="page-view">
       <div class="page-title">
         <div>
-          <span class="eyebrow">EMPLOYEE FILES</span>
+          <span class="eyebrow">Employee files</span>
           <h1>Documents</h1>
           <p>Your employment and compliance documents. Upload yours here, and HR checks them.</p>
         </div>

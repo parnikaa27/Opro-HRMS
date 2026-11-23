@@ -42,7 +42,7 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
     <div class="page-view">
       <div class="page-title">
         <div>
-          <span class="eyebrow">{{ scope() === 'company' ? 'ACROSS OPRO' : 'TEAM MANAGEMENT' }}</span>
+          <span class="eyebrow">{{ scope() === 'company' ? 'Across Opro' : 'Team management' }}</span>
           <h1>Leave requests</h1>
           <p>{{ scope() === 'company' ? 'Every request at Opro. Step in when an HOD is away.' : 'Review leave, punch fixes, home days, comp off, overtime and resignations for your team.' }}</p>
         </div>
@@ -116,9 +116,9 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
                 <strong>{{ fix.employeeName }}</strong>
                 <span>{{ fixCategoryLabel(fix.category) }} · punch {{ fix.kind === 'missed-in' ? 'in' : 'out' }} · {{ submittedAgo(fix.raisedOn) }}</span>
               </div>
-              <div><small>DATE</small><strong>{{ formatDayShort(fix.date) }}</strong></div>
-              <div><small>TIME</small><strong>{{ fix.requestedTime }}</strong></div>
-              <div><small>REASON</small><strong>{{ fix.reason ?? 'None given' }}</strong></div>
+              <div><small>Date</small><strong>{{ formatDayShort(fix.date) }}</strong></div>
+              <div><small>Time</small><strong>{{ fix.requestedTime }}</strong></div>
+              <div><small>Reason</small><strong>{{ fix.reason ?? 'None given' }}</strong></div>
               <div class="request-actions labeled">
                 <button type="button" class="decline" [disabled]="decisions.busyId() === fix.id" (click)="declining.set({ id: fix.id, name: fix.employeeName ?? '', kind: 'fix' })" data-testid="reject"><app-icon name="x" [size]="16" /> Decline</button>
                 <button type="button" class="approve" [disabled]="decisions.busyId() === fix.id" (click)="approveFix(fix)" data-testid="approve"><app-icon name="check" [size]="16" /> Approve</button>
@@ -149,9 +149,9 @@ const overlaps = (first: LeaveRequest, second: LeaveRequest) => first.from <= se
                   <span class="certificate-note" data-testid="leave-extras">{{ extras }}</span>
                 }
               </div>
-              <div><small>DATES</small><strong>{{ describeDates(request) }}</strong></div>
-              <div><small>DURATION</small><strong>{{ describeLength(request) }}</strong></div>
-              <div><small>{{ request.decisionNote ? 'YOUR NOTE' : 'REASON' }}</small><strong>{{ request.decisionNote ?? request.reason }}</strong></div>
+              <div><small>Dates</small><strong>{{ describeDates(request) }}</strong></div>
+              <div><small>Duration</small><strong>{{ describeLength(request) }}</strong></div>
+              <div><small>{{ request.decisionNote ? 'Your note' : 'Reason' }}</small><strong>{{ request.decisionNote ?? request.reason }}</strong></div>
               @if (isWaitingForHr(request)) {
                 <app-status-pill tone="late">Waiting for HR</app-status-pill>
               } @else if (request.status === 'pending') {

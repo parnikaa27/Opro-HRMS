@@ -22,7 +22,7 @@ const sizeOf = ({ size }: File) => (size < KILOBYTE * KILOBYTE ? `${Math.max(1, 
   selector: 'app-document-upload-form',
   imports: [FieldError, FormField, Icon, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="DOCUMENTS" [heading]="'Upload ' + document().name.toLowerCase()" [intro]="intro()" />
+    <app-modal-heading eyebrow="Documents" [heading]="'Upload ' + document().name.toLowerCase()" [intro]="intro()" />
     <form novalidate (submit)="save($event)">
       <label>
         {{ files().length ? 'Add more files' : 'Files' }}

@@ -12,7 +12,7 @@ const MAX_REASON = 300;
   selector: 'app-adjust-balance-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="LEAVE BALANCE" [heading]="'Adjust ' + firstName() + '’s balance'" intro="Every change is logged with your name and reason, and shows on their page." />
+    <app-modal-heading eyebrow="Leave balance" [heading]="'Adjust ' + firstName() + '’s balance'" intro="Every change is logged with your name and reason, and shows on their page." />
     <form novalidate (submit)="save($event)">
       <div class="form-row">
         <label>

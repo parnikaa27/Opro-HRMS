@@ -14,7 +14,7 @@ const FAILED = "That didn't save. Try again in a moment.";
   selector: 'app-probation-review-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="PROBATION" [heading]="'Review ' + name() + '’s probation'" [intro]="intro()" />
+    <app-modal-heading eyebrow="Probation" [heading]="'Review ' + name() + '’s probation'" [intro]="intro()" />
     <form novalidate (submit)="save($event)">
       <label>
         Outcome

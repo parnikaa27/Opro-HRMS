@@ -13,7 +13,7 @@ import { OnboardingApi, progress } from './onboarding-api';
   template: `
     @if (joiners().length) {
       <section class="card card-pad to-collect" data-testid="onboarding-progress-card">
-        <div class="card-heading"><div><span class="eyebrow">ONBOARDING</span><h2>New joiners</h2></div><span class="alert-count">{{ joiners().length }}</span></div>
+        <div class="card-heading"><div><span class="eyebrow">Onboarding</span><h2>New joiners</h2></div><span class="alert-count">{{ joiners().length }}</span></div>
         @for (joiner of joiners(); track joiner.employeeId) {
           <a class="visa-alert" [routerLink]="['/hr/people', joiner.employeeId]" data-testid="joiner-progress">
             <app-avatar [name]="joiner.employeeName" />

@@ -23,7 +23,7 @@ type Editing = 'insurance' | 'education' | 'experience' | undefined;
   imports: [ConfirmButton, DeclineForm, Dialog, EducationForm, ExperienceForm, Icon, InsuranceForm, ListSkeleton, StatusPill],
   template: `
     <section class="card request-history" data-testid="hr-record">
-      <div class="card-heading"><div><span class="eyebrow">EMPLOYEE FILE</span><h2>Record</h2></div></div>
+      <div class="card-heading"><div><span class="eyebrow">Employee file</span><h2>Record</h2></div></div>
       @if (record.error()) {
         <p class="attendance-off">Their record didn't load. Refresh the page to try again.</p>
       } @else if (record.isLoading() && !details()) {
@@ -133,7 +133,7 @@ type Editing = 'insurance' | 'education' | 'experience' | undefined;
 
     <app-dialog heading="Send back" [isOpen]="isSendingBack()" (isOpenChange)="isSendingBack.set($event)">
       @if (isSendingBack()) {
-        <app-decline-form eyebrow="BANK DETAILS" heading="Send back their bank details?" confirmLabel="Send back" placeholder="The account name doesn't match the bank letter." [name]="name()" (declined)="sendBackBank($event)" (cancelled)="isSendingBack.set(false)" />
+        <app-decline-form eyebrow="Bank details" heading="Send back their bank details?" confirmLabel="Send back" placeholder="The account name doesn't match the bank letter." [name]="name()" (declined)="sendBackBank($event)" (cancelled)="isSendingBack.set(false)" />
       }
     </app-dialog>
   `,

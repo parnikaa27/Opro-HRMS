@@ -26,7 +26,7 @@ const NO_RECORD = Number.MIN_SAFE_INTEGER;
     <div class="page-view">
       <div class="page-title">
         <div>
-          <span class="eyebrow">COMPLIANCE</span>
+          <span class="eyebrow">Compliance</span>
           <h1>Visas</h1>
           <p>Everyone who needs a work visa, soonest expiry first, and the quota their slots come from. Maldivian nationals aren't listed.</p>
         </div>
@@ -40,18 +40,18 @@ const NO_RECORD = Number.MIN_SAFE_INTEGER;
           <div class="table-wrap">
             <table class="stacks">
               <thead>
-                <tr><th scope="col">PERSON</th><th scope="col">VISA</th><th scope="col">VISA EXPIRES</th><th scope="col">PASSPORT EXPIRES</th><th scope="col"><span class="sr-only">Actions</span></th></tr>
+                <tr><th scope="col">Person</th><th scope="col">Visa</th><th scope="col">Visa expires</th><th scope="col">Passport expires</th><th scope="col"><span class="sr-only">Actions</span></th></tr>
               </thead>
               <tbody>
                 @for (person of rows(); track person.id) {
                   <tr data-testid="visa-row">
                     <td><a class="person-cell" [routerLink]="['/hr/people', person.id]"><app-avatar [name]="person.fullName" /><span><strong>{{ person.fullName }}</strong></span></a></td>
                     @if (person.visa; as visa) {
-                      <td data-label="VISA">{{ visa.visaNumber }}</td>
-                      <td data-label="VISA EXPIRES">{{ formatCompactDate(visa.visaExpiry) }} <app-status-pill [tone]="pill(visa.visaExpiry).tone">{{ pill(visa.visaExpiry).label }}</app-status-pill></td>
-                      <td data-label="PASSPORT EXPIRES">{{ formatCompactDate(visa.passportExpiry) }} <app-status-pill [tone]="pill(visa.passportExpiry).tone">{{ pill(visa.passportExpiry).label }}</app-status-pill></td>
+                      <td data-label="Visa">{{ visa.visaNumber }}</td>
+                      <td data-label="Visa expires">{{ formatCompactDate(visa.visaExpiry) }} <app-status-pill [tone]="pill(visa.visaExpiry).tone">{{ pill(visa.visaExpiry).label }}</app-status-pill></td>
+                      <td data-label="Passport expires">{{ formatCompactDate(visa.passportExpiry) }} <app-status-pill [tone]="pill(visa.passportExpiry).tone">{{ pill(visa.passportExpiry).label }}</app-status-pill></td>
                     } @else {
-                      <td colspan="3" data-label="VISA"><app-status-pill tone="danger">No record</app-status-pill></td>
+                      <td colspan="3" data-label="Visa"><app-status-pill tone="danger">No record</app-status-pill></td>
                     }
                     <td><button type="button" class="text-link" (click)="editing.set(person)" data-testid="edit-visa">{{ person.visa ? 'Update' : 'Add' }}</button></td>
                   </tr>

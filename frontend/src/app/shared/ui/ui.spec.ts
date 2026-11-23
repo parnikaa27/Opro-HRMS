@@ -21,11 +21,11 @@ import { WelcomeBanner } from './welcome-banner';
     <app-icon name="help" data-testid="circle" />
     <app-icon name="calendar" [size]="18" data-testid="rect" />
     <app-icon name="mapPin" data-testid="mixed" />
-    <app-icon name="sparkles" data-testid="lines" />
+    <app-icon name="megaphone" data-testid="lines" />
     <app-logo data-testid="logo" />
     <app-logo [isCompact]="true" data-testid="compact-logo" />
     <app-circle-progress [percent]="150" label="9h" sub="of 8 hours" colour="amber" />
-    <app-welcome-banner dateLabel="THURSDAY, 12 NOVEMBER" heading="Good morning, Arjun." line="Here’s your day." />
+    <app-welcome-banner dateLabel="Thursday, 12 November" heading="Overview" line="Here’s your day." />
     <app-list-skeleton [count]="2" />
   `,
 })
@@ -84,7 +84,7 @@ describe('shared UI', () => {
   it('renders the welcome banner and a loading skeleton', async () => {
     const element = await render();
 
-    expect(text(element.querySelector('.welcome') as HTMLElement)).toBe('THURSDAY, 12 NOVEMBER Good morning, Arjun. Here’s your day.');
+    expect(text(element.querySelector('.welcome') as HTMLElement)).toBe('Thursday, 12 November Overview Here’s your day.');
     expect(element.querySelectorAll('[data-testid=list-loading] li')).toHaveLength(2);
   });
 });

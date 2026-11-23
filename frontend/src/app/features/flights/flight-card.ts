@@ -18,7 +18,7 @@ import { FlightsApi } from './flights-api';
       <section class="card card-pad" data-testid="flight-card">
         <div class="card-heading">
           <div>
-            <span class="eyebrow">FLIGHT ALLOWANCE</span>
+            <span class="eyebrow">Flight allowance</span>
             <h2>Flights home</h2>
           </div>
           @if (flights.allowanceUsd !== undefined) {

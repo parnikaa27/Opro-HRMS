@@ -13,7 +13,7 @@ const MAX_BODY = 500;
   selector: 'app-announcement-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="FROM HR" [heading]="announcement() ? 'Edit announcement' : 'New announcement'" intro="Everyone gets a notification when you post. Edits don't send another one." />
+    <app-modal-heading eyebrow="From HR" [heading]="announcement() ? 'Edit announcement' : 'New announcement'" intro="Everyone gets a notification when you post. Edits don't send another one." />
     <form novalidate (submit)="save($event)">
       <label>Title <input [formField]="announcementForm.title" placeholder="Year end dinner, 17 December" data-testid="announcement-title" aria-describedby="announcement-title-error" /></label>
       <app-field-error id="announcement-title-error" [errors]="announcementForm.title().errors()" [isTouched]="announcementForm.title().touched()" />

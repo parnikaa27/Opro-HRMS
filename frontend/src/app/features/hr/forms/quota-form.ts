@@ -14,7 +14,7 @@ const FAILED = "That didn't save. Try again in a moment.";
   selector: 'app-quota-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="EXPATRIATE QUOTA" [heading]="quota() ? 'Edit the ' + quota()?.jobCategory + ' quota' : 'Add a quota approval'" intro="Slots in use are counted from active expatriates with this job category on their record." />
+    <app-modal-heading eyebrow="Expatriate quota" [heading]="quota() ? 'Edit the ' + quota()?.jobCategory + ' quota' : 'Add a quota approval'" intro="Slots in use are counted from active expatriates with this job category on their record." />
     <form novalidate (submit)="save($event)">
       <div class="form-row">
         <label>Job category <input [formField]="quotaForm.jobCategory" list="quota-categories" placeholder="Engineering" data-testid="quota-category" aria-describedby="quota-category-error" /></label>

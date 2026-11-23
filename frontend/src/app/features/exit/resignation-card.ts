@@ -15,7 +15,7 @@ import { ResignationForm } from './resignation-form';
   imports: [ConfirmButton, Dialog, ResignationForm, StatusPill, SuccessState],
   template: `
     <section class="card card-pad" data-testid="resignation-card">
-      <div class="card-heading"><div><span class="eyebrow">LEAVING OPRO</span><h2>Resignation</h2></div></div>
+      <div class="card-heading"><div><span class="eyebrow">Leaving Opro</span><h2>Resignation</h2></div></div>
       @if (resignations.error()) {
         <p class="attendance-off">This didn't load. Refresh the page to try again.</p>
       } @else if (open(); as current) {

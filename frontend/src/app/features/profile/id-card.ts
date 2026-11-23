@@ -18,8 +18,8 @@ interface IdCardRow {
   template: `
     <div class="grid justify-items-start gap-5 @3xl:grid-cols-2 print:grid-cols-1 print:gap-6">
       <article class="id-side" aria-label="ID card front" data-testid="id-card-front">
-        <header class="flex items-center justify-between bg-sea px-[5cqw] py-[2.6cqw] text-on-sea">
-          <span class="font-display text-[6cqw] leading-none font-bold tracking-tight">opro</span>
+        <header class="flex items-center justify-between bg-sea-dark px-[5cqw] py-[2.6cqw] text-on-sea">
+          <span class="font-display text-[6cqw] leading-none font-semibold tracking-tight">opro</span>
           <span class="text-[2.6cqw] tracking-[0.12em] uppercase">Staff ID</span>
         </header>
         <div class="flex flex-1 items-center gap-[4.5cqw] px-[5cqw]">
@@ -31,7 +31,7 @@ interface IdCardRow {
             </span>
           }
           <div class="min-w-0">
-            <p class="font-display text-[6.2cqw] leading-tight font-bold">{{ employee().fullName }}</p>
+            <p class="font-display text-[6.2cqw] leading-tight font-semibold">{{ employee().fullName }}</p>
             <p class="mt-[0.8cqw] text-[3.4cqw]">{{ employee().designation }}</p>
             <p class="text-[3.2cqw] text-soft">{{ employee().department }}</p>
           </div>

@@ -14,7 +14,7 @@ const FIRST_YEAR = 1950;
   selector: 'app-education-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="EDUCATION" [heading]="'Add to ' + firstName() + '’s education'" intro="Keep a copy of the certificate in their documents." />
+    <app-modal-heading eyebrow="Education" [heading]="'Add to ' + firstName() + '’s education'" intro="Keep a copy of the certificate in their documents." />
     <form novalidate (submit)="save($event)">
       <label>Qualification <input [formField]="educationForm.qualification" placeholder="BCom, Accounting" data-testid="education-qualification" aria-describedby="education-qualification-error" /></label>
       <app-field-error id="education-qualification-error" [errors]="educationForm.qualification().errors()" [isTouched]="educationForm.qualification().touched()" />

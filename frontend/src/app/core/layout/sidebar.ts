@@ -20,7 +20,7 @@ import { BadgeKey, NavItem } from './nav-items';
           <app-icon name="x" />
         </button>
       </div>
-      <div class="workspace-label">WORKSPACE</div>
+      <div class="workspace-label">Workspace</div>
       <nav aria-label="Main">
         @for (item of items(); track item.path) {
           <a

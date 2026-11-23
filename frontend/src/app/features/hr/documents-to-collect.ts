@@ -17,7 +17,7 @@ const PREVIEW = 6;
     <section class="card card-pad to-collect" data-testid="documents-to-collect">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">DOCUMENTS</span>
+          <span class="eyebrow">Documents</span>
           <h2>To collect</h2>
         </div>
         @if (list().length) {

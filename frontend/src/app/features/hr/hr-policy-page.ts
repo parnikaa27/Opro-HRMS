@@ -43,7 +43,7 @@ type Editing = LeaveType | 'new' | undefined;
             <table class="stacks">
               <thead>
                 <tr>
-                  <th scope="col">LEAVE TYPE</th><th scope="col">DAYS PER YEAR</th><th scope="col">HALF DAYS</th><th scope="col">GIVEN TO</th><th scope="col">AT YEAR END</th><th scope="col">APPROVED BY</th>
+                  <th scope="col">Leave type</th><th scope="col">Days per year</th><th scope="col">Half days</th><th scope="col">Given to</th><th scope="col">At year end</th><th scope="col">Approved by</th>
                   <th scope="col"><span class="sr-only">Actions</span></th>
                 </tr>
               </thead>
@@ -51,11 +51,11 @@ type Editing = LeaveType | 'new' | undefined;
                 @for (type of list(); track type.code) {
                   <tr data-testid="policy-row">
                     <td><strong>{{ type.name }}</strong></td>
-                    <td data-label="DAYS PER YEAR">{{ daysLabel(type) }}</td>
-                    <td data-label="HALF DAYS">{{ type.allowsHalfDay ? 'Allowed' : 'Full days only' }}</td>
-                    <td data-label="GIVEN TO">{{ type.code === compOff ? 'Earned by working days off' : type.isForEveryone ? 'Everyone' : 'People HR picks' }}</td>
-                    <td data-label="AT YEAR END">{{ type.code === compOff ? 'Taken within 14 days of the day worked' : type.isUnlimited ? 'Nothing to carry' : type.carriesForward ? 'Carries up to ' + plural(type.carryForwardCap ?? 0, 'day') : 'Lapses' }}</td>
-                    <td data-label="APPROVED BY">{{ type.code === compOff ? 'Set under Approvals' : type.needsHrApproval ? 'HOD, then HR' : 'HOD' }}</td>
+                    <td data-label="Days per year">{{ daysLabel(type) }}</td>
+                    <td data-label="Half days">{{ type.allowsHalfDay ? 'Allowed' : 'Full days only' }}</td>
+                    <td data-label="Given to">{{ type.code === compOff ? 'Earned by working days off' : type.isForEveryone ? 'Everyone' : 'People HR picks' }}</td>
+                    <td data-label="At year end">{{ type.code === compOff ? 'Taken within 14 days of the day worked' : type.isUnlimited ? 'Nothing to carry' : type.carriesForward ? 'Carries up to ' + plural(type.carryForwardCap ?? 0, 'day') : 'Lapses' }}</td>
+                    <td data-label="Approved by">{{ type.code === compOff ? 'Set under Approvals' : type.needsHrApproval ? 'HOD, then HR' : 'HOD' }}</td>
                     <td class="row-actions">
                       @if (type.code !== compOff) {
                         <button type="button" class="text-link" (click)="editing.set(type)" data-testid="edit-policy">Edit</button>

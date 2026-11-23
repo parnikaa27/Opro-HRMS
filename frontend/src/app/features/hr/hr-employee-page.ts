@@ -16,7 +16,7 @@ import { HrApi } from './hr-api';
       <a [routerLink]="backLink()" class="text-link back-link"><app-icon name="chevronLeft" [size]="15" /> {{ employeeId() ? 'Back to their page' : 'People' }}</a>
       <div class="page-title">
         <div>
-          <span class="eyebrow">PEOPLE</span>
+          <span class="eyebrow">People</span>
           <h1>{{ heading() }}</h1>
           <p>{{ employeeId() ? 'Changes show on their profile and ID card straight away.' : 'They can sign in from their first day. Annual, sick and family leave start full.' }}</p>
         </div>

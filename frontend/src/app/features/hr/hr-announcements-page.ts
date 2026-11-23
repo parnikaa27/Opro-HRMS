@@ -17,7 +17,7 @@ import { HrApi } from './hr-api';
     <div class="page-view">
       <div class="page-title">
         <div>
-          <span class="eyebrow">FROM HR</span>
+          <span class="eyebrow">From HR</span>
           <h1>Announcements</h1>
           <p>Short notes everyone sees on their overview. A new one also lands in their notifications.</p>
         </div>
@@ -32,7 +32,7 @@ import { HrApi } from './hr-api';
         } @else {
           @for (note of list(); track note.id) {
             <div class="history-row" data-testid="announcement-row">
-              <div class="leave-type-icon"><app-icon name="sparkles" [size]="18" /></div>
+              <div class="leave-type-icon"><app-icon name="megaphone" [size]="18" /></div>
               <div>
                 <strong>{{ note.title }}</strong>
                 <span>{{ note.body }}</span>

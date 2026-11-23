@@ -23,7 +23,7 @@ describe('VisaCard', () => {
   it('shows a valid visa with time left and how much of it is used', async () => {
     const root = await render({ visa: VISA });
 
-    expect(text(root)).toBe('WORK VISA Visa status Valid Employment Visa MV-EV-1 Expiry date 12 Nov 2027 Time remaining 365 days No action needed right now');
+    expect(text(root)).toBe('Work visa Visa status Valid Employment Visa MV-EV-1 Expiry date 12 Nov 2027 Time remaining 365 days No action needed right now');
     expect((root.querySelector('.progress-track i') as HTMLElement).style.width).toBe('50%');
   });
 

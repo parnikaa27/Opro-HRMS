@@ -37,7 +37,7 @@ interface Row {
     <section class="card all-requests" data-testid="approvals-to-decide">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">AFTER THE HOD</span>
+          <span class="eyebrow">After the HOD</span>
           <h2>Approvals</h2>
         </div>
       </div>
@@ -53,7 +53,7 @@ interface Row {
               <a [routerLink]="['/hr/people', row.employeeId]" class="person-cell"><strong>{{ row.employeeName }}</strong></a>
               <span>{{ row.what }} · approved by {{ row.hod }}</span>
             </div>
-            <div><small>DETAILS</small><strong>{{ row.detail }}</strong></div>
+            <div><small>Details</small><strong>{{ row.detail }}</strong></div>
             <div class="request-actions labeled">
               <button type="button" class="decline" [disabled]="decisions.busyId() === row.id" (click)="declining.set(row)" data-testid="reject"><app-icon name="x" [size]="16" /> Decline</button>
               <button type="button" class="approve" [disabled]="decisions.busyId() === row.id" (click)="approve(row)" data-testid="approve"><app-icon name="check" [size]="16" /> Approve</button>
@@ -70,7 +70,7 @@ interface Row {
 
     <app-dialog heading="Decline request" [isOpen]="declining() !== undefined" (isOpenChange)="$event || declining.set(undefined)">
       @if (declining(); as row) {
-        <app-decline-form eyebrow="PEOPLE & CULTURE" placeholder="Two people in the team are already off that week." [name]="row.employeeName" (declined)="decline(row, $event)" (cancelled)="declining.set(undefined)" />
+        <app-decline-form eyebrow="People & culture" placeholder="Two people in the team are already off that week." [name]="row.employeeName" (declined)="decline(row, $event)" (cancelled)="declining.set(undefined)" />
       }
     </app-dialog>
   `,

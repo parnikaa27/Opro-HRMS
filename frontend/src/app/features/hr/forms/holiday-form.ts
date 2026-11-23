@@ -12,7 +12,7 @@ const MAX_NAME = 60;
   selector: 'app-holiday-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="HOLIDAY CALENDAR" [heading]="holiday() ? 'Edit holiday' : 'Add a holiday'" intro="Islamic holidays stay tentative until the moon is sighted. Confirming one tells everyone." />
+    <app-modal-heading eyebrow="Holiday calendar" [heading]="holiday() ? 'Edit holiday' : 'Add a holiday'" intro="Islamic holidays stay tentative until the moon is sighted. Confirming one tells everyone." />
     <form novalidate (submit)="save($event)">
       <label>Name <input [formField]="holidayForm.name" placeholder="Eid al Fitr" data-testid="holiday-name" aria-describedby="holiday-name-error" /></label>
       <app-field-error id="holiday-name-error" [errors]="holidayForm.name().errors()" [isTouched]="holidayForm.name().touched()" />

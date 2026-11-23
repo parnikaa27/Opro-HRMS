@@ -21,7 +21,7 @@ type Editing = Quota | 'new' | undefined;
     <section class="card full-table" data-testid="quota-card">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">EXPATRIATE QUOTA</span>
+          <span class="eyebrow">Expatriate quota</span>
           <h2>Quota approvals</h2>
         </div>
         <button type="button" class="primary-button compact" (click)="editing.set('new')" data-testid="add-quota">Add quota</button>
@@ -34,15 +34,15 @@ type Editing = Quota | 'new' | undefined;
         <div class="table-wrap">
           <table class="stacks">
             <thead>
-              <tr><th scope="col">JOB CATEGORY</th><th scope="col">SLOTS USED</th><th scope="col">APPROVAL</th><th scope="col">EXPIRES</th><th scope="col"><span class="sr-only">Actions</span></th></tr>
+              <tr><th scope="col">Job category</th><th scope="col">Slots used</th><th scope="col">Approval</th><th scope="col">Expires</th><th scope="col"><span class="sr-only">Actions</span></th></tr>
             </thead>
             <tbody>
               @for (quota of list(); track quota.id) {
                 <tr data-testid="quota-row">
                   <td><strong>{{ quota.jobCategory }}</strong></td>
-                  <td data-label="SLOTS USED">{{ quota.used }} of {{ quota.slots }} <app-status-pill [tone]="usage(quota).tone">{{ usage(quota).label }}</app-status-pill></td>
-                  <td data-label="APPROVAL">{{ quota.approvalNumber }}</td>
-                  <td data-label="EXPIRES">{{ formatCompactDate(quota.expiresOn) }} <app-status-pill [tone]="expiry(quota).tone">{{ expiry(quota).label }}</app-status-pill></td>
+                  <td data-label="Slots used">{{ quota.used }} of {{ quota.slots }} <app-status-pill [tone]="usage(quota).tone">{{ usage(quota).label }}</app-status-pill></td>
+                  <td data-label="Approval">{{ quota.approvalNumber }}</td>
+                  <td data-label="Expires">{{ formatCompactDate(quota.expiresOn) }} <app-status-pill [tone]="expiry(quota).tone">{{ expiry(quota).label }}</app-status-pill></td>
                   <td class="row-actions">
                     <button type="button" class="text-link" (click)="editing.set(quota)" data-testid="edit-quota">Edit</button>
                     <app-confirm-button label="Remove" [question]="'Remove the ' + quota.jobCategory + ' quota?'" yes="Yes, remove it" testId="remove-quota" (confirmed)="remove(quota)" />

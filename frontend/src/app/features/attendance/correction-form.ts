@@ -21,7 +21,7 @@ const PLACEHOLDERS: Record<FixCategory, string> = {
   selector: 'app-correction-form',
   imports: [FormField, FieldError, Icon, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="ATTENDANCE RECORDS" heading="Fix a punch" [intro]="isSuperAdmin() ? 'Missed a punch, or punched in late? Put the real time on your record.' : 'Missed a punch, or punched in late? Tell your manager what really happened.'" />
+    <app-modal-heading eyebrow="Attendance records" heading="Fix a punch" [intro]="isSuperAdmin() ? 'Missed a punch, or punched in late? Put the real time on your record.' : 'Missed a punch, or punched in late? Tell your manager what really happened.'" />
     <form novalidate (submit)="save($event)">
       <label>
         What happened?

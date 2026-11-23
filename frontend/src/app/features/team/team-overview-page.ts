@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { WEEKEND_DAYS } from '../../core/config';
-import { Session } from '../../core/session';
 import { AttendanceStatus } from '../../models/attendance';
 import { LeaveRequest } from '../../models/leave';
 import { Avatar } from '../../shared/ui/avatar';
@@ -11,11 +10,10 @@ import { StatusPill } from '../../shared/ui/status-pill';
 import { WelcomeBanner } from '../../shared/ui/welcome-banner';
 import { statusToday } from '../../shared/utils/attendance-status';
 import { downloadCsv } from '../../shared/utils/csv';
-import { addDays, addMonths, datesBetween, formatBannerDate, formatClock, formatShortDate, maldivesHour, maldivesToday, monthOf, weekdayOf } from '../../shared/utils/date-time';
+import { addDays, addMonths, datesBetween, formatBannerDate, formatClock, formatShortDate, maldivesToday, monthOf, weekdayOf } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { plural } from '../../shared/utils/text';
 import { summarise } from '../attendance/attendance-summary';
-import { greetingFor } from '../dashboard/dashboard-page';
 import { LeaveApi } from '../leave/leave-api';
 import { describeDates, describeLength } from '../leave/leave-format';
 import { DecisionState } from './decision-state';
@@ -37,37 +35,37 @@ const statusOf = (member: TeamMember): AttendanceStatus => member.today?.status 
   selector: 'app-team-overview-page',
   imports: [Avatar, DeclineForm, Dialog, Icon, RouterLink, StatusPill, TeamOnboardingCard, WelcomeBanner],
   template: `
-    <app-welcome-banner [dateLabel]="dateLabel" [heading]="greeting + ', ' + firstName() + '.'" [line]="line()" />
+    <app-welcome-banner [dateLabel]="dateLabel" heading="Team overview" [line]="line()" />
 
     <div class="manager-stats">
       <div class="stat-card">
-        <div class="stat-icon aqua"><app-icon name="users" /></div>
+        <div class="stat-icon"><app-icon name="users" /></div>
         <div>
-          <span>TEAM MEMBERS</span>
+          <span>Team members</span>
           <strong data-testid="stat-members">{{ members().length }}</strong>
           <small><i></i> {{ checkedIn() }} checked in</small>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon amber"><app-icon name="clock" /></div>
+        <div class="stat-icon"><app-icon name="clock" /></div>
         <div>
-          <span>PENDING REQUESTS</span>
+          <span>Pending requests</span>
           <strong data-testid="stat-pending">{{ pendingCount() }}</strong>
           <small>{{ pendingCount() ? 'Needs your review' : 'All caught up' }}</small>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon violet"><app-icon name="fingerprint" /></div>
+        <div class="stat-icon"><app-icon name="fingerprint" /></div>
         <div>
-          <span>AVG. ATTENDANCE</span>
+          <span>Average attendance</span>
           <strong data-testid="stat-attendance">{{ thisMonthPercent() }}%</strong>
           <small><i></i> {{ changeLabel() }}</small>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon coral"><app-icon name="plane" /></div>
+        <div class="stat-icon"><app-icon name="plane" /></div>
         <div>
-          <span>OUT OF OFFICE</span>
+          <span>Out of office</span>
           <strong data-testid="stat-away">{{ awayCount() }}</strong>
           <small>Today</small>
         </div>
@@ -78,7 +76,7 @@ const statusOf = (member: TeamMember): AttendanceStatus => member.today?.status 
       <section class="card requests-section">
         <div class="card-heading">
           <div>
-            <span class="eyebrow">ACTION NEEDED</span>
+            <span class="eyebrow">Action needed</span>
             <h2>Leave requests</h2>
           </div>
           <a routerLink="/team/approvals" class="text-link">View all <app-icon name="arrow" [size]="15" /></a>
@@ -112,7 +110,7 @@ const statusOf = (member: TeamMember): AttendanceStatus => member.today?.status 
       <section class="card team-section">
         <div class="card-heading">
           <div>
-            <span class="eyebrow">LIVE STATUS</span>
+            <span class="eyebrow">Live status</span>
             <h2>Team today</h2>
           </div>
           <span class="live-dot"><i></i> Live</span>
@@ -142,7 +140,7 @@ const statusOf = (member: TeamMember): AttendanceStatus => member.today?.status 
       <section class="card team-attendance">
         <div class="card-heading">
           <div>
-            <span class="eyebrow">THIS MONTH</span>
+            <span class="eyebrow">This month</span>
             <h2>Attendance overview</h2>
           </div>
           <button type="button" class="download-button" (click)="exportReport()" data-testid="export-report"><app-icon name="download" [size]="16" /> Export report</button>
@@ -162,7 +160,7 @@ const statusOf = (member: TeamMember): AttendanceStatus => member.today?.status 
       <section class="card visa-alerts">
         <div class="card-heading">
           <div>
-            <span class="eyebrow">COMPLIANCE</span>
+            <span class="eyebrow">Compliance</span>
             <h2>Visa alerts</h2>
           </div>
           @if (visaAlerts().length) {
@@ -196,7 +194,6 @@ const statusOf = (member: TeamMember): AttendanceStatus => member.today?.status 
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TeamOverviewPage {
-  private readonly session = inject(Session);
   private readonly api = inject(TeamApi);
   protected readonly today = maldivesToday();
 
@@ -209,9 +206,7 @@ export class TeamOverviewPage {
   protected readonly decisions = new DecisionState();
   protected readonly declining = signal<LeaveRequest | undefined>(undefined);
 
-  protected readonly greeting = greetingFor(maldivesHour());
-  protected readonly dateLabel = formatBannerDate(this.today).toUpperCase();
-  protected readonly firstName = computed(() => this.session.user()?.fullName.split(' ')[0] ?? '');
+  protected readonly dateLabel = formatBannerDate(this.today);
 
   protected readonly members = computed(() => [...valueOr(this.team, [])].sort((first, second) => first.fullName.localeCompare(second.fullName)));
   protected readonly checkedIn = computed(() => this.members().filter((member) => IN_OFFICE.includes(statusOf(member))).length);

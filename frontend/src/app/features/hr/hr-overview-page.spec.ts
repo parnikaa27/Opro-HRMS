@@ -36,7 +36,7 @@ describe('HrOverviewPage', () => {
   it('greets HR with the company at a glance', async () => {
     const root = await render();
 
-    expect(text(root.querySelector('.welcome') as HTMLElement)).toBe('THURSDAY, 12 NOVEMBER Good morning, Ananya. 4 people at Opro. 2 in today.');
+    expect(text(root.querySelector('.welcome') as HTMLElement)).toBe('Thursday, 12 November HR overview 4 people at Opro. 2 in today.');
     expect([texts(root, 'stat-people'), texts(root, 'stat-on-leave'), texts(root, 'stat-visas'), texts(root, 'stat-inbox')]).toEqual([['4'], ['1'], ['2'], ['1']]);
     http.expectNone((request) => request.url.includes('leave-requests') || request.url.includes('corrections'));
   });

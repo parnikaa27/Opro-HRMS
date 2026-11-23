@@ -17,8 +17,8 @@ import { submittedAgo } from './request-row';
           <strong>{{ resignation.employeeName }}</strong>
           <span>Resigned · {{ submittedAgo(resignation.submittedOn) }}</span>
         </div>
-        <div><small>LAST DAY ASKED FOR</small><strong>{{ formatFullDate(resignation.releaseOn) }}</strong></div>
-        <div><small>REASON</small><strong>{{ resignation.reason }}</strong></div>
+        <div><small>Last day asked for</small><strong>{{ formatFullDate(resignation.releaseOn) }}</strong></div>
+        <div><small>Reason</small><strong>{{ resignation.reason }}</strong></div>
         <div class="request-actions labeled">
           <button type="button" class="decline" [disabled]="busyId() === resignation.id" (click)="declined.emit(resignation)" data-testid="reject"><app-icon name="x" [size]="16" /> Decline</button>
           <button type="button" class="approve" [disabled]="busyId() === resignation.id" (click)="approved.emit(resignation)" data-testid="approve"><app-icon name="check" [size]="16" /> Approve</button>

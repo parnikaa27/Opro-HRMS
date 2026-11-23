@@ -21,11 +21,11 @@ export interface AttendanceRow {
       <table class="stacks">
         <thead>
           <tr>
-            <th scope="col">DAY</th>
-            <th scope="col">PUNCH IN</th>
-            <th scope="col">PUNCH OUT</th>
-            <th scope="col">WORK HOURS</th>
-            <th scope="col">STATUS</th>
+            <th scope="col">Day</th>
+            <th scope="col">Punch in</th>
+            <th scope="col">Punch out</th>
+            <th scope="col">Work hours</th>
+            <th scope="col">Status</th>
           </tr>
         </thead>
         <tbody>
@@ -35,10 +35,10 @@ export interface AttendanceRow {
                 <strong>{{ row.day }}</strong>
                 <span>{{ row.dateLabel }}</span>
               </td>
-              <td data-label="PUNCH IN">{{ row.punchIn }}</td>
-              <td data-label="PUNCH OUT">{{ row.punchOut }}</td>
-              <td data-label="WORK HOURS"><b>{{ row.hours }}</b></td>
-              <td data-label="STATUS">
+              <td data-label="Punch in">{{ row.punchIn }}</td>
+              <td data-label="Punch out">{{ row.punchOut }}</td>
+              <td data-label="Work hours"><b>{{ row.hours }}</b></td>
+              <td data-label="Status">
                 <app-status-pill [tone]="row.status.tone">{{ row.status.label }}</app-status-pill>
                 @if (row.isEdited) {
                   <span class="edited-note" data-testid="corrected">Corrected</span>

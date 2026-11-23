@@ -16,7 +16,7 @@ const FAILED = "That didn't save. Try again in a moment.";
   selector: 'app-document-type-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="DOCUMENTS" [heading]="type() ? 'Edit ' + type()?.name?.toLowerCase() : 'Add a document'" intro="Everyone it applies to sees it on their Documents page straight away. One for people HR asks is given from each person's page." />
+    <app-modal-heading eyebrow="Documents" [heading]="type() ? 'Edit ' + type()?.name?.toLowerCase() : 'Add a document'" intro="Everyone it applies to sees it on their Documents page straight away. One for people HR asks is given from each person's page." />
     <form novalidate (submit)="save($event)">
       <label>Name <input [formField]="typeForm.name" placeholder="Police clearance" data-testid="doc-type-name" aria-describedby="doc-type-name-error" /></label>
       <app-field-error id="doc-type-name-error" [errors]="typeForm.name().errors()" [isTouched]="typeForm.name().touched()" />

@@ -21,7 +21,7 @@ const PERCENT = 100;
     <div class="page-view">
       <div class="page-title">
         <div>
-          <span class="eyebrow">EXECUTIVE DASHBOARD</span>
+          <span class="eyebrow">Executive dashboard</span>
           <h1>Opro at a glance</h1>
           <p>Who works here, who's in today, leave, papers and what's coming up. Every number comes from the records behind it.</p>
         </div>
@@ -35,26 +35,26 @@ const PERCENT = 100;
       } @else if (data(); as data) {
         <div class="manager-stats">
           <div class="stat-card">
-            <div class="stat-icon aqua"><app-icon name="users" /></div>
-            <div><span>EMPLOYEES</span><strong data-testid="kpi-total">{{ data.workforce.total }}</strong><small>{{ signed(data.workforce.growthPercent) }} since 1 January</small></div>
+            <div class="stat-icon"><app-icon name="users" /></div>
+            <div><span>Employees</span><strong data-testid="kpi-total">{{ data.workforce.total }}</strong><small>{{ signed(data.workforce.growthPercent) }} since 1 January</small></div>
           </div>
           <div class="stat-card">
-            <div class="stat-icon violet"><app-icon name="userCheck" /></div>
-            <div><span>NEW JOINERS</span><strong data-testid="kpi-joiners">{{ data.workforce.joiners }}</strong><small>This year</small></div>
+            <div class="stat-icon"><app-icon name="userCheck" /></div>
+            <div><span>New joiners</span><strong data-testid="kpi-joiners">{{ data.workforce.joiners }}</strong><small>This year</small></div>
           </div>
           <div class="stat-card">
-            <div class="stat-icon coral"><app-icon name="logout" /></div>
-            <div><span>LEFT</span><strong data-testid="kpi-leavers">{{ data.workforce.leavers }}</strong><small>{{ data.workforce.attritionPercent }}% attrition, {{ data.workforce.retentionPercent }}% retained</small></div>
+            <div class="stat-icon"><app-icon name="logout" /></div>
+            <div><span>Left</span><strong data-testid="kpi-leavers">{{ data.workforce.leavers }}</strong><small>{{ data.workforce.attritionPercent }}% attrition, {{ data.workforce.retentionPercent }}% retained</small></div>
           </div>
           <div class="stat-card">
-            <div class="stat-icon amber"><app-icon name="clock" /></div>
-            <div><span>IN TODAY</span><strong data-testid="kpi-in">{{ data.presence.present }}</strong><small>{{ inPercent() }}% of everyone</small></div>
+            <div class="stat-icon"><app-icon name="clock" /></div>
+            <div><span>In today</span><strong data-testid="kpi-in">{{ data.presence.present }}</strong><small>{{ inPercent() }}% of everyone</small></div>
           </div>
         </div>
 
         <div class="insight-grid">
           <section class="card card-pad" data-testid="workforce">
-            <div class="card-heading"><div><span class="eyebrow">WORKFORCE</span><h2>Who works here</h2></div></div>
+            <div class="card-heading"><div><span class="eyebrow">Workforce</span><h2>Who works here</h2></div></div>
             <h3 class="insight-label">Locals and expatriates</h3>
             <app-breakdown [shares]="data.mix.origin" label="Locals and expatriates" />
             <h3 class="insight-label">Gender</h3>
@@ -66,7 +66,7 @@ const PERCENT = 100;
           </section>
 
           <section class="card card-pad" data-testid="mix">
-            <div class="card-heading"><div><span class="eyebrow">WORKFORCE</span><h2>Departments and nationalities</h2></div></div>
+            <div class="card-heading"><div><span class="eyebrow">Workforce</span><h2>Departments and nationalities</h2></div></div>
             <h3 class="insight-label">Departments</h3>
             <app-breakdown [shares]="data.mix.department" label="Departments" />
             <h3 class="insight-label">Nationalities</h3>
@@ -74,7 +74,7 @@ const PERCENT = 100;
           </section>
 
           <section class="card card-pad" data-testid="attendance">
-            <div class="card-heading"><div><span class="eyebrow">ATTENDANCE</span><h2>Today and this month</h2></div></div>
+            <div class="card-heading"><div><span class="eyebrow">Attendance</span><h2>Today and this month</h2></div></div>
             <dl class="insight-figures">
               <div><dt>In</dt><dd>{{ data.presence.present }}</dd></div>
               <div><dt>Late</dt><dd>{{ data.presence.late }}</dd></div>
@@ -88,7 +88,7 @@ const PERCENT = 100;
           </section>
 
           <section class="card card-pad" data-testid="leave">
-            <div class="card-heading"><div><span class="eyebrow">LEAVE</span><h2>Leave this year</h2></div></div>
+            <div class="card-heading"><div><span class="eyebrow">Leave</span><h2>Leave this year</h2></div></div>
             <dl class="insight-figures">
               <div><dt>Waiting for a decision</dt><dd>{{ data.leave.pending }}</dd></div>
               <div><dt>On leave today</dt><dd>{{ data.presence.onLeave }}</dd></div>
@@ -99,7 +99,7 @@ const PERCENT = 100;
           </section>
 
           <section class="card card-pad" data-testid="compliance">
-            <div class="card-heading"><div><span class="eyebrow">COMPLIANCE</span><h2>Papers and quota</h2></div></div>
+            <div class="card-heading"><div><span class="eyebrow">Compliance</span><h2>Papers and quota</h2></div></div>
             @for (paper of data.compliance.papers; track paper.kind) {
               <div class="insight-row" data-testid="paper">
                 <span>{{ paper.label }}</span>
@@ -127,7 +127,7 @@ const PERCENT = 100;
           </section>
 
           <section class="card card-pad" data-testid="performance">
-            <div class="card-heading"><div><span class="eyebrow">PERFORMANCE</span><h2>{{ data.performance.cycleName ?? 'Appraisals' }}</h2></div></div>
+            <div class="card-heading"><div><span class="eyebrow">Performance</span><h2>{{ data.performance.cycleName ?? 'Appraisals' }}</h2></div></div>
             <dl class="insight-figures">
               <div><dt>On probation</dt><dd>{{ data.performance.onProbation }}</dd></div>
               <div><dt>Appraised</dt><dd>{{ data.performance.cycleName ? data.performance.done + ' of ' + data.performance.due : 'No cycle' }}</dd></div>
@@ -140,7 +140,7 @@ const PERCENT = 100;
           </section>
 
           <section class="card card-pad" data-testid="people-events">
-            <div class="card-heading"><div><span class="eyebrow">PEOPLE</span><h2>Coming up</h2></div></div>
+            <div class="card-heading"><div><span class="eyebrow">People</span><h2>Coming up</h2></div></div>
             <h3 class="insight-label">Birthdays this month</h3>
             @for (person of data.events.birthdays; track person.id) {
               <a class="insight-row" [routerLink]="personLink(person.id)" data-testid="birthday"><span>{{ person.fullName }}</span><small>{{ formatShortDate(person.on) }}</small></a>

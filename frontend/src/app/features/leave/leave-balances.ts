@@ -30,7 +30,7 @@ const RINGS = 2;
     <section class="card full-table" data-testid="balance-table">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">LEAVE BALANCE</span>
+          <span class="eyebrow">Leave balance</span>
           <h2>{{ yearLabel() }}</h2>
         </div>
       </div>
@@ -38,8 +38,8 @@ const RINGS = 2;
         <table class="stacks">
           <thead>
             <tr>
-              <th scope="col">TYPE</th><th scope="col">THIS YEAR</th><th scope="col">CARRIED FORWARD</th><th scope="col">APPROVED</th>
-              <th scope="col">TAKEN SO FAR</th><th scope="col">WAITING</th><th scope="col">LEFT</th>
+              <th scope="col">Type</th><th scope="col">This year</th><th scope="col">Carried forward</th><th scope="col">Approved</th>
+              <th scope="col">Taken so far</th><th scope="col">Waiting</th><th scope="col">Left</th>
             </tr>
           </thead>
           <tbody>
@@ -51,12 +51,12 @@ const RINGS = 2;
                     <small class="cell-note">Take by {{ formatShortDate(balance.expiresOn) }}</small>
                   }
                 </td>
-                <td data-label="THIS YEAR">{{ balance.entitled - (balance.carriedOver ?? 0) }}</td>
-                <td data-label="CARRIED FORWARD">{{ balance.carriedOver ?? 0 }}</td>
-                <td data-label="APPROVED">{{ balance.taken }}</td>
-                <td data-label="TAKEN SO FAR">{{ balance.takenToDate ?? balance.taken }}</td>
-                <td data-label="WAITING">{{ balance.pending }}</td>
-                <td data-label="LEFT"><strong>{{ left(balance) }}</strong></td>
+                <td data-label="This year">{{ balance.entitled - (balance.carriedOver ?? 0) }}</td>
+                <td data-label="Carried forward">{{ balance.carriedOver ?? 0 }}</td>
+                <td data-label="Approved">{{ balance.taken }}</td>
+                <td data-label="Taken so far">{{ balance.takenToDate ?? balance.taken }}</td>
+                <td data-label="Waiting">{{ balance.pending }}</td>
+                <td data-label="Left"><strong>{{ left(balance) }}</strong></td>
               </tr>
             } @empty {
               <tr><td colspan="7">No leave to show yet.</td></tr>

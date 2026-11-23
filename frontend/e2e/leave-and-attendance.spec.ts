@@ -13,7 +13,7 @@ const futureWorkday = () => {
 const signInAs = async (page: Page, employeeId: string) => {
   await page.goto('/login');
   await page.getByTestId(`login-as-${employeeId}`).click();
-  await expect(page.getByTestId('greeting')).toBeVisible();
+  await expect(page.getByTestId('page-heading')).toBeVisible();
 };
 
 test('an employee applies for half a day, sees it pending, then cancels it', async ({ page }) => {
@@ -90,7 +90,7 @@ test('attendance can look at last month and export it', async ({ page }) => {
   await expect(picker.locator('option')).toHaveCount(6);
   const lastMonth = (await picker.locator('option').nth(1).textContent())?.trim() ?? '';
   await picker.selectOption({ label: lastMonth });
-  await expect(page.locator('.full-table .eyebrow')).toHaveText(lastMonth.toUpperCase());
+  await expect(page.locator('.full-table .eyebrow')).toHaveText(lastMonth);
   await expect(page.getByTestId('attendance-row').first()).toBeVisible();
 
   const download = page.waitForEvent('download');

@@ -14,7 +14,7 @@ const MAX_REASON = 300;
   selector: 'app-leaving-form',
   imports: [FieldError, FormField, ModalHeading, RouterLink],
   template: `
-    <app-modal-heading eyebrow="LEAVING OPRO" [heading]="firstName() + ' is leaving'" intro="Their records stay. After their last day they can't sign in, and leave booked after it is cancelled." />
+    <app-modal-heading eyebrow="Leaving Opro" [heading]="firstName() + ' is leaving'" intro="Their records stay. After their last day they can't sign in, and leave booked after it is cancelled." />
     @if (reports().length) {
       <div class="attendance-off" data-testid="move-reports">
         <strong>Move their reports first</strong>

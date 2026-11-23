@@ -20,7 +20,7 @@ const toJpeg = (canvas: HTMLCanvasElement) =>
   selector: 'app-photo-form',
   imports: [ConfirmButton, ModalHeading, NgOptimizedImage],
   template: `
-    <app-modal-heading eyebrow="ID CARD" [heading]="'Photo for ' + firstName()" intro="A clear, front facing photo on a plain background. It's cropped to the card and location data in the file is removed." />
+    <app-modal-heading eyebrow="ID card" [heading]="'Photo for ' + firstName()" intro="A clear, front facing photo on a plain background. It's cropped to the card and location data in the file is removed." />
     <div class="photo-picker">
       <canvas #preview [hidden]="!isPicked()" role="img" aria-label="Preview of the new photo" data-testid="photo-preview"></canvas>
       @if (!isPicked()) {

@@ -20,7 +20,7 @@ import { ListSkeleton } from '../../shared/ui/list-skeleton';
     <div class="page-view">
       <div class="page-title">
         <div>
-          <span class="eyebrow">TIME OFF</span>
+          <span class="eyebrow">Time off</span>
           <h1>Leave &amp; time off</h1>
           <p>Plan your time off and keep track of request statuses.</p>
         </div>

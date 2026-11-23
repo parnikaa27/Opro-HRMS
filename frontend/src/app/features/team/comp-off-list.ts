@@ -17,9 +17,9 @@ import { plural } from '../../shared/utils/text';
           <strong>{{ claim.employeeName }}</strong>
           <span>Worked on a day off</span>
         </div>
-        <div><small>DATE</small><strong>{{ formatDayShort(claim.date) }}</strong></div>
-        <div><small>WORKED</small><strong>{{ claim.workedMinutes ? formatDuration(claim.workedMinutes) : 'Still punched in' }}</strong></div>
-        <div><small>EARNS</small><strong>{{ claim.days === 0.5 ? 'Half a day' : plural(claim.days, 'day') }}</strong></div>
+        <div><small>Date</small><strong>{{ formatDayShort(claim.date) }}</strong></div>
+        <div><small>Worked</small><strong>{{ claim.workedMinutes ? formatDuration(claim.workedMinutes) : 'Still punched in' }}</strong></div>
+        <div><small>Earns</small><strong>{{ claim.days === 0.5 ? 'Half a day' : plural(claim.days, 'day') }}</strong></div>
         <div class="request-actions labeled">
           <button type="button" class="decline" [disabled]="busyId() === claim.id" (click)="declined.emit(claim)" data-testid="reject"><app-icon name="x" [size]="16" /> Decline</button>
           <button type="button" class="approve" [disabled]="busyId() === claim.id" (click)="approved.emit(claim)" data-testid="approve"><app-icon name="check" [size]="16" /> Approve</button>

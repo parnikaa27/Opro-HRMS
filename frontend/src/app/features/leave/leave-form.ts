@@ -36,7 +36,7 @@ const KINDS: readonly { value: LeaveKind; label: string }[] = [
   selector: 'app-leave-form',
   imports: [FormField, FieldError, Icon, LeaveDayStrip, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="TIME OFF" heading="Request leave" [intro]="isSuperAdmin() ? 'Your leave is approved as soon as you send it.' : 'Submit your leave dates for manager approval.'" />
+    <app-modal-heading eyebrow="Time off" heading="Request leave" [intro]="isSuperAdmin() ? 'Your leave is approved as soon as you send it.' : 'Submit your leave dates for manager approval.'" />
     <form novalidate (submit)="save($event)">
       <label>
         This is

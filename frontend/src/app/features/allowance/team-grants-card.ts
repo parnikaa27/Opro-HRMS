@@ -13,7 +13,7 @@ import { GrantForm } from './grant-form';
   template: `
     <section class="card request-history" data-testid="team-grants">
       <div class="card-heading">
-        <div><span class="eyebrow">ALLOWANCES</span><h2>One-off allowances</h2></div>
+        <div><span class="eyebrow">Allowances</span><h2>One-off allowances</h2></div>
         <button type="button" class="secondary-button" (click)="isGranting.set(true)" data-testid="grant-allowance">Grant one</button>
       </div>
       @if (grants.error()) {

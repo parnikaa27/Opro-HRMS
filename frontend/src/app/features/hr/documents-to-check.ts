@@ -20,7 +20,7 @@ import { HrApi } from './hr-api';
     <section class="card all-requests" data-testid="documents-to-check">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">DOCUMENTS</span>
+          <span class="eyebrow">Documents</span>
           <h2>To check</h2>
         </div>
       </div>
@@ -37,7 +37,7 @@ import { HrApi } from './hr-api';
               <span>{{ document.name }} · {{ submittedAgo(document.updatedOn ?? '') }}</span>
             </div>
             <div>
-              <small>{{ document.files.length > 1 ? 'FILES' : 'FILE' }}</small>
+              <small>{{ document.files.length > 1 ? 'Files' : 'File' }}</small>
               <app-document-files [files]="document.files" [name]="document.name" [basePath]="basePath(document)" />
             </div>
             <div class="request-actions labeled">
@@ -56,7 +56,7 @@ import { HrApi } from './hr-api';
 
     <app-dialog heading="Send back" [isOpen]="declining() !== undefined" (isOpenChange)="$event || declining.set(undefined)">
       @if (declining(); as document) {
-        <app-decline-form eyebrow="DOCUMENTS" [heading]="'Send back ' + firstName(document) + '’s ' + document.name.toLowerCase() + '?'" confirmLabel="Send back" placeholder="The photo page is cut off. Could you scan it again?" [name]="document.employeeName ?? ''" (declined)="sendBack(document, $event)" (cancelled)="declining.set(undefined)" />
+        <app-decline-form eyebrow="Documents" [heading]="'Send back ' + firstName(document) + '’s ' + document.name.toLowerCase() + '?'" confirmLabel="Send back" placeholder="The photo page is cut off. Could you scan it again?" [name]="document.employeeName ?? ''" (declined)="sendBack(document, $event)" (cancelled)="declining.set(undefined)" />
       }
     </app-dialog>
   `,

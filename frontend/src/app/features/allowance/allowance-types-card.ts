@@ -16,7 +16,7 @@ const MAX_NAME = 60;
   imports: [ConfirmButton, FieldError, FormField, ListSkeleton],
   template: `
     <section class="card request-history" data-testid="allowance-types">
-      <div class="card-heading"><div><span class="eyebrow">ON TOP OF PAY</span><h2>Allowances</h2></div></div>
+      <div class="card-heading"><div><span class="eyebrow">On top of pay</span><h2>Allowances</h2></div></div>
       @if (types.error()) {
         <p class="attendance-off">The list didn't load. Refresh the page to try again.</p>
       } @else if (types.isLoading() && list().length === 0) {

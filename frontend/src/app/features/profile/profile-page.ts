@@ -20,7 +20,7 @@ import { AllowancesCard } from '../allowance/allowances-card';
       <div class="page-view">
         <div class="page-title no-print">
           <div>
-            <span class="eyebrow">YOUR PROFILE</span>
+            <span class="eyebrow">Your profile</span>
             <h1>Profile</h1>
             <p>Your staff ID and the papers that let you work here.</p>
           </div>
@@ -32,7 +32,7 @@ import { AllowancesCard } from '../allowance/allowances-card';
             <section class="card card-pad print-plain" aria-labelledby="card-heading">
               <div class="card-heading no-print">
                 <div>
-                  <span class="eyebrow">STAFF ID</span>
+                  <span class="eyebrow">Staff ID</span>
                   <h2 id="card-heading">Printable ID card</h2>
                 </div>
               </div>

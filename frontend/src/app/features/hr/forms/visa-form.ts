@@ -12,7 +12,7 @@ const LAST_FOUR = /^[A-Za-z0-9]{4}$/;
   selector: 'app-visa-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="WORK VISA" [heading]="'Update ' + firstName() + '’s papers'" intro="Use this when a visa or passport is renewed. Expiry warnings update straight away." />
+    <app-modal-heading eyebrow="Work visa" [heading]="'Update ' + firstName() + '’s papers'" intro="Use this when a visa or passport is renewed. Expiry warnings update straight away." />
     <form novalidate (submit)="save($event)">
       <div class="form-row">
         <label>Visa number <input [formField]="visaForm.visaNumber" data-testid="visa-number" aria-describedby="visa-number-error" /></label>

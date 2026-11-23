@@ -37,11 +37,11 @@ describe('ApprovalsToDecide', () => {
     const root = await render();
 
     expect(texts(root, 'waiting-approval').map((row) => row.split(' Decline')[0])).toEqual([
-      'RV Rohit Verma Comp off · approved by Vikram Singh DETAILS Fri 6 Nov, earns half a day',
-      'AR Arjun Reddy Worked from home · approved by Vikram Singh DETAILS Sun 8 Nov',
-      'AR Arjun Reddy Overtime · approved by their HOD DETAILS Mon 9 Nov, 1h 20m',
-      'RV Rohit Verma Punch fix · approved by Vikram Singh DETAILS Tue 10 Nov, punch out at 17:20',
-      'PN Priya Nair Annual leave · approved by Vikram Singh DETAILS 20 Dec to 24 December 2026, 3 days',
+      'RV Rohit Verma Comp off · approved by Vikram Singh Details Fri 6 Nov, earns half a day',
+      'AR Arjun Reddy Worked from home · approved by Vikram Singh Details Sun 8 Nov',
+      'AR Arjun Reddy Overtime · approved by their HOD Details Mon 9 Nov, 1h 20m',
+      'RV Rohit Verma Punch fix · approved by Vikram Singh Details Tue 10 Nov, punch out at 17:20',
+      'PN Priya Nair Annual leave · approved by Vikram Singh Details 20 Dec to 24 December 2026, 3 days',
     ]);
   });
 
