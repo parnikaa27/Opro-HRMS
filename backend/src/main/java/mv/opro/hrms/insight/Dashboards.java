@@ -40,7 +40,7 @@ class Dashboards {
 
     record Workforce(int total, int joiners, int leavers, int growthPercent, int attritionPercent, int retentionPercent) {}
 
-    record Presence(int present, int late, int absent, int onLeave, int fromHome, int atResort) {}
+    record Presence(int present, int late, int notInYet, int absent, int onLeave, int fromHome, int atResort) {}
 
     record Mix(List<Share> origin, List<Share> gender, List<Share> employmentType, List<Share> age, List<Share> department, List<Share> nationality) {}
 
@@ -108,7 +108,8 @@ class Dashboards {
         List<AttendanceDay> today = active.stream().flatMap(person -> attendance.today(person.employee()).stream().findFirst().stream()).toList();
         Predicate<AttendanceDay> isIn = day -> IN_TODAY.contains(day.status()) && !day.punches().isEmpty();
         Function<Predicate<AttendanceDay>, Integer> count = test -> (int) today.stream().filter(test).count();
-        return new Presence(count.apply(isIn), count.apply(day -> "late".equals(day.status())), count.apply(day -> "absent".equals(day.status())),
+        return new Presence(count.apply(isIn), count.apply(day -> "late".equals(day.status())), count.apply(day -> "not-in-yet".equals(day.status())),
+                count.apply(day -> "absent".equals(day.status())),
                 count.apply(day -> "on-leave".equals(day.status())), count.apply(isIn.and(day -> "home".equals(day.workMode()))),
                 count.apply(isIn.and(day -> "resort".equals(day.workMode()))));
     }
