@@ -14,7 +14,7 @@ const NONE: ApprovalRules = { punchFixes: false, homeDays: false, compOff: false
     <section class="card card-pad" data-testid="approval-steps-card">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">APPROVALS</span>
+          <span class="eyebrow">Approvals</span>
           <h2>HR after the HOD</h2>
         </div>
       </div>

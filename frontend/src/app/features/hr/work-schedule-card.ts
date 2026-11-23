@@ -22,7 +22,7 @@ const PAST_SHOWN = 3;
   template: `
     <section class="card request-history">
       <div class="card-heading">
-        <div><span class="eyebrow">ATTENDANCE RULES</span><h2>Work schedule</h2></div>
+        <div><span class="eyebrow">Attendance rules</span><h2>Work schedule</h2></div>
         <!-- The form starts from the rules in force, so it waits for them rather than resetting under someone's typing. -->
         <button type="button" class="secondary-button" [disabled]="versions.isLoading()" (click)="isEditing.set(true)" data-testid="change-schedule">Change from a date</button>
       </div>

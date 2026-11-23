@@ -13,7 +13,7 @@ const MAX_TEXT = 120;
   selector: 'app-experience-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="WORK EXPERIENCE" [heading]="'Add to ' + firstName() + '’s experience'" intro="Leave the end empty if they came to Opro straight from this job." />
+    <app-modal-heading eyebrow="Work experience" [heading]="'Add to ' + firstName() + '’s experience'" intro="Leave the end empty if they came to Opro straight from this job." />
     <form novalidate (submit)="save($event)">
       <div class="form-row">
         <label>Employer <input [formField]="experienceForm.employer" data-testid="experience-employer" aria-describedby="experience-employer-error" /></label>

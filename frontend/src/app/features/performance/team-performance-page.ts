@@ -53,7 +53,7 @@ const standing = ({ form, appraisal }: TeamMemberPerformance): { text: string; t
     <div class="page-view">
       <div class="page-title">
         <div>
-          <span class="eyebrow">{{ scope() === 'company' ? 'ACROSS OPRO' : 'TEAM MANAGEMENT' }}</span>
+          <span class="eyebrow">{{ scope() === 'company' ? 'Across Opro' : 'Team management' }}</span>
           <h1>Performance</h1>
           <p>{{ intro() }}</p>
         </div>
@@ -73,12 +73,12 @@ const standing = ({ form, appraisal }: TeamMemberPerformance): { text: string; t
         }
         @if (onProbation().length) {
           <section class="card all-requests" data-testid="probation-card">
-            <div class="card-heading"><div><span class="eyebrow">PROBATION</span><h2>Reviews to do</h2></div></div>
+            <div class="card-heading"><div><span class="eyebrow">Probation</span><h2>Reviews to do</h2></div></div>
             @for (person of onProbation(); track person.employeeId) {
               <div class="large-request plan-row" data-testid="probation-row">
                 <app-avatar [name]="person.fullName" />
                 <div><strong>{{ person.fullName }}</strong><span>{{ person.designation }}</span></div>
-                <div><small>PROBATION ENDS</small><strong>{{ formatFullDate(person.probationEndsOn ?? '') }}</strong></div>
+                <div><small>Probation ends</small><strong>{{ formatFullDate(person.probationEndsOn ?? '') }}</strong></div>
                 <div class="request-actions labeled">
                   <button type="button" class="approve" (click)="open.set({ kind: 'probation', person })" data-testid="review-probation">Review</button>
                 </div>
@@ -87,7 +87,7 @@ const standing = ({ form, appraisal }: TeamMemberPerformance): { text: string; t
           </section>
         }
         <section class="card all-requests" data-testid="appraisals-card">
-          <div class="card-heading"><div><span class="eyebrow">APPRAISALS</span><h2>{{ cycle()?.name ?? 'No cycle open' }}</h2></div></div>
+          <div class="card-heading"><div><span class="eyebrow">Appraisals</span><h2>{{ cycle()?.name ?? 'No cycle open' }}</h2></div></div>
           <div class="request-tabs" role="tablist" aria-label="Appraisal stage">
             @for (option of tabs(); track option.value) {
               <button type="button" role="tab" [class.active]="tab() === option.value" [attr.aria-selected]="tab() === option.value" (click)="picked.set(option.value)" [attr.data-testid]="'tab-' + option.value">

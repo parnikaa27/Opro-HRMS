@@ -29,7 +29,7 @@ const isBlank = ({ title, details, targetOn }: Row) => !title.trim() && !details
   selector: 'app-entries-form',
   imports: [FieldError, FormField, Icon, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="YOUR PLAN" [heading]="info().title" [intro]="info().ask" />
+    <app-modal-heading eyebrow="Your plan" [heading]="info().title" [intro]="info().ask" />
     <form novalidate (submit)="save($event)">
       @for (entry of entriesForm.rows; track $index; let index = $index) {
         <fieldset class="entry-fields" data-testid="entry-fields">

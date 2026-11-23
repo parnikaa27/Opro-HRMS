@@ -19,7 +19,7 @@ import { HrApi } from './hr-api';
     <section class="card all-requests" data-testid="banks-to-check">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">BANK DETAILS</span>
+          <span class="eyebrow">Bank details</span>
           <h2>To check</h2>
         </div>
       </div>
@@ -35,7 +35,7 @@ import { HrApi } from './hr-api';
               <a [routerLink]="['/hr/people', bank.employeeId]" class="person-cell"><strong>{{ bank.employeeName }}</strong></a>
               <span>{{ bank.bankName }} · {{ submittedAgo(bank.submittedOn) }}</span>
             </div>
-            <div><small>ACCOUNT</small><strong>{{ bank.accountName }}, {{ bank.accountNumber }} {{ bank.currency }}</strong></div>
+            <div><small>Account</small><strong>{{ bank.accountName }}, {{ bank.accountNumber }} {{ bank.currency }}</strong></div>
             <div class="request-actions labeled">
               <button type="button" class="decline" [disabled]="decisions.busyId() === bank.employeeId" (click)="declining.set(bank)" data-testid="bank-send-back"><app-icon name="x" [size]="16" /> Send back</button>
               <button type="button" class="approve" [disabled]="decisions.busyId() === bank.employeeId" (click)="verify(bank)" data-testid="bank-verify"><app-icon name="check" [size]="16" /> Verify</button>
@@ -52,7 +52,7 @@ import { HrApi } from './hr-api';
 
     <app-dialog heading="Send back" [isOpen]="declining() !== undefined" (isOpenChange)="$event || declining.set(undefined)">
       @if (declining(); as bank) {
-        <app-decline-form eyebrow="BANK DETAILS" [heading]="'Send back ' + firstName(bank) + '’s bank details?'" confirmLabel="Send back" placeholder="The account name doesn't match the bank letter." [name]="bank.employeeName ?? ''" (declined)="sendBack(bank, $event)" (cancelled)="declining.set(undefined)" />
+        <app-decline-form eyebrow="Bank details" [heading]="'Send back ' + firstName(bank) + '’s bank details?'" confirmLabel="Send back" placeholder="The account name doesn't match the bank letter." [name]="bank.employeeName ?? ''" (declined)="sendBack(bank, $event)" (cancelled)="declining.set(undefined)" />
       }
     </app-dialog>
   `,

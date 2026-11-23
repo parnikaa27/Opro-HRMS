@@ -25,7 +25,7 @@ const FAILED = "That punch didn't save. Try again in a moment.";
 
     <!-- Usually a punch in. A day that started with a punch added by hand asks on the way out instead. -->
     <app-dialog [heading]="isIn() ? 'Punch out' : 'Punch in'" [(isOpen)]="isChoosing">
-      <app-modal-heading [eyebrow]="isIn() ? 'PUNCH OUT' : 'PUNCH IN'" heading="Where are you working today?" intro="You choose once a day. Every punch that day follows the same choice." />
+      <app-modal-heading [eyebrow]="isIn() ? 'Punch out' : 'Punch in'" heading="Where are you working today?" intro="You choose once a day. Every punch that day follows the same choice." />
       <div class="work-mode-options">
         <button type="button" [disabled]="busy() !== undefined" (click)="punch('office')" data-testid="punch-office">
           <app-icon name="mapPin" [size]="22" />

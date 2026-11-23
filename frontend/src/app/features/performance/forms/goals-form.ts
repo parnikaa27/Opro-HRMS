@@ -17,7 +17,7 @@ const FAILED = "That didn't save. Try again in a moment.";
   selector: 'app-goals-form',
   imports: [FieldError, FormField, Icon, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="YOUR PLAN" heading="Goals and KPIs" intro="Say how each goal will be measured, so the rating at the end of the year is easy to agree on. Weights add up to 100%." />
+    <app-modal-heading eyebrow="Your plan" heading="Goals and KPIs" intro="Say how each goal will be measured, so the rating at the end of the year is easy to agree on. Weights add up to 100%." />
     <form novalidate (submit)="save($event)">
       @for (goal of goalsForm.goals; track $index; let index = $index) {
         <fieldset class="entry-fields" data-testid="goal-fields">

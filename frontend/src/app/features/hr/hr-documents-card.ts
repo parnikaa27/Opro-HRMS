@@ -19,7 +19,7 @@ import { HrApi } from './hr-api';
   template: `
     <section class="card request-history" data-testid="hr-documents">
       <div class="card-heading">
-        <div><span class="eyebrow">EMPLOYEE FILES</span><h2>Documents</h2></div>
+        <div><span class="eyebrow">Employee files</span><h2>Documents</h2></div>
         @if (!isOwn() && askable().length) {
           <label class="inline-select">
             <span class="sr-only">Ask them for a document</span>
@@ -79,7 +79,7 @@ import { HrApi } from './hr-api';
 
     <app-dialog heading="Send back" [isOpen]="declining() !== undefined" (isOpenChange)="$event || declining.set(undefined)">
       @if (declining(); as document) {
-        <app-decline-form eyebrow="DOCUMENTS" [heading]="'Send back the ' + document.name.toLowerCase() + '?'" confirmLabel="Send back" placeholder="The photo page is cut off. Could you scan it again?" [name]="name()" (declined)="sendBack(document, $event)" (cancelled)="declining.set(undefined)" />
+        <app-decline-form eyebrow="Documents" [heading]="'Send back the ' + document.name.toLowerCase() + '?'" confirmLabel="Send back" placeholder="The photo page is cut off. Could you scan it again?" [name]="name()" (declined)="sendBack(document, $event)" (cancelled)="declining.set(undefined)" />
       }
     </app-dialog>
   `,

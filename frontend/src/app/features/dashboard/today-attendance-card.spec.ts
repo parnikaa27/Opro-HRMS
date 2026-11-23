@@ -30,8 +30,8 @@ describe('TodayAttendanceCard', () => {
 
     expect(text(root.querySelector('[data-testid=today-heading]') as HTMLElement)).toBe('You’re in the office');
     expect(text(root.querySelector('.circle-progress') as HTMLElement)).toBe('1h 40m of 8 hours');
-    expect(text(root)).toContain('PUNCH IN 08:50 AM Malé office');
-    expect(text(root)).toContain('EXPECTED OUT 04:50 PM 6h 20m remaining');
+    expect(text(root)).toContain('Punch in 08:50 AM Malé office');
+    expect(text(root)).toContain('Expected out 04:50 PM 6h 20m remaining');
     expect(text(root.querySelector('[data-testid=effective-hours]') as HTMLElement)).toBe('1h 30m');
     expect(text(root.querySelector('[data-testid=punch-button]') as HTMLElement)).toBe('Punch out');
   });
@@ -40,7 +40,7 @@ describe('TodayAttendanceCard', () => {
     const root = render(day({ punches: [{ at: at('07:00'), direction: 'in' }, { at: at('10:00'), direction: 'out', device: 'Malé office' }] }));
 
     expect(text(root.querySelector('[data-testid=today-heading]') as HTMLElement)).toBe('You’ve finished for the day');
-    expect(text(root)).toContain('PUNCH IN 07:00 AM Added by hand PUNCH OUT 10:00 AM Malé office');
+    expect(text(root)).toContain('Punch in 07:00 AM Added by hand Punch out 10:00 AM Malé office');
     expect(text(root.querySelector('[data-testid=punch-button]') as HTMLElement)).toBe('Punch in');
   });
 

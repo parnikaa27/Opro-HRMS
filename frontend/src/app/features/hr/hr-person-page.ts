@@ -53,7 +53,7 @@ const LOG_DAYS = 7;
       <a routerLink="/hr/people" class="text-link back-link"><app-icon name="chevronLeft" [size]="15" /> People</a>
 
       @if (isNotFound()) {
-        <div class="page-title"><div><span class="eyebrow">PEOPLE</span><h1>Nobody by that ID</h1><p>Check the link, or find them on the People page.</p></div></div>
+        <div class="page-title"><div><span class="eyebrow">People</span><h1>Nobody by that ID</h1><p>Check the link, or find them on the People page.</p></div></div>
       } @else if (person.error()) {
         <p class="attendance-off">This person's details didn't load. Refresh the page to try again.</p>
       } @else if (person.isLoading() && !employee()) {
@@ -92,12 +92,12 @@ const LOG_DAYS = 7;
         <div class="employee-grid">
           <div class="main-column">
             <section class="card full-table">
-              <div class="card-heading"><div><span class="eyebrow">THIS MONTH</span><h2>Attendance log</h2></div></div>
+              <div class="card-heading"><div><span class="eyebrow">This month</span><h2>Attendance log</h2></div></div>
               <app-attendance-table [rows]="rows()" [pageSize]="logDays" />
             </section>
             <app-leave-requests [requests]="requests()" [types]="typeList()" [isReadOnly]="true" heading="Their leave requests" certificatePath="/api/hr/leave-requests" />
             <section class="card request-history">
-              <div class="card-heading"><div><span class="eyebrow">AUDIT LOG</span><h2>Balance changes</h2></div></div>
+              <div class="card-heading"><div><span class="eyebrow">Audit log</span><h2>Balance changes</h2></div></div>
               @for (change of adjustments(); track change.id) {
                 <div class="history-row" data-testid="adjustment">
                   <div class="leave-type-icon"><app-icon name="file" [size]="18" /></div>

@@ -17,7 +17,7 @@ const FAILED = "That didn't save. Try again in a moment.";
   selector: 'app-monthly-allowance-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="ALLOWANCES" [heading]="current() ? 'Change ' + current()?.typeName?.toLowerCase() + ' allowance' : 'Add a monthly allowance'" intro="The old amount ends the month before the new one starts. They're told." />
+    <app-modal-heading eyebrow="Allowances" [heading]="current() ? 'Change ' + current()?.typeName?.toLowerCase() + ' allowance' : 'Add a monthly allowance'" intro="The old amount ends the month before the new one starts. They're told." />
     <form novalidate (submit)="save($event)">
       @if (!current()) {
         <label>

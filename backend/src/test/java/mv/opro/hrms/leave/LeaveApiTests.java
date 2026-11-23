@@ -3,6 +3,7 @@ package mv.opro.hrms.leave;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jayway.jsonpath.JsonPath;
+import java.math.BigDecimal;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -167,6 +168,27 @@ class LeaveApiTests {
 
         assertThat(jdbc.queryForObject("select status from leave_request where id = ?", String.class, original)).isEqualTo("cancelled");
         assertThat(jdbc.queryForObject("select uses_flight_entitlement from leave_request where id = ?", Boolean.class, original)).isTrue();
+    }
+
+    @Test
+    void aWaitingAmendmentAndTheRequestItAmendsHoldOnlyTheLongerOfTheTwo() throws Exception {
+        BigDecimal before = new BigDecimal(balance(arjun.get("/api/leave/balances").body(), "annual", "pending"));
+        String original = JsonPath.read(apply("annual", "2026-12-06", "2026-12-08", "").body(), "$.id");
+
+        String longer = JsonPath.read(apply("annual", "2026-12-06", "2026-12-10", ",\"kind\":\"amended\",\"relatedRequestId\":\"" + original + "\"").body(), "$.id");
+        assertThat(new BigDecimal(balance(arjun.get("/api/leave/balances").body(), "annual", "pending"))).isEqualByComparingTo(before.add(BigDecimal.valueOf(5)));
+
+        ApiClient vikram = new ApiClient(port);
+        vikram.signIn("OPR-0004");
+        vikram.post("/api/team/leave-requests/" + longer + "/decision", "{\"decision\":\"rejected\",\"note\":\"Keep it to three days.\"}");
+        assertThat(new BigDecimal(balance(arjun.get("/api/leave/balances").body(), "annual", "pending"))).isEqualByComparingTo(before.add(BigDecimal.valueOf(3)));
+    }
+
+    @Test
+    void aRefusalNeverSaysThereAreLessThanNoDaysLeft() throws Exception {
+        assertThat(apply("family", "2026-12-06", "2026-12-13", "").statusCode()).isEqualTo(200);
+
+        assertThat(apply("family", "2026-12-14", "2026-12-14", "").body()).isEqualTo("{\"message\":\"You've no family responsibility leave left.\"}");
     }
 
     @Test

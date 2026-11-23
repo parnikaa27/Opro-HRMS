@@ -14,7 +14,7 @@ const FAILED = "That didn't save. Try again in a moment.";
   selector: 'app-policy-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="LEAVE POLICY" [heading]="type() ? 'Edit ' + type()?.name?.toLowerCase() : 'Add a leave type'" [intro]="intro()" />
+    <app-modal-heading eyebrow="Leave policy" [heading]="type() ? 'Edit ' + type()?.name?.toLowerCase() : 'Add a leave type'" [intro]="intro()" />
     <form novalidate (submit)="save($event)">
       <label>Name <input [formField]="policyForm.name" placeholder="Marriage leave" data-testid="policy-name" aria-describedby="policy-name-error" /></label>
       <app-field-error id="policy-name-error" [errors]="policyForm.name().errors()" [isTouched]="policyForm.name().touched()" />

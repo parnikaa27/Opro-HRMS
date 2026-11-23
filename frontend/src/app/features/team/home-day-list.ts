@@ -16,8 +16,8 @@ import { formatDayShort } from '../../shared/utils/date-time';
           <strong>{{ day.employeeName }}</strong>
           <span>Worked from home</span>
         </div>
-        <div><small>DATE</small><strong>{{ formatDayShort(day.date) }}</strong></div>
-        <div><small>IF DECLINED</small><strong>The day counts as absent</strong></div>
+        <div><small>Date</small><strong>{{ formatDayShort(day.date) }}</strong></div>
+        <div><small>If declined</small><strong>The day counts as absent</strong></div>
         <div class="request-actions labeled">
           <button type="button" class="decline" [disabled]="busyId() === day.id" (click)="declined.emit(day)" data-testid="reject"><app-icon name="x" [size]="16" /> Decline</button>
           <button type="button" class="approve" [disabled]="busyId() === day.id" (click)="approved.emit(day)" data-testid="approve"><app-icon name="check" [size]="16" /> Approve</button>

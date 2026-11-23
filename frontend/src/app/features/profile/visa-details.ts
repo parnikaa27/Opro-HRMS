@@ -28,7 +28,7 @@ interface DocumentRow {
     <section class="card request-history">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">WORK VISA</span>
+          <span class="eyebrow">Work visa</span>
           <h2>Visa and work permit</h2>
         </div>
       </div>

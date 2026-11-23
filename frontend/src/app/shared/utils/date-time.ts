@@ -15,7 +15,6 @@ const clockFormat = new Intl.DateTimeFormat('en-US', { timeZone: MALDIVES_TIME_Z
 const weekdayFormat = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long' });
 const dayMonthFormat = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', day: 'numeric', month: 'long' });
 const dayMonthYearShortFormat = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', day: '2-digit', month: 'short', year: 'numeric' });
-const hourFormat = new Intl.DateTimeFormat('en-GB', { timeZone: MALDIVES_TIME_ZONE, hour: 'numeric', hourCycle: 'h23' });
 const shortDateFormat = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', day: 'numeric', month: 'short' });
 const fullDateFormat = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' });
 const weekdayDateFormat = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' });
@@ -25,7 +24,6 @@ const dateOnly = (date: string) => new Date(`${date}T00:00:00Z`);
 const minutesBetween = (from: string, to: Date) => Math.max(0, Math.floor((to.getTime() - new Date(from).getTime()) / MS_PER_MINUTE));
 
 export const maldivesToday = (now = new Date()) => dayFormat.format(now);
-export const maldivesHour = (now = new Date()) => Number(hourFormat.format(now));
 export const yearOf = (date: string) => Number(date.slice(0, YEAR_LENGTH));
 export const monthOf = (date: string) => date.slice(0, MONTH_LENGTH);
 export const weekdayOf = (date: string) => dateOnly(date).getUTCDay();

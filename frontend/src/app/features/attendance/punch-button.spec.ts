@@ -46,7 +46,7 @@ describe('PunchButton', () => {
     const { root, punched } = render();
 
     click(root, 'punch-button');
-    expect(text(dialog(root))).toContain('PUNCH IN Where are you working today? You choose once a day.');
+    expect(text(dialog(root))).toContain('Punch in Where are you working today? You choose once a day.');
     click(root, 'punch-office');
     await settle();
 
@@ -95,7 +95,7 @@ describe('PunchButton', () => {
 
     click(root, 'punch-button');
 
-    expect(text(dialog(root))).toContain('PUNCH OUT Where are you working today?');
+    expect(text(dialog(root))).toContain('Punch out Where are you working today?');
   });
 
   it('shows why the server refused, like being too far from the office', async () => {

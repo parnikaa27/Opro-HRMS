@@ -31,7 +31,7 @@ import { OUTCOMES, PerformanceApi, PLAN_STATUS, RATINGS } from './performance-ap
       } @else {
         <section class="card card-pad" data-testid="cycle-card">
           <div class="card-heading">
-            <div><span class="eyebrow">APPRAISAL CYCLE</span><h2>{{ cycle()?.name ?? 'None yet' }}</h2></div>
+            <div><span class="eyebrow">Appraisal cycle</span><h2>{{ cycle()?.name ?? 'None yet' }}</h2></div>
             @if (cycle() && !cycle()?.closedOn) {
               <app-confirm-button label="Close cycle" [question]="'Close ' + cycle()?.name + '? Appraisals not done stay undone.'" yes="Yes, close it" testId="close-cycle" (confirmed)="close()" />
             }
@@ -47,11 +47,11 @@ import { OUTCOMES, PerformanceApi, PLAN_STATUS, RATINGS } from './performance-ap
           }
         </section>
         <section class="card all-requests" data-testid="plans-for-hr">
-          <div class="card-heading"><div><span class="eyebrow">PLANS</span><h2>Waiting for you</h2></div></div>
+          <div class="card-heading"><div><span class="eyebrow">Plans</span><h2>Waiting for you</h2></div></div>
           @for (row of plansForHr(); track row.employeeId) {
             <div class="large-request plan-row" data-testid="plan-for-hr-row">
               <div><strong>{{ row.fullName }}</strong><span>{{ row.department }}</span></div>
-              <div><small>HOD APPROVED</small><strong>{{ row.form?.hodApprovedByName }}, {{ formatShortDate(row.form?.hodApprovedOn ?? '') }}</strong></div>
+              <div><small>HOD approved</small><strong>{{ row.form?.hodApprovedByName }}, {{ formatShortDate(row.form?.hodApprovedOn ?? '') }}</strong></div>
               <div class="request-actions labeled">
                 <button type="button" class="approve" (click)="deciding.set(row)" data-testid="review-plan">Review plan</button>
               </div>
@@ -64,16 +64,16 @@ import { OUTCOMES, PerformanceApi, PLAN_STATUS, RATINGS } from './performance-ap
           <section class="card full-table">
             <div class="table-wrap">
               <table class="stacks">
-                <thead><tr><th scope="col">NAME</th><th scope="col">HOD</th><th scope="col">PLAN</th><th scope="col">RATING</th><th scope="col">RECOMMENDS</th><th scope="col">ACCEPTED</th></tr></thead>
+                <thead><tr><th scope="col">Name</th><th scope="col">HOD</th><th scope="col">Plan</th><th scope="col">Rating</th><th scope="col">Recommends</th><th scope="col">Accepted</th></tr></thead>
                 <tbody>
                   @for (row of rows(); track row.employeeId) {
                     <tr data-testid="hr-appraisal-row">
                       <td><a [routerLink]="['/hr/people', row.employeeId]" class="person-cell"><strong>{{ row.fullName }}</strong></a><small>{{ row.department }}</small></td>
                       <td data-label="HOD">{{ row.managerName }}</td>
-                      <td data-label="PLAN">{{ planStatus[row.form?.status ?? 'draft'] }}</td>
-                      <td data-label="RATING">{{ row.appraisal ? row.appraisal.rating + ', ' + ratings[row.appraisal.rating] : 'Not yet' }}</td>
-                      <td data-label="RECOMMENDS">{{ recommends(row.appraisal) }}</td>
-                      <td data-label="ACCEPTED">{{ acceptedOn(row.appraisal) }}</td>
+                      <td data-label="Plan">{{ planStatus[row.form?.status ?? 'draft'] }}</td>
+                      <td data-label="Rating">{{ row.appraisal ? row.appraisal.rating + ', ' + ratings[row.appraisal.rating] : 'Not yet' }}</td>
+                      <td data-label="Recommends">{{ recommends(row.appraisal) }}</td>
+                      <td data-label="Accepted">{{ acceptedOn(row.appraisal) }}</td>
                     </tr>
                   }
                 </tbody>
@@ -82,12 +82,12 @@ import { OUTCOMES, PerformanceApi, PLAN_STATUS, RATINGS } from './performance-ap
           </section>
         }
         <section class="card all-requests" data-testid="probation-reviews">
-          <div class="card-heading"><div><span class="eyebrow">PROBATION</span><h2>Reviews</h2></div></div>
+          <div class="card-heading"><div><span class="eyebrow">Probation</span><h2>Reviews</h2></div></div>
           @for (review of data()?.probationReviews; track review.id) {
             <div class="large-request" data-testid="probation-review">
               <div><strong>{{ review.employeeName }}</strong><span>by {{ review.reviewedByName }}, {{ formatShortDate(review.reviewedOn) }}</span></div>
-              <div><small>OUTCOME</small><strong>{{ outcomes[review.outcome] }}{{ review.extendedTo ? ' to ' + formatShortDate(review.extendedTo) : '' }}</strong></div>
-              <div><small>COMMENTS</small><strong>{{ review.comments }}</strong></div>
+              <div><small>Outcome</small><strong>{{ outcomes[review.outcome] }}{{ review.extendedTo ? ' to ' + formatShortDate(review.extendedTo) : '' }}</strong></div>
+              <div><small>Comments</small><strong>{{ review.comments }}</strong></div>
             </div>
           } @empty {
             <p class="attendance-off">No probation reviews yet. HODs review their people before probation ends.</p>

@@ -6,7 +6,7 @@ const TINY_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADU
 const signInAs = async (page: Page, employeeId: string) => {
   await page.goto('/login');
   await page.getByTestId(`login-as-${employeeId}`).click();
-  await expect(page.getByTestId('greeting')).toBeVisible();
+  await expect(page.getByTestId('page-heading')).toBeVisible();
 };
 
 test('HR changes the work schedule from a future date, then takes it back', async ({ page }) => {

@@ -51,7 +51,7 @@ describe('CalendarPage', () => {
   it('lists the next three holidays across the year end', async () => {
     const root = await render();
 
-    expect(texts(root, 'upcoming-holiday')).toEqual(['01 DEC Made up day Tuesday · Tentative date', "01 JAN New Year's Day Friday · Public holiday"]);
+    expect(texts(root, 'upcoming-holiday')).toEqual(['01 Dec Made up day Tuesday · Tentative date', "01 Jan New Year's Day Friday · Public holiday"]);
   });
 
   it('shows a super admin who is away across Opro', async () => {

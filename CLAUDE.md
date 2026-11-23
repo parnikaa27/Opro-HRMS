@@ -7,8 +7,8 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 
 | Part | Stack | Status |
 |---|---|---|
-| `frontend/` | Angular 22, Tailwind CSS v4, Vitest, Playwright | Employee, manager and HR views built. Employee and manager pages match the Figma design; HR pages reuse its classes |
-| `design/figma-make/` | `App.tsx` and `index.css` copied from the Figma Make file "Opro HRMS Portal" | The visual source of truth |
+| `frontend/` | Angular 22, Tailwind CSS v4, Vitest, Playwright | Employee, manager and HR views built on the Figma layout, with the look reworked on 23 November (see Design) |
+| `design/figma-make/` | `App.tsx` and `index.css` copied from the Figma Make file "Opro HRMS Portal" | Where the layout and class names come from. The look has moved on from it |
 | `frontend/dev-server/` | Plain Node mock API serving JSON fixtures | For the Netlify demo and the second e2e run only. Development runs on Spring |
 | `backend/` | Java 25, Spring Boot 4.1, PostgreSQL 18, Flyway, Maven | Every endpoint is live: session, profile with photo, holidays and events, attendance, leave with medical certificates, documents, announcements, change requests, notifications, the team view, the HR view, punching from the office or home, daily visa reminders, leave types HR manages with carry forward, compensatory off and flight allowances. The mock stays for frontend work, and the e2e tests run against both |
 
@@ -60,14 +60,14 @@ Opro is a company based in the Maldives. This repo holds its HR portal: attendan
 
 ### Pages (v1)
 
-The look of every page comes from the Figma Make file (see Design below). Sidebar nav for employees: Overview, Attendance, Leave, Calendar, Documents, Performance. For HODs: Overview, People, Attendance, Leave (with a count of what's waiting), Calendar, Performance. Profile is reached from the name menu at the top right.
+The layout of every page comes from the Figma Make file and its look follows Design below. Sidebar nav for employees: Overview, Attendance, Leave, Calendar, Documents, Performance. For HODs: Overview, People, Attendance, Leave (with a count of what's waiting), Calendar, Performance. Profile is reached from the name menu at the top right.
 
 **Employee view**
 
 | Route | Contents |
 |---|---|
 | `/login` | Mock user picker (dev only) |
-| `/` Overview | Welcome banner, a welcome card for new joiners until onboarding is done (first day, HOD, buddy, tasks), today's attendance (time in, expected out, effective hours, punch in and out), leave balance, visa status, recent attendance table, dark staff card, next holiday and long weekend, latest leave request |
+| `/` Overview | Title band with the date, a welcome card for new joiners until onboarding is done (first day, HOD, buddy, tasks), today's attendance (time in, expected out, effective hours, punch in and out), leave balance, visa status, recent attendance table, dark staff card, next holiday and long weekend, latest leave request |
 | `/performance` | Their plan for the open appraisal cycle as five numbered sections (Goals and KPIs, Plan for certifications, Learning and development, Accomplishments, Strengths), each a tile that opens a form to add as many entries as they like, each with a cross. Saved as a draft, sent to their HOD in one go, with a line saying what happens next and why it came back. Then their appraisals with each goal rated and the HOD's comment on the plan (accept the rating), and any probation review. Never the HOD's recommendations |
 | `/documents` | Every document on HR's list that applies to them, with its status (missing, waiting for HR, verified, sent back with HR's reason, expired), its dates and each file to download. Upload one or more files at once of the ones employees send (each picked file listed with a cross to take it off before sending), with the start date and, where the type expires, the end date, and take a wrong file off until HR verifies it |
 | `/attendance` | My attendance: four summary cards (days present, work hours, on time, overtime), the attendance log for a chosen month, CSV export, punch fix requests and their status, and the punch button while today is on screen |
@@ -81,7 +81,7 @@ The look of every page comes from the Figma Make file (see Design below). Sideba
 
 | Route | Contents |
 |---|---|
-| `/team` | Manager overview: welcome banner, team members, pending requests, average attendance and out of office cards, waiting leave with one click approve, team today, a month attendance chart with CSV export, visa alerts, and reports still onboarding (the HOD's tasks, picking a buddy) |
+| `/team` | Manager overview: title band, team members, pending requests, average attendance and out of office cards, waiting leave with one click approve, team today, a month attendance chart with CSV export, visa alerts, and reports still onboarding (the HOD's tasks, picking a buddy) |
 | `/team/people` | Card directory of direct reports with today's status and search |
 | `/team/approvals` | Leave requests in tabs (Pending, Approved, Declined, Punch fixes, Home working, Comp off, Overtime, Resignations). Approve in one click. Declining opens a modal that needs a reason, so the employee can plan around it. Waiting leave shows who else is off on those dates |
 | `/team/attendance` | Team summary cards and a table with one row per report (days present, late, missed, hours, today), month picker, CSV export |
@@ -109,7 +109,7 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 
 | Route | Contents |
 |---|---|
-| `/hr` | Welcome banner, people, on leave today, visas to act on and inbox counts, who is on leave today, visa alerts, tentative holidays in the next 60 days, new joiners still onboarding, and documents to collect |
+| `/hr` | Title band, people, on leave today, visas to act on and inbox counts, who is on leave today, visa alerts, tentative holidays in the next 60 days, new joiners still onboarding, and documents to collect |
 | `/hr/people` | The People page for everyone at Opro, with Add person and a toggle to include people who have left |
 | `/hr/people/new`, `/hr/people/:employeeId/edit` | Add a person, or edit their details and manager. A page, not a modal, because the form is long |
 | `/hr/people/:employeeId` | One person's balances, this month's log (a week at a time, Show more for the next), requests (with any medical certificate to open), balance change log, staff card, visa and their record (insurance, bank details to verify, education, experience). Set their days of a type or give or take away a type (Leave days), adjust a balance, update visa, set their flight allowance. A More menu holds edit details, change photo and mark as leaving |
@@ -117,7 +117,7 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 | `/hr/visas` | Every expatriate, people with no record first, then soonest visa or passport expiry, and the expatriate quota: approvals by job category with slots used, expiry, and any job category with no quota |
 | `/hr/inbox` | Profile change requests in tabs (Open, Done, Declined), requests the HOD approved that HR approves too (approve, or decline with a reason), resignations the HOD approved (approve with the exit date, or decline), one-off allowances HODs granted (approve, or decline with a reason), and documents and bank details to check, oldest first: verify, or send back with a reason. Declining needs a reason |
 | `/hr/announcements` | Post, edit and take down notes from HR. A new one notifies everyone |
-| `/hr/dashboard` | The executive dashboard: employees, joiners, leavers with attrition and retention, who's in today; locals and expatriates, gender, employment type, age, departments and nationalities; today's attendance and this month's; leave waiting, annual leave used, sick leave by month; papers expired or expiring within 60 days and quota use; birthdays and anniversaries this month, probation ending within 30 days, contracts within 60; performance (on probation, appraised so far, average rating, rated 4 or 5, recommended for promotion). Only what today's data supports: recruitment, payroll and training appear when those modules exist |
+| `/hr/dashboard` | The executive dashboard: employees, joiners, leavers with attrition and retention, who's in today and who isn't in yet; locals and expatriates, gender, employment type, age, departments and nationalities; today's attendance and this month's; leave waiting, annual leave used, sick leave by month; papers expired or expiring within 60 days and quota use; birthdays and anniversaries this month, probation ending within 30 days, contracts within 60; performance (on probation, appraised so far, average rating, rated 4 or 5, recommended for promotion). Only what today's data supports: recruitment, payroll and training appear when those modules exist |
 | `/hr/reports` | Headcount, joiners and leavers, workforce mix, leave balances, leave taken, attendance and visa and permit expiry, each shown as a table and saved as CSV, Excel or PDF |
 | `/hr/performance` | Open and close appraisal cycles, plans the HOD approved for HR to approve or send back, how far the latest cycle has got (where each plan stands, rating, the HOD's promotion and increment recommendations, whether the person has accepted), and every probation review |
 | `/hr/policy` | Policies: add, edit and remove leave types (yearly days, half days, given to everyone or people HR picks, lapse or carry forward up to a cap; a new entitlement applies from the next leave year; approved by the HOD, or the HOD then HR), which other requests HR approves after the HOD, the work schedule as dated versions, the documents Opro keeps, what comes back when someone leaves, the kinds of allowance, the onboarding task list, and the exchange rates for flight allowances |
@@ -172,7 +172,7 @@ Sidebar: Overview, Dashboard, People, Calendar, Visas, Inbox (count open), Annou
 - **One person's leave:** HR sets how many days of a type someone gets this year (fewer for a late joiner, a type only they get), or takes a type away. Every change needs a reason, is logged and notifies them. A type with a waiting request can't be taken away. HR never changes their own.
 - Half days allowed (first half or second half).
 - **Notice:** HR can set how many days ahead a type is asked for (`noticeDays`, the paper form asks a month for annual leave). Only a new request needs it, not an amendment or extension. None is set until HR does.
-- **Amended and extended requests**, as on the paper form. An amendment names a waiting or approved request that isn't over; its days are given back while checking the balance, and approving it cancels the one it replaces. An extension starts straight after the request it extends, with no working day between. Both are decided like any request.
+- **Amended and extended requests**, as on the paper form. An amendment names a waiting or approved request that isn't over; its days are given back while checking the balance, and approving it cancels the one it replaces. While it waits, the two hold only the longer of them in the balance. An extension starts straight after the request it extends, with no working day between. Both are decided like any request.
 - **Flight entitlement and salary advance** are ticks on the request, shown to the HOD and HR. Nothing else happens yet: flight claims stay on the profile and there's no payroll.
 - Weekends and public holidays inside a leave range do not count.
 - The apply form only offers types the person has a balance for, plus types the policy marks `isUnlimited`. A missing balance never means "no cap".
@@ -311,7 +311,7 @@ Logo, "People first, always.", "© year Opro Pvt Ltd · Malé, Republic of Maldi
 
 - English only. Dhivehi is not planned.
 - Fully responsive. Phones are a first class target, many staff will check punches and leave on mobile. Checked at 375, 768, 900, 1024 and 1280 px with nothing wider than the screen. On phones, tables turn into stacked rows (each value under its column's name, `class="stacks"` and `data-label` on each cell; a cell says "None" or "Not yet" rather than nothing, and an empty one hides), request rows show their dates, amounts and reasons under the name instead of hiding them, and request tabs scroll on one line. Between 861 and 1100 px the side column sits under the main one.
-- Light and dark. The Figma design has no dark version, so dark is generated from the light stylesheets by `scripts/build-dark-theme.mjs` into `src/styles/dark.css`: light surfaces become navy tinted dark ones, text turns light, coloured text is lifted until it reads, and the parts that are dark on purpose (sidebar, staff card, welcome banner, primary buttons) stay as they are. The script reports any text under 4.5:1 against the dark card. Never edit `dark.css` by hand: change the script or the light styles and run `npm run theme:dark`. `npm run check` fails if it is stale.
+- Light and dark. The Figma design has no dark version, so dark is generated from the light stylesheets by `scripts/build-dark-theme.mjs` into `src/styles/dark.css`: light surfaces become navy tinted dark ones, text turns light, coloured text is lifted until it reads, and the parts that are dark on purpose (sidebar, staff card, title band, primary buttons) stay as they are. The script reports any text under 4.5:1 against the dark card. Never edit `dark.css` by hand: change the script or the light styles and run `npm run theme:dark`. `npm run check` fails if it is stale.
 - The portal follows the device setting. Light, Dark or Auto in the name menu overrides it, remembered per browser. Printing is always light.
 - If a dark design arrives from the designer, it replaces the generated values.
 - WCAG 2.2 AA.
@@ -337,17 +337,25 @@ This is a daily work tool. People open it to check a punch, apply for leave or a
 - Microcopy has personality but stays respectful. Empty states, errors and confirmations are written, not defaulted.
 - Use real quotation marks (" "), proper ellipses (…), no dashes as punctuation.
 
-### Visual: the Figma design is the source of truth
-- **Match the Figma Make file "Opro HRMS Portal" exactly**: layout, sections, navigation, colours, type and spacing. Its code is copied into `design/figma-make/`. Before building or changing a page, read the matching component in `App.tsx` and its classes in `index.css`, and reuse those class names.
-- `frontend/src/styles/portal.css` is that stylesheet, ported verbatim. Only font names differ, and sidebar rules also cover links. Don't restyle its classes. Anything the design doesn't cover (search results, our extra statuses, states the mock design only shows one version of, a phone overflow fix) goes in `src/styles.css` under a comment saying why.
-- Palette: navy `#102d3f`, aqua `#11ae9e`, aqua dark `#078e83`, page `#f3f7f6`, ink `#16313f`, muted `#71828c`, yellow `#ffc85a`, coral `#f27f68`.
+### Visual: the Figma layout, made calm (23 November)
+- **Layout and class names** come from the Figma Make file "Opro HRMS Portal" (`design/figma-make/`). Before building a page, read the matching component in `App.tsx` and reuse its class names.
+- **The look** was reworked with Parnika on 23 November ("unslop"). Character: steady, exact, sunlit. Chrome stays quiet; the richness goes to two moments, the staff ID card (laminate edge, lanyard slot) and today's punch card, whose times are set large like a time-clock stamp.
+- `frontend/src/styles/portal.css` started as the Figma stylesheet and now carries this look. Anything it doesn't cover goes in `src/styles.css` under a comment saying why.
+- **One colour ramp.** Light neutrals tinted toward the lagoon: page `#f3f7f6`, card `#ffffff`, subtle `#f8faf9`, raised `#eef2f3`, line `#e6ecee`, strong line `#d9e2e3`, faint `#b3c4ca` (decoration and inactive days only, never text). Three text roles: ink `#16313f`, secondary `#526972`, muted `#606e77`. Navy `#102d3f` (and `#183d50`, `#1e4a5e`) for the sidebar, staff card and title band, with `#ffffff`, `#a9c0c8` and `#7896a1` on it. Don't add a new hex; pick from the ramp.
+- **One accent.** Dark aqua `#067a71` for buttons, links, selected states, focus rings and aqua text (5.2:1 with white). Bright aqua `#11ae9e` only for rings, charts and indicators that sit beside text, never under text. Statuses: late `#98640f` on `#fff4dd`, danger `#b44a35` on `#fff0ed`, leave `#6543a5` on `#eee8ff`, info `#25729c` on `#e5f4fb`. Yellow `#ffc85a` and coral `#f27f68` are fills only. Every text colour reaches 4.5:1 on its surface.
+- **No** hue gradients, coloured shadows, glows or decorative art. Shadows are neutral and small. Stat icons are neutral; the number carries the card.
+- **Spacing** on a 4px grid; **corners** 4, 6, 8, 10, 12, 16 or 20, plus round for avatars and dots.
+- **Labels in sentence case**, never uppercase with tracking. The physical ID cards keep their printed uppercase.
+- **Motion:** one curve, `--ease` (`cubic-bezier(0.22, 1, 0.36, 1)`), on named properties only, 120 to 300 ms.
+- No sparkles: announcements use a megaphone.
 - Icons are Lucide shapes stored in `shared/ui/icon-shapes.ts`. Add new ones from Lucide the same way, not a new icon library.
 - People without a photo show initials in the same frames.
 - Status colour is never the only signal. Always pair it with text or an icon.
 
 ### Typography
-- Manrope for headings and big numbers, DM Sans for everything else, as the design specifies. Both self hosted.
-- Every text size of 12px and under is 1px larger than the Figma file (Parnika's call, for reading). Headings and big numbers keep the design's sizes.
+- Manrope for page titles, headings and big figures, DM Sans for everything else. Both self hosted.
+- Weights: 600 for headings and figures, 500 for labels and navigation, 400 for text. Nothing heavier.
+- Nothing under 12px (Parnika's call, for reading). Letter spacing 0, except a slight -0.2px on headings from 22px.
 - Times use the design's 12 hour clock ("08:56 AM"). Durations read "6h 14m", table hours "08h 54m".
 - Times, dates and numbers use tabular figures so columns line up.
 
@@ -366,10 +374,10 @@ HRMS/
   design/figma-make/   # App.tsx and index.css from the Figma Make file. Reference only, not built
   frontend/
     src/styles.css     # Tailwind, fonts, tokens and our additions to the design
-    src/styles/portal.css  # The Figma stylesheet, ported
+    src/styles/portal.css  # The design's stylesheet, started from Figma
     src/app/
       core/            # App wide singletons: auth, layout shell (header, nav, footer), guards, interceptors, config
-      shared/ui/       # Pure presentational pieces (logo, icon, status pill, avatar, welcome banner, dialog, month switcher)
+      shared/ui/       # Pure presentational pieces (logo, icon, status pill, avatar, title band, dialog, month switcher)
       shared/utils/    # Pure helper functions (dates, formatting)
       features/
         dashboard/
@@ -567,8 +575,8 @@ The full, generated reference is Swagger UI at `http://localhost:8080/swagger-ui
 - Lists show `ListSkeleton` while their first load is in flight, never their empty state. An empty state that flashes before data arrives is a lie.
 
 ### Styling
-- Pages use the design's own classes from `portal.css` (`card`, `card-heading`, `eyebrow`, `status-pill`, `primary-button`, `page-view`, `page-title` and so on), written exactly as the Figma markup uses them.
-- **Tailwind CSS v4** is for small layout gaps the design classes don't cover. Its tokens in `src/styles.css` map onto the Figma palette.
+- Pages use the design's own classes from `portal.css` (`card`, `card-heading`, `eyebrow`, `status-pill`, `primary-button`, `page-view`, `page-title` and so on), written as the Figma markup uses them.
+- **Tailwind CSS v4** is for small layout gaps the design classes don't cover. Its tokens in `src/styles.css` map onto the same ramp.
 - Fonts: Manrope and DM Sans through `@fontsource-variable`.
 - Component specific CSS goes in the component's own stylesheet when Tailwind can't express it cleanly.
 - No inline `style` attributes except truly dynamic single values (a progress width).

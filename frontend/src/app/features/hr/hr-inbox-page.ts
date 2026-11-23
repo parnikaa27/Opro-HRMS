@@ -63,7 +63,7 @@ const TABS: { value: Status; label: string; empty: string }[] = [
                 <a [routerLink]="['/hr/people', request.employeeId]" class="person-cell"><strong>{{ request.employeeName }}</strong></a>
                 <span>{{ request.field }} · {{ submittedAgo(request.raisedOn) }}</span>
               </div>
-              <div><small>{{ request.decisionNote ? 'YOUR NOTE' : 'WHAT TO CHANGE' }}</small><strong>{{ request.decisionNote ?? request.details }}</strong></div>
+              <div><small>{{ request.decisionNote ? 'Your note' : 'What to change' }}</small><strong>{{ request.decisionNote ?? request.details }}</strong></div>
               @if (request.status === 'open') {
                 <div class="request-actions labeled">
                   <button type="button" class="decline" [disabled]="decisions.busyId() === request.id" (click)="declining.set(request)" data-testid="reject"><app-icon name="x" [size]="16" /> Decline</button>
@@ -91,7 +91,7 @@ const TABS: { value: Status; label: string; empty: string }[] = [
 
     <app-dialog heading="Decline change" [isOpen]="declining() !== undefined" (isOpenChange)="$event || declining.set(undefined)">
       @if (declining(); as target) {
-        <app-decline-form eyebrow="PEOPLE & CULTURE" placeholder="We need a copy of the new passport first. Could you send it over?" [name]="target.employeeName ?? ''" (declined)="decline(target, $event)" (cancelled)="declining.set(undefined)" />
+        <app-decline-form eyebrow="People & culture" placeholder="We need a copy of the new passport first. Could you send it over?" [name]="target.employeeName ?? ''" (declined)="decline(target, $event)" (cancelled)="declining.set(undefined)" />
       }
     </app-dialog>
   `,

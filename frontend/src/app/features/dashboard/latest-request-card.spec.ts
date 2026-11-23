@@ -21,7 +21,7 @@ describe('LatestRequestCard', () => {
       request({ id: 'LR-2', status: 'cancelled', appliedOn: '2026-11-01' }),
     ]);
 
-    expect(shown).toBe('LATEST REQUEST Leave approval Annual leave approved 6 Oct to 8 October 2026 · 3 days Approved by Vikram Singh Approved');
+    expect(shown).toBe('Latest request Leave approval Annual leave approved 6 Oct to 8 October 2026 · 3 days Approved by Vikram Singh Approved');
   });
 
   it('words a declined request', async () => {

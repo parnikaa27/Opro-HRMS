@@ -25,7 +25,7 @@ const longWeekendStart = ({ date }: Holiday) =>
     <section class="card holiday-card">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">UP NEXT</span>
+          <span class="eyebrow">Up next</span>
           <h2>Holiday calendar</h2>
         </div>
         <a routerLink="/calendar" class="small-calendar" aria-label="Open the holiday calendar"><app-icon name="calendar" [size]="18" /></a>
@@ -78,6 +78,6 @@ export class NextHolidayCard {
   });
 
   protected readonly dayNumber = ({ date }: Holiday) => date.slice(DAY_DIGITS);
-  protected readonly monthShort = ({ date }: Holiday) => formatShortDate(date).split(' ')[1].slice(0, MONTH_LETTERS).toUpperCase();
+  protected readonly monthShort = ({ date }: Holiday) => formatShortDate(date).split(' ')[1].slice(0, MONTH_LETTERS);
   protected readonly weekday = ({ date }: Holiday) => formatWeekday(date);
 }

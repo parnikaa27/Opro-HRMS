@@ -39,12 +39,12 @@ describe('HrInboxPage', () => {
 
     expect([...root.querySelectorAll('[role=tab]')].map((tab) => text(tab))).toEqual(['Open 2', 'Done', 'Declined']);
     expect(texts(root, 'change-row').map((row) => row.split(' Decline')[0])).toEqual([
-      'AR Arjun Reddy Phone number · Submitted 3 days ago WHAT TO CHANGE +960 777 8018',
-      'AR Arjun Reddy Emergency contact · Submitted yesterday WHAT TO CHANGE Lakshmi, +91 98450 00000',
+      'AR Arjun Reddy Phone number · Submitted 3 days ago What to change +960 777 8018',
+      'AR Arjun Reddy Emergency contact · Submitted yesterday What to change Lakshmi, +91 98450 00000',
     ]);
 
     click(root, 'tab-declined');
-    expect(texts(root, 'change-row')).toEqual(['AR Arjun Reddy Phone number · Submitted 3 days ago YOUR NOTE Need the new passport first Declined, 5 Nov']);
+    expect(texts(root, 'change-row')).toEqual(['AR Arjun Reddy Phone number · Submitted 3 days ago Your note Need the new passport first Declined, 5 Nov']);
     click(root, 'tab-done');
     expect(text(root)).toContain('Nothing marked done yet.');
   });

@@ -3,7 +3,7 @@ import { expect, Page, test } from '@playwright/test';
 const signInAsHr = async (page: Page) => {
   await page.goto('/login');
   await page.getByTestId('login-as-OPR-0002').click();
-  await expect(page.getByTestId('greeting')).toBeVisible();
+  await expect(page.getByTestId('page-heading')).toBeVisible();
   await page.getByTestId('view-hr').click();
   await expect(page.getByTestId('stat-people')).toBeVisible();
 };
@@ -76,7 +76,7 @@ test('HR posts an announcement and takes it down', async ({ page }) => {
 test('people without the HR role never reach HR pages', async ({ page }) => {
   await page.goto('/login');
   await page.getByTestId('login-as-OPR-0004').click();
-  await expect(page.getByTestId('greeting')).toBeVisible();
+  await expect(page.getByTestId('page-heading')).toBeVisible();
   await expect(page.getByTestId('view-hr')).toHaveCount(0);
 
   await page.goto('/hr/visas');

@@ -23,7 +23,7 @@ const YEARS_BACK = 2;
     <div class="page-view">
       <div class="page-title">
         <div>
-          <span class="eyebrow">REPORTS</span>
+          <span class="eyebrow">Reports</span>
           <h1>Reports</h1>
           <p>Pick a report, check it on screen, then save it as CSV, Excel or PDF. What you see is exactly what you get.</p>
         </div>

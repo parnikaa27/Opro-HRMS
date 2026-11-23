@@ -75,7 +75,7 @@ describe('AttendancePage', () => {
     expect(metric(root, 'overtime')).toBe('1h 10m');
     expect(metric(root, 'overtime-line')).toBe('0m approved, 1h 10m waiting');
     expect(texts(root, 'attendance-row').map((row) => row.split(' ')[0])).toEqual(['Yesterday', 'Tuesday', 'Monday', 'Sunday']);
-    expect(text(root)).toContain('NOVEMBER 2026 Attendance log');
+    expect(text(root)).toContain('November 2026 Attendance log');
   });
 
   it('switches month from the date chip', async () => {
@@ -84,7 +84,7 @@ describe('AttendancePage', () => {
     fill(root, 'month-picker', '2026-10');
     await respond(http, { '/api/attendance?month=2026-10': [] });
 
-    expect(text(root)).toContain('OCTOBER 2026 Attendance log');
+    expect(text(root)).toContain('October 2026 Attendance log');
     expect(text(root)).toContain('No punches recorded yet.');
   });
 

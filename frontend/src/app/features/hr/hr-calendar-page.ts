@@ -24,7 +24,7 @@ const byDate = <T extends { date: string }>(items: readonly T[]) => [...items].s
     <div class="page-view">
       <div class="page-title">
         <div>
-          <span class="eyebrow">COMPANY CALENDAR</span>
+          <span class="eyebrow">Company calendar</span>
           <h1>Holidays &amp; events</h1>
           <p>Everyone sees these on their calendar. Leave never counts a public holiday.</p>
         </div>
@@ -88,7 +88,7 @@ const byDate = <T extends { date: string }>(items: readonly T[]) => [...items].s
           </div>
           @for (event of eventList(); track event.id) {
             <div class="history-row" data-testid="event-row">
-              <div class="leave-type-icon"><app-icon name="sparkles" [size]="18" /></div>
+              <div class="leave-type-icon"><app-icon name="calendar" [size]="18" /></div>
               <div>
                 <strong>{{ event.name }}</strong>
                 <span>{{ formatDayShort(event.date) }}</span>

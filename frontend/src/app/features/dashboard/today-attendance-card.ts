@@ -40,7 +40,7 @@ const HOME_NOTE = {
     <section class="attendance-hero card" data-testid="today-card">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">TODAY’S ATTENDANCE</span>
+          <span class="eyebrow">Today’s attendance</span>
           <h2 data-testid="today-heading">{{ heading() }}</h2>
         </div>
         @if (day() && !hasFailed()) {
@@ -60,19 +60,19 @@ const HOME_NOTE = {
           <div class="punch-timeline">
             <div class="timeline-line"><i></i><i></i></div>
             <div>
-              <span>PUNCH IN</span>
+              <span>Punch in</span>
               <strong data-testid="punch-in">{{ formatClock(first.at) }}</strong>
               <small>{{ first.device ?? 'Added by hand' }}</small>
             </div>
             @if (lastOut(); as out) {
               <div>
-                <span>PUNCH OUT</span>
+                <span>Punch out</span>
                 <strong>{{ formatClock(out.at) }}</strong>
                 <small>{{ out.device ?? 'Added by hand' }}</small>
               </div>
             } @else if (day()?.expectedOut; as expected) {
               <div>
-                <span>EXPECTED OUT</span>
+                <span>Expected out</span>
                 <strong>{{ formatClock(expected) }}</strong>
                 <small>{{ remainingLabel() }}</small>
               </div>

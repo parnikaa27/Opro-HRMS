@@ -20,7 +20,7 @@ import { bankStatus, describeExperience } from './record-format';
       <section class="card request-history" data-testid="record-card">
         <div class="card-heading">
           <div>
-            <span class="eyebrow">MY RECORD</span>
+            <span class="eyebrow">My record</span>
             <h2>Bank, insurance and background</h2>
           </div>
           <button type="button" class="secondary-button" (click)="isEditingBank.set(true)" data-testid="open-bank">{{ details.bankAccount ? 'Change bank details' : 'Add bank details' }}</button>

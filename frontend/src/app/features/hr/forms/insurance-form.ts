@@ -13,7 +13,7 @@ const MAX_TEXT = 80;
   selector: 'app-insurance-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="MEDICAL INSURANCE" [heading]="firstName() + '’s insurance'" intro="They're told, and reminded before it runs out." />
+    <app-modal-heading eyebrow="Medical insurance" [heading]="firstName() + '’s insurance'" intro="They're told, and reminded before it runs out." />
     <form novalidate (submit)="save($event)">
       <div class="form-row">
         <label>Provider <input [formField]="insuranceForm.provider" placeholder="Allied Insurance" data-testid="insurance-provider" aria-describedby="insurance-provider-error" /></label>

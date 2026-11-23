@@ -14,7 +14,7 @@ import { OnboardingChecklist } from './onboarding-checklist';
   template: `
     @if (joiners().length) {
       <section class="card card-pad" data-testid="team-onboarding">
-        <div class="card-heading"><div><span class="eyebrow">ONBOARDING</span><h2>Joining your team</h2></div></div>
+        <div class="card-heading"><div><span class="eyebrow">Onboarding</span><h2>Joining your team</h2></div></div>
         @for (joiner of joiners(); track joiner.employeeId) {
           <div class="onboarding-joiner" data-testid="joiner">
             <div class="card-heading">

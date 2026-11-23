@@ -16,7 +16,7 @@ const FAILED = "That didn't save. Try again in a moment.";
   selector: 'app-grant-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="ALLOWANCES" [heading]="'A one-off allowance for ' + name()" intro="HR approves it, then they're told. Nothing is paid until payroll runs." />
+    <app-modal-heading eyebrow="Allowances" [heading]="'A one-off allowance for ' + name()" intro="HR approves it, then they're told. Nothing is paid until payroll runs." />
     <form novalidate (submit)="save($event)">
       <div class="form-row">
         <label>

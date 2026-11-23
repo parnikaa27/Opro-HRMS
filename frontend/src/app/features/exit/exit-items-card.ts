@@ -16,7 +16,7 @@ const MAX_NAME = 60;
   imports: [ConfirmButton, FieldError, FormField, ListSkeleton],
   template: `
     <section class="card request-history" data-testid="exit-items">
-      <div class="card-heading"><div><span class="eyebrow">LEAVING OPRO</span><h2>What comes back</h2></div></div>
+      <div class="card-heading"><div><span class="eyebrow">Leaving Opro</span><h2>What comes back</h2></div></div>
       @if (items.error()) {
         <p class="attendance-off">The list didn't load. Refresh the page to try again.</p>
       } @else if (items.isLoading() && list().length === 0) {

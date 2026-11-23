@@ -10,7 +10,7 @@ import { AllowanceApi, describeMonthly, GRANT_STATUS, money } from './allowance-
   imports: [StatusPill],
   template: `
     <section class="card card-pad" data-testid="allowances-card">
-      <div class="card-heading"><div><span class="eyebrow">ON TOP OF PAY</span><h2>Allowances</h2></div></div>
+      <div class="card-heading"><div><span class="eyebrow">On top of pay</span><h2>Allowances</h2></div></div>
       @if (allowances.error()) {
         <p class="attendance-off">Your allowances didn't load. Refresh the page to try again.</p>
       } @else {

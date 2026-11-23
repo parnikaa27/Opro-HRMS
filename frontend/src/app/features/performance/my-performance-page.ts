@@ -27,7 +27,7 @@ const SEND_FAILED = "That didn't send. Try again in a moment.";
     <div class="page-view">
       <div class="page-title">
         <div>
-          <span class="eyebrow">MY GROWTH</span>
+          <span class="eyebrow">My growth</span>
           <h1>Performance</h1>
           <p>Your plan for the year has five parts. Open each one to add what fits, then send the whole plan to your HOD.</p>
         </div>
@@ -40,7 +40,7 @@ const SEND_FAILED = "That didn't send. Try again in a moment.";
         @if (performance()?.cycle; as cycle) {
           <section class="card card-pad plan-status" data-testid="plan-status">
             <div class="card-heading">
-              <div><span class="eyebrow">{{ cycle.name.toUpperCase() }}</span><h2>Your plan</h2></div>
+              <div><span class="eyebrow">{{ cycle.name }}</span><h2>Your plan</h2></div>
               <app-status-pill [tone]="statusTone()" data-testid="plan-status-pill">{{ statusText() }}</app-status-pill>
             </div>
             <p class="card-text" data-testid="plan-next">{{ nextStep() }}</p>
@@ -79,7 +79,7 @@ const SEND_FAILED = "That didn't send. Try again in a moment.";
         @for (appraisal of performance()?.appraisals; track appraisal.id) {
           <section class="card card-pad" [class.needs-you]="!appraisal.acceptedOn" data-testid="my-appraisal">
             <div class="card-heading">
-              <div><span class="eyebrow">{{ appraisal.cycleName.toUpperCase() }}</span><h2>{{ appraisal.rating }}, {{ ratings[appraisal.rating] }}</h2></div>
+              <div><span class="eyebrow">{{ appraisal.cycleName }}</span><h2>{{ appraisal.rating }}, {{ ratings[appraisal.rating] }}</h2></div>
               @if (appraisal.acceptedOn) {
                 <span class="card-note">Accepted on {{ formatFullDate(appraisal.acceptedOn) }}</span>
               } @else {
@@ -103,7 +103,7 @@ const SEND_FAILED = "That didn't send. Try again in a moment.";
         }
         @for (review of performance()?.probationReviews; track review.id) {
           <section class="card card-pad" data-testid="my-probation">
-            <div class="card-heading"><div><span class="eyebrow">PROBATION</span><h2>{{ outcomes[review.outcome] }}{{ review.extendedTo ? ' until ' + formatFullDate(review.extendedTo) : '' }}</h2></div></div>
+            <div class="card-heading"><div><span class="eyebrow">Probation</span><h2>{{ outcomes[review.outcome] }}{{ review.extendedTo ? ' until ' + formatFullDate(review.extendedTo) : '' }}</h2></div></div>
             <p class="card-text">“{{ review.comments }}” {{ review.reviewedByName }}, {{ formatFullDate(review.reviewedOn) }}</p>
           </section>
         }

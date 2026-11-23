@@ -3,7 +3,7 @@ import { expect, Page, test } from '@playwright/test';
 const signInAs = async (page: Page, employeeId: string) => {
   await page.goto('/login');
   await page.getByTestId(`login-as-${employeeId}`).click();
-  await expect(page.getByTestId('greeting').or(page.getByRole('heading', { level: 1 }))).toBeVisible();
+  await expect(page.getByTestId('page-heading').or(page.getByRole('heading', { level: 1 }))).toBeVisible();
 };
 
 test('signed out visitors land on sign in, and search engines are told to stay away', async ({ page }) => {
@@ -17,7 +17,7 @@ test('signed out visitors land on sign in, and search engines are told to stay a
 test('an employee sees their own dashboard and no team view', async ({ page }) => {
   await signInAs(page, 'OPR-0018');
 
-  await expect(page.getByTestId('greeting')).toContainText('Arjun');
+  await expect(page.getByTestId('page-heading')).toHaveText('Overview');
   await expect(page.getByTestId('visa-card')).toContainText('Expires soon');
   await expect(page.getByTestId('view-team')).toHaveCount(0);
 

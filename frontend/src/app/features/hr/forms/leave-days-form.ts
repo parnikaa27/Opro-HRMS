@@ -17,7 +17,7 @@ const FAILED = "That didn't save. Try again in a moment.";
   selector: 'app-leave-days-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="THEIR LEAVE" [heading]="'Leave days for ' + firstName()" intro="Sets what they get this year. Anything carried over from last year comes on top." />
+    <app-modal-heading eyebrow="Their leave" [heading]="'Leave days for ' + firstName()" intro="Sets what they get this year. Anything carried over from last year comes on top." />
     <form novalidate (submit)="save($event)">
       <label>
         Type of leave

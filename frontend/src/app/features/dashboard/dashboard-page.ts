@@ -5,7 +5,7 @@ import { AttendanceStatus } from '../../models/attendance';
 import { Icon } from '../../shared/ui/icon';
 import { ListSkeleton } from '../../shared/ui/list-skeleton';
 import { WelcomeBanner } from '../../shared/ui/welcome-banner';
-import { addMonths, formatBannerDate, maldivesHour, maldivesToday, monthOf } from '../../shared/utils/date-time';
+import { addMonths, formatBannerDate, maldivesToday, monthOf } from '../../shared/utils/date-time';
 import { valueOr } from '../../shared/utils/resource';
 import { AttendanceApi } from '../attendance/attendance-api';
 import { toAttendanceRow } from '../attendance/attendance-rows';
@@ -18,11 +18,7 @@ import { TodayAttendanceCard } from './today-attendance-card';
 import { VisaCard } from './visa-card';
 import { WelcomeCard } from '../onboarding/welcome-card';
 
-const NOON = 12;
-const EVENING = 17;
 const RECENT_DAYS = 4;
-
-export const greetingFor = (hour: number) => (hour < NOON ? 'Good morning' : hour < EVENING ? 'Good afternoon' : 'Good evening');
 
 const LINES: Partial<Record<AttendanceStatus, string>> = {
   present: 'You’re right on time. Here’s everything you need for the day.',
@@ -39,7 +35,7 @@ const DEFAULT_LINE = 'Here’s everything you need for the day.';
   imports: [AttendanceTable, EmployeeCard, Icon, LatestRequestCard, LeaveBalanceCard, ListSkeleton, NextHolidayCard, RouterLink, TodayAttendanceCard, VisaCard, WelcomeBanner, WelcomeCard],
   template: `
     @if (session.user(); as user) {
-      <app-welcome-banner [dateLabel]="dateLabel" [heading]="greeting + ', ' + firstName() + '.'" [line]="line()" />
+      <app-welcome-banner [dateLabel]="dateLabel" heading="Overview" [line]="line()" />
       <div class="employee-grid">
         <div class="main-column">
           <app-welcome-card />
@@ -51,7 +47,7 @@ const DEFAULT_LINE = 'Here’s everything you need for the day.';
           <section class="card recent-section">
             <div class="card-heading">
               <div>
-                <span class="eyebrow">THIS WEEK</span>
+                <span class="eyebrow">This week</span>
                 <h2>Recent attendance</h2>
               </div>
               <a routerLink="/attendance" class="text-link">View report <app-icon name="arrow" [size]="15" /></a>
@@ -84,9 +80,7 @@ export class DashboardPage {
   // The week can start last month, so the recent table needs both.
   private readonly lastMonth = this.api.month(() => addMonths(monthOf(this.todayDate), -1));
 
-  protected readonly greeting = greetingFor(maldivesHour());
-  protected readonly dateLabel = formatBannerDate(this.todayDate).toUpperCase();
-  protected readonly firstName = computed(() => this.session.user()?.fullName.split(' ')[0] ?? '');
+  protected readonly dateLabel = formatBannerDate(this.todayDate);
 
   private readonly days = computed(() => [...valueOr(this.lastMonth, []), ...valueOr(this.thisMonth, [])]);
   protected readonly today = computed(() => this.days().find(({ date }) => date === this.todayDate));

@@ -15,7 +15,7 @@ const FAILED = "That didn't save. Try again in a moment.";
   selector: 'app-plan-decision-form',
   imports: [FieldError, FormField, ModalHeading, PlanView],
   template: `
-    <app-modal-heading eyebrow="PERFORMANCE" [heading]="name() + '’s plan'" [intro]="step() === 'hr' ? 'Their HOD approved this. Approving makes it final, and they can be appraised.' : 'Approving passes it to HR. Sending it back lets them change it.'" />
+    <app-modal-heading eyebrow="Performance" [heading]="name() + '’s plan'" [intro]="step() === 'hr' ? 'Their HOD approved this. Approving makes it final, and they can be appraised.' : 'Approving passes it to HR. Sending it back lets them change it.'" />
     <app-plan-view [goals]="goals()" [entries]="entries()" />
     <form novalidate (submit)="decide($event, 'approved')">
       @if (isSendingBack()) {

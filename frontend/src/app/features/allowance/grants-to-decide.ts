@@ -16,7 +16,7 @@ import { AllowanceApi, money } from './allowance-api';
   imports: [Avatar, DeclineForm, Dialog, Icon, ListSkeleton, RouterLink],
   template: `
     <section class="card all-requests" data-testid="grants-to-decide">
-      <div class="card-heading"><div><span class="eyebrow">ALLOWANCES</span><h2>One-off grants</h2></div></div>
+      <div class="card-heading"><div><span class="eyebrow">Allowances</span><h2>One-off grants</h2></div></div>
       @if (waiting.error()) {
         <p class="attendance-off">Grants didn't load. Refresh the page to try again.</p>
       } @else if (waiting.isLoading() && list().length === 0) {
@@ -29,7 +29,7 @@ import { AllowanceApi, money } from './allowance-api';
               <a [routerLink]="['/hr/people', grant.employeeId]" class="person-cell"><strong>{{ grant.employeeName }}</strong></a>
               <span>From {{ grant.grantedByName }} · “{{ grant.reason }}”</span>
             </div>
-            <div><small>{{ grant.typeName.toUpperCase() }}</small><strong>{{ money(grant.amount, grant.currency) }}</strong></div>
+            <div><small>{{ grant.typeName }}</small><strong>{{ money(grant.amount, grant.currency) }}</strong></div>
             <div class="request-actions labeled">
               <button type="button" class="decline" [disabled]="decisions.busyId() === grant.id" (click)="declining.set(grant)" data-testid="reject"><app-icon name="x" [size]="16" /> Decline</button>
               <button type="button" class="approve" [disabled]="decisions.busyId() === grant.id" (click)="approve(grant)" data-testid="approve"><app-icon name="check" [size]="16" /> Approve</button>

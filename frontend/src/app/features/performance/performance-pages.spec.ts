@@ -168,7 +168,7 @@ describe('Performance pages', () => {
     it('opens on plans to approve, with a tab for each stage', async () => {
       const root = await render();
 
-      expect(texts(root, 'probation-row')).toEqual(['KM Kavya Menon Officer PROBATION ENDS 20 December 2026 Review']);
+      expect(texts(root, 'probation-row')).toEqual(['KM Kavya Menon Officer Probation ends 20 December 2026 Review']);
       expect(texts(root, 'team-appraisal-row')).toEqual(['RV Rohit Verma Coordinator Sent 11 Nov Review plan']);
       click(root, 'tab-appraise');
       expect(texts(root, 'team-appraisal-row')).toEqual(['AR Arjun Reddy Site Engineer Plan approved Appraise']);
@@ -280,7 +280,7 @@ describe('Performance pages', () => {
         'Arjun Reddy Operations Vikram Singh Waiting for HR Not yet Not yet Not yet',
         'Karan Mehta Operations Vikram Singh Approved 4, Exceeds expectations Promotion, 8% increment 12 Nov',
       ]);
-      expect(texts(root, 'probation-review')).toEqual(['Kavya Menon by Vikram Singh, 12 Nov OUTCOME Confirmed COMMENTS Settled in well']);
+      expect(texts(root, 'probation-review')).toEqual(['Kavya Menon by Vikram Singh, 12 Nov Outcome Confirmed Comments Settled in well']);
       expect(root.querySelector('app-cycle-form')).toBeNull();
     });
 
@@ -293,7 +293,7 @@ describe('Performance pages', () => {
 
     it('approves plans the HOD approved', async () => {
       const root = await render();
-      expect(texts(root, 'plan-for-hr-row')).toEqual(['Arjun Reddy Operations HOD APPROVED Vikram Singh, 11 Nov Review plan']);
+      expect(texts(root, 'plan-for-hr-row')).toEqual(['Arjun Reddy Operations HOD approved Vikram Singh, 11 Nov Review plan']);
 
       click(root, 'review-plan');
       click(root, 'approve-plan');

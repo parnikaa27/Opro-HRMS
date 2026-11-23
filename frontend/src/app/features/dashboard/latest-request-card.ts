@@ -24,7 +24,7 @@ const lastTouched = ({ decidedOn, appliedOn }: LeaveRequest) => decidedOn ?? app
     <section class="card approval-card" data-testid="latest-request">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">LATEST REQUEST</span>
+          <span class="eyebrow">Latest request</span>
           <h2>Leave approval</h2>
         </div>
       </div>

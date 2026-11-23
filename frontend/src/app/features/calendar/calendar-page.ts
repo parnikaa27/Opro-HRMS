@@ -8,7 +8,7 @@ import { valueOr } from '../../shared/utils/resource';
 import { HolidaysApi } from '../holidays/holidays-api';
 import { TeamApi, ViewScope } from '../team/team-api';
 
-const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAYS_PER_WEEK = 7;
 const UPCOMING_COUNT = 3;
 const MONTH_LETTERS = 3;
@@ -27,7 +27,7 @@ interface CalendarCell {
     <div class="page-view">
       <div class="page-title">
         <div>
-          <span class="eyebrow">COMPANY CALENDAR</span>
+          <span class="eyebrow">Company calendar</span>
           <h1>Holidays &amp; events</h1>
           <p>{{ showsTeamLeave() ? 'Public holidays, company dates and who ' + (scope() === 'company' ? 'at Opro' : 'on your team') + ' is away.' : 'Public holidays and important company dates in the Maldives.' }}</p>
         </div>
@@ -64,7 +64,7 @@ interface CalendarCell {
           <section class="card">
             <div class="card-heading">
               <div>
-                <span class="eyebrow">UPCOMING</span>
+                <span class="eyebrow">Upcoming</span>
                 <h2>Public holidays</h2>
               </div>
             </div>
@@ -148,7 +148,7 @@ export class CalendarPage {
 
   protected readonly company = COMPANY;
   protected readonly weekdays = WEEKDAYS;
-  protected readonly monthShort = ({ date }: Holiday) => formatShortDate(date).split(' ')[1].slice(0, MONTH_LETTERS).toUpperCase();
+  protected readonly monthShort = ({ date }: Holiday) => formatShortDate(date).split(' ')[1].slice(0, MONTH_LETTERS);
   protected readonly formatMonth = formatMonth;
   protected readonly formatWeekday = formatWeekday;
   protected readonly formatShortDate = formatShortDate;

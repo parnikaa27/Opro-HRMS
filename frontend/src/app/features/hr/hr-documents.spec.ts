@@ -134,7 +134,7 @@ describe('HR documents', () => {
     it('lists uploads waiting across Opro and checks them', async () => {
       const root = await render();
 
-      expect(texts(root, 'waiting-document')[0]).toContain('Arjun Reddy Passport copy · Submitted 2 days ago FILES Page 1 Page 2');
+      expect(texts(root, 'waiting-document')[0]).toContain('Arjun Reddy Passport copy · Submitted 2 days ago Files Page 1 Page 2');
       click(root, 'send-back');
       expect(text(root.querySelector('dialog[open]') as HTMLElement)).toContain('Send back Arjun’s passport copy?');
       fill(root, 'decision-note', 'Expired passport');

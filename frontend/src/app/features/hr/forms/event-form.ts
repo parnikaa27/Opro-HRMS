@@ -12,7 +12,7 @@ const MAX_NAME = 40;
   selector: 'app-event-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="COMPANY CALENDAR" [heading]="event() ? 'Edit event' : 'Add an event'" intro="Events show on everyone's calendar. Keep the name short, it has to fit a calendar square." />
+    <app-modal-heading eyebrow="Company calendar" [heading]="event() ? 'Edit event' : 'Add an event'" intro="Events show on everyone's calendar. Keep the name short, it has to fit a calendar square." />
     <form novalidate (submit)="save($event)">
       <div class="form-row">
         <label>Name <input [formField]="eventForm.name" placeholder="Office social" data-testid="event-name" aria-describedby="event-name-error" /></label>

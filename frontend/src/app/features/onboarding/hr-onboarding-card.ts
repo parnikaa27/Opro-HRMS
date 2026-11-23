@@ -19,7 +19,7 @@ const FAILED = "That didn't save. Try again in a moment.";
     @if (onboarding(); as current) {
       @if (!current.completedOn) {
         <section class="card card-pad" data-testid="hr-onboarding">
-          <div class="card-heading"><div><span class="eyebrow">ONBOARDING</span><h2>First weeks</h2></div><span class="card-note">{{ progress(current) }}</span></div>
+          <div class="card-heading"><div><span class="eyebrow">Onboarding</span><h2>First weeks</h2></div><span class="card-note">{{ progress(current) }}</span></div>
           @if (!isOwn()) {
             <form class="first-day-form" novalidate (submit)="saveFirstDay($event)">
               <div class="form-row">
@@ -39,7 +39,7 @@ const FAILED = "That didn't save. Try again in a moment.";
       }
     } @else if (!onboardingResource.isLoading() && !onboardingResource.error() && !isOwn() && isRecent()) {
       <section class="card card-pad" data-testid="hr-onboarding">
-        <div class="card-heading"><div><span class="eyebrow">ONBOARDING</span><h2>Not started</h2></div></div>
+        <div class="card-heading"><div><span class="eyebrow">Onboarding</span><h2>Not started</h2></div></div>
         <p class="card-text">They were added before onboarding was in the portal. Start it to give them HR's checklist.</p>
         <button type="button" class="secondary-button" [disabled]="isStarting()" (click)="start()" data-testid="start-onboarding">Start onboarding</button>
         @if (failure()) {

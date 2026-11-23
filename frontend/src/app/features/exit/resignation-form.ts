@@ -13,7 +13,7 @@ const MAX_REASON = 500;
   selector: 'app-resignation-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="LEAVING OPRO" heading="Resign" intro="Your HOD approves it first, then HR, who confirms your exit date. You can withdraw it while it waits." />
+    <app-modal-heading eyebrow="Leaving Opro" heading="Resign" intro="Your HOD approves it first, then HR, who confirms your exit date. You can withdraw it while it waits." />
     <form novalidate (submit)="save($event)">
       <label>Last day you'd like <input type="date" [min]="tomorrow" [formField]="resignForm.releaseOn" data-testid="resign-date" aria-describedby="resign-date-error" /></label>
       <app-field-error id="resign-date-error" [errors]="resignForm.releaseOn().errors()" [isTouched]="resignForm.releaseOn().touched()" />

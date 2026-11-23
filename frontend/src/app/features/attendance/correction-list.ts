@@ -20,7 +20,7 @@ import { fixCategoryLabel } from './fix-categories';
     <section class="card request-history">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">PUNCH FIXES</span>
+          <span class="eyebrow">Punch fixes</span>
           <h2>Fixes you asked for</h2>
         </div>
       </div>

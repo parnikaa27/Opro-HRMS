@@ -15,7 +15,7 @@ const MAX_ALLOWANCE = 1_000_000;
     <section class="card card-pad" data-testid="hr-flight-card">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">FLIGHT ALLOWANCE</span>
+          <span class="eyebrow">Flight allowance</span>
           <h2>Flights home</h2>
         </div>
       </div>

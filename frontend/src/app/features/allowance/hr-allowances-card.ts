@@ -16,7 +16,7 @@ import { MonthlyAllowanceForm } from './monthly-allowance-form';
   template: `
     <section class="card request-history" data-testid="hr-allowances">
       <div class="card-heading">
-        <div><span class="eyebrow">ON TOP OF PAY</span><h2>Allowances</h2></div>
+        <div><span class="eyebrow">On top of pay</span><h2>Allowances</h2></div>
         @if (!isOwn()) {
           <button type="button" class="secondary-button" (click)="editing.set('new')" data-testid="add-allowance">Add</button>
         }

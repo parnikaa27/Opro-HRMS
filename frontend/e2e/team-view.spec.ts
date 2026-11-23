@@ -3,7 +3,7 @@ import { expect, Page, test } from '@playwright/test';
 const signInAsManager = async (page: Page) => {
   await page.goto('/login');
   await page.getByTestId('login-as-OPR-0004').click();
-  await expect(page.getByTestId('greeting')).toBeVisible();
+  await expect(page.getByTestId('page-heading')).toBeVisible();
   await page.goto('/team');
 };
 

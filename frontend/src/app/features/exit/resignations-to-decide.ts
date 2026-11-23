@@ -20,7 +20,7 @@ import { ExitApi } from './exit-api';
   imports: [Avatar, DeclineForm, Dialog, FieldError, FormField, Icon, ListSkeleton, ModalHeading, RouterLink],
   template: `
     <section class="card all-requests" data-testid="resignations-to-decide">
-      <div class="card-heading"><div><span class="eyebrow">LEAVING OPRO</span><h2>Resignations</h2></div></div>
+      <div class="card-heading"><div><span class="eyebrow">Leaving Opro</span><h2>Resignations</h2></div></div>
       @if (waiting.error()) {
         <p class="attendance-off">Resignations didn't load. Refresh the page to try again.</p>
       } @else if (waiting.isLoading() && list().length === 0) {
@@ -33,7 +33,7 @@ import { ExitApi } from './exit-api';
               <a [routerLink]="['/hr/people', resignation.employeeId]" class="person-cell"><strong>{{ resignation.employeeName }}</strong></a>
               <span>{{ resignation.hodApprovedByName ? 'Approved by ' + resignation.hodApprovedByName : 'No HOD to ask' }} · “{{ resignation.reason }}”</span>
             </div>
-            <div><small>LAST DAY ASKED FOR</small><strong>{{ formatFullDate(resignation.releaseOn) }}</strong></div>
+            <div><small>Last day asked for</small><strong>{{ formatFullDate(resignation.releaseOn) }}</strong></div>
             <div class="request-actions labeled">
               <button type="button" class="decline" [disabled]="decisions.busyId() === resignation.id" (click)="declining.set(resignation)" data-testid="reject"><app-icon name="x" [size]="16" /> Decline</button>
               <button type="button" class="approve" [disabled]="decisions.busyId() === resignation.id" (click)="open(resignation)" data-testid="approve"><app-icon name="check" [size]="16" /> Approve</button>
@@ -50,7 +50,7 @@ import { ExitApi } from './exit-api';
 
     <app-dialog heading="Approve resignation" [isOpen]="approving() !== undefined" (isOpenChange)="$event || approving.set(undefined)">
       @if (approving(); as resignation) {
-        <app-modal-heading eyebrow="LEAVING OPRO" [heading]="'Accept ' + resignation.employeeName + '’s resignation?'" intro="They hear their exit date and what to hand back. The HOD hears the date too." />
+        <app-modal-heading eyebrow="Leaving Opro" [heading]="'Accept ' + resignation.employeeName + '’s resignation?'" intro="They hear their exit date and what to hand back. The HOD hears the date too." />
         <form novalidate (submit)="approve($event, resignation)">
           <label>Exit date <input type="date" [min]="today" [formField]="exitForm.exitOn" data-testid="exit-date-input" aria-describedby="exit-date-error" /></label>
           <app-field-error id="exit-date-error" [errors]="exitForm.exitOn().errors()" [isTouched]="exitForm.exitOn().touched()" />

@@ -12,11 +12,11 @@ const record = (employeeId: string, date: string, status: AttendanceDay['status'
   employeeId, date, status, punches: status === 'present' || status === 'late' ? [{ at: `${date}T09:00:00+05:00`, direction: 'in' }] : [], workedMinutes: 0, overtimeMinutes: 0,
 });
 
-const VISA = { workPermitNumber: 'W', visaNumber: 'V', passportLast4: '1', visaIssuedOn: '2024-11-03', visaExpiry: '2026-11-02', passportExpiry: '2026-12-01' };
+const Visa = { workPermitNumber: 'W', visaNumber: 'V', passportLast4: '1', visaIssuedOn: '2024-11-03', visaExpiry: '2026-11-02', passportExpiry: '2026-12-01' };
 const MEMBERS = [
   { ...employee({ id: 'B', fullName: 'Priya Nair' }), today: today('late', '09:30') },
   { ...employee({ id: 'A', fullName: 'Karan Mehta' }), today: today('present', '08:50') },
-  { ...employee({ id: 'C', fullName: 'Rohit Verma', visa: VISA }), today: today('on-leave') },
+  { ...employee({ id: 'C', fullName: 'Rohit Verma', visa: Visa }), today: today('on-leave') },
 ];
 const PENDING = [
   { id: 'LR-2', employeeId: 'B', employeeName: 'Priya Nair', type: 'annual', from: '2026-12-20', to: '2026-12-24', days: 3, reason: 'Home', status: 'pending', appliedOn: '2026-11-11' },
@@ -56,7 +56,7 @@ describe('TeamOverviewPage', () => {
   it('greets the manager and sums up the team', async () => {
     const root = await render();
 
-    expect(text(root.querySelector('[data-testid=greeting]') as HTMLElement)).toBe('Good morning, Vikram.');
+    expect(text(root.querySelector('[data-testid=page-heading]') as HTMLElement)).toBe('Team overview');
     expect(text(root.querySelector('[data-testid=welcome-line]') as HTMLElement)).toBe('Your team is looking good today. 2 of 3 people are checked in.');
     expect([stat(root, 'members'), stat(root, 'pending'), stat(root, 'attendance'), stat(root, 'away')]).toEqual(['3', '3', '100%', '1']);
     expect(text(root)).toContain('+50 pts on last month');

@@ -135,7 +135,7 @@ describe('HR record', () => {
       await respond(http, { '/api/hr/bank-accounts': [BANK] });
       const root = fixture.nativeElement as HTMLElement;
 
-      expect(texts(root, 'waiting-bank')[0]).toContain('Priya Nair Maldives Islamic Bank · Submitted 2 days ago ACCOUNT Priya Nair, 9001234567 USD');
+      expect(texts(root, 'waiting-bank')[0]).toContain('Priya Nair Maldives Islamic Bank · Submitted 2 days ago Account Priya Nair, 9001234567 USD');
       click(root, 'bank-verify');
       expect(http.expectOne('/api/hr/employees/OPR-0015/bank-account/decision').request.body).toEqual({ decision: 'verified' });
     });

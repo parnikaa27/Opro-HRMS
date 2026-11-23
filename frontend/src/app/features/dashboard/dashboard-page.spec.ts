@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { Session } from '../../core/session';
 import { AttendanceDay } from '../../models/attendance';
 import { employee, fail, NOW, respond, setupHttp, text, texts, TODAY } from '../../../testing/fixtures';
-import { DashboardPage, greetingFor } from './dashboard-page';
+import { DashboardPage } from './dashboard-page';
 
 const day = (date: string, status: AttendanceDay['status'], punches: AttendanceDay['punches'] = []): AttendanceDay => ({
   employeeId: 'OPR-0018', date, status, punches, workedMinutes: punches.length ? 480 : 0, overtimeMinutes: 0,
@@ -31,8 +31,8 @@ describe('DashboardPage', () => {
   it('greets by first name with the date and a line that fits the day', async () => {
     const root = await render([day(TODAY, 'late', [punch(TODAY, '09:30', 'in')])]);
 
-    expect(text(root.querySelector('[data-testid=greeting]') as HTMLElement)).toBe('Good morning, Arjun.');
-    expect(text(root.querySelector('.welcome p') as HTMLElement)).toBe('THURSDAY, 12 NOVEMBER');
+    expect(text(root.querySelector('[data-testid=page-heading]') as HTMLElement)).toBe('Overview');
+    expect(text(root.querySelector('.welcome p') as HTMLElement)).toBe('Thursday, 12 November');
     expect(text(root.querySelector('[data-testid=welcome-line]') as HTMLElement)).toBe('You came in a little late today. Here’s everything you need for the day.');
   });
 
@@ -60,14 +60,6 @@ describe('DashboardPage', () => {
     const root = await render([]);
 
     expect(text(root.querySelector('[data-testid=welcome-line]') as HTMLElement)).toBe('Here’s everything you need for the day.');
-  });
-
-  it.each([
-    [9, 'Good morning'],
-    [14, 'Good afternoon'],
-    [20, 'Good evening'],
-  ])('says the right greeting at %i:00', (hour, greeting) => {
-    expect(greetingFor(hour)).toBe(greeting);
   });
 
   it('says so when attendance fails to load, rather than claiming no punches', async () => {

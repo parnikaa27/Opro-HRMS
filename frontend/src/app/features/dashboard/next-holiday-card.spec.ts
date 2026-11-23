@@ -29,7 +29,7 @@ describe('NextHolidayCard', () => {
       [{ date: '2027-01-02', name: 'Saturday holiday', isTentative: false }],
     );
 
-    expect(text(root.querySelector('[data-testid=next-holiday]') as HTMLElement)).toBe('01 DEC Made up Tuesday Tuesday · Tentative');
+    expect(text(root.querySelector('[data-testid=next-holiday]') as HTMLElement)).toBe('01 Dec Made up Tuesday Tuesday · Tentative');
     expect(text(root.querySelector('.holiday-countdown') as HTMLElement)).toBe('Your next long weekend is in 50 days');
   });
 

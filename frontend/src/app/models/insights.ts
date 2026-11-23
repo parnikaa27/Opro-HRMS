@@ -25,7 +25,7 @@ export interface PersonEvent {
 export interface Dashboard {
   today: string;
   workforce: { total: number; joiners: number; leavers: number; growthPercent: number; attritionPercent: number; retentionPercent: number };
-  presence: { present: number; late: number; absent: number; onLeave: number; fromHome: number; atResort: number };
+  presence: { present: number; late: number; notInYet: number; absent: number; onLeave: number; fromHome: number; atResort: number };
   month: { month: string; attendancePercent: number; lateCount: number; onTimePercent: number };
   mix: Record<'origin' | 'gender' | 'employmentType' | 'age' | 'department' | 'nationality', Share[]>;
   leave: { pending: number; annualUsedPercent: number; sickByMonth: { month: string; days: number }[] };

@@ -12,7 +12,7 @@ import { OnboardingChecklist } from './onboarding-checklist';
     @if (onboarding(); as current) {
       <section class="card card-pad" data-testid="welcome-card">
         <div class="card-heading">
-          <div><span class="eyebrow">WELCOME TO OPRO</span><h2>Your first weeks</h2></div>
+          <div><span class="eyebrow">Welcome to Opro</span><h2>Your first weeks</h2></div>
           <span class="card-note" data-testid="onboarding-progress">{{ progress(current) }}</span>
         </div>
         @if (current.firstDayPlace || current.firstDayTime) {

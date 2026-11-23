@@ -14,7 +14,6 @@ import {
   formatDuration,
   formatFullDate,
   formatShortDate,
-  maldivesHour,
   maldivesToday,
   minutesWorkedSoFar,
   monthOf,
@@ -23,11 +22,10 @@ import {
 } from './date-time';
 
 describe('date and time helpers', () => {
-  it('reads today and the hour in Maldives time, not the machine time zone', () => {
+  it('reads today in Maldives time, not the machine time zone', () => {
     const lateEveningUtc = new Date('2026-11-12T20:00:00Z');
 
     expect(maldivesToday(lateEveningUtc)).toBe('2026-11-13');
-    expect(maldivesHour(lateEveningUtc)).toBe(1);
   });
 
   it('formats times and dates the way people read them', () => {

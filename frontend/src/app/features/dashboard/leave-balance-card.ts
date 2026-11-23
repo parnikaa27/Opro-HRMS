@@ -16,7 +16,7 @@ const available = ({ entitled, taken, pending }: LeaveBalance) => entitled - tak
     <section class="card balance-card" [attr.aria-busy]="balances.isLoading()">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">LEAVE BALANCE</span>
+          <span class="eyebrow">Leave balance</span>
           <h2>Your time off</h2>
         </div>
         <a routerLink="/leave" class="more" aria-label="All leave balances"><app-icon name="more" /></a>

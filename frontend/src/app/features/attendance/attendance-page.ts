@@ -24,7 +24,7 @@ import { SummaryRow } from './summary-row';
     <div class="page-view">
       <div class="page-title">
         <div>
-          <span class="eyebrow">ATTENDANCE RECORDS</span>
+          <span class="eyebrow">Attendance records</span>
           <h1>My attendance</h1>
           <p>Review your punches, work hours and monthly attendance record.</p>
         </div>
@@ -85,7 +85,7 @@ export class AttendancePage {
   protected readonly today = maldivesToday();
   protected readonly currentMonth = monthOf(this.today);
   protected readonly month = signal(this.currentMonth);
-  protected readonly monthLabel = computed(() => formatMonth(this.month()).toUpperCase());
+  protected readonly monthLabel = computed(() => formatMonth(this.month()));
   private readonly overtime = this.api.overtime();
   protected readonly monthOvertime = computed(() => valueOr(this.overtime, []).filter(({ date }) => date.startsWith(this.month())));
 

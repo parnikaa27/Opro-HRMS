@@ -14,7 +14,7 @@ const SMALLEST_RATE = 0.01;
     <section class="card card-pad" data-testid="rates-card">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">FLIGHT ALLOWANCE</span>
+          <span class="eyebrow">Flight allowance</span>
           <h2>Exchange rates</h2>
         </div>
       </div>

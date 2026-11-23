@@ -17,7 +17,7 @@ const MAX_DAYS = 90;
   imports: [ConfirmButton, FieldError, FormField, ListSkeleton],
   template: `
     <section class="card request-history" data-testid="onboarding-tasks">
-      <div class="card-heading"><div><span class="eyebrow">NEW JOINERS</span><h2>Onboarding tasks</h2></div></div>
+      <div class="card-heading"><div><span class="eyebrow">New joiners</span><h2>Onboarding tasks</h2></div></div>
       @if (tasks.error()) {
         <p class="attendance-off">The list didn't load. Refresh the page to try again.</p>
       } @else if (tasks.isLoading() && list().length === 0) {

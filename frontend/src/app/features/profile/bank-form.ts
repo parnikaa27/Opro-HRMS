@@ -15,7 +15,7 @@ const FAILED = "That didn't save. Check your connection and try again.";
   selector: 'app-bank-form',
   imports: [FieldError, FormField, ModalHeading],
   template: `
-    <app-modal-heading eyebrow="BANK DETAILS" heading="Where your pay goes" intro="HR checks these against your bank letter before payroll uses them. Only you and HR can see them." />
+    <app-modal-heading eyebrow="Bank details" heading="Where your pay goes" intro="HR checks these against your bank letter before payroll uses them. Only you and HR can see them." />
     <form novalidate (submit)="save($event)">
       <label>Bank <input [formField]="bankForm.bankName" list="banks" placeholder="Bank of Maldives" data-testid="bank-name" aria-describedby="bank-name-error" /></label>
       <datalist id="banks">
