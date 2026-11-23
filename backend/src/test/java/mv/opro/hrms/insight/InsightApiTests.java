@@ -42,6 +42,9 @@ class InsightApiTests {
         assertThat(JsonPath.<String>read(dashboard, "$.today")).isEqualTo("2026-11-12");
         assertThat(JsonPath.<Integer>read(dashboard, "$.workforce.total")).isEqualTo(8);
         assertThat(JsonPath.<Integer>read(dashboard, "$.workforce.leavers")).isEqualTo(1);
+        int accountedFor = List.of("present", "notInYet", "absent", "onLeave").stream()
+                .mapToInt(figure -> JsonPath.<Integer>read(dashboard, "$.presence." + figure)).sum();
+        assertThat(accountedFor).as("everyone at work today is in, not in yet, absent or on leave").isEqualTo(8);
         assertThat(JsonPath.<List<String>>read(dashboard, "$.mix.origin[*].label")).contains("Expatriates", "Maldivians");
         assertThat(JsonPath.<List<Integer>>read(dashboard, "$.compliance.papers[?(@.kind == 'visa')].expiring")).containsExactly(1);
         assertThat(JsonPath.<Integer>read(dashboard, "$.compliance.quotaUsed")).isPositive();

@@ -402,8 +402,9 @@ public class LeaveService {
             BigDecimal available = balance.entitled().subtract(balance.taken()).subtract(balance.pending())
                     .add(givesBack ? related.getDays() : BigDecimal.ZERO);
             if (days.compareTo(available) > 0) {
-                String left = plural(available) + " of " + type.getName().toLowerCase() + " left.";
-                throw refused(HttpStatus.CONFLICT, "You only have " + left);
+                String name = type.getName().toLowerCase();
+                throw refused(HttpStatus.CONFLICT, available.signum() > 0 ? "You only have " + plural(available) + " of " + name + " left."
+                        : "You've no " + name + " left.");
             }
         }
         return new Checked(type, days);
@@ -530,7 +531,9 @@ public class LeaveService {
 
     private Balance balance(String employeeId, LeaveType type, LeaveEntitlement entitlement, LeaveYear year) {
         BigDecimal carried = carriedInto(employeeId, type, year, CARRY_YEARS_BACK);
-        BigDecimal pending = requests.daysIn(employeeId, type.getCode(), LeaveRequest.PENDING, year.start(), year.end());
+        List<LeaveRequest> waiting = requests.findByEmployeeIdAndTypeAndStatusAndFromDateBetween(employeeId, type.getCode(), LeaveRequest.PENDING,
+                year.start(), year.end());
+        BigDecimal pending = sum(waiting).subtract(waiting.stream().map(request -> heldTwice(request, type)).reduce(BigDecimal.ZERO, BigDecimal::add));
         List<LeaveRequest> approved = requests.findByEmployeeIdAndTypeAndStatusAndFromDateBetween(employeeId, type.getCode(), LeaveRequest.APPROVED,
                 year.start(), year.end());
         return new Balance(type.getCode(), entitlement.getEntitled().add(carried), taken(employeeId, entitlement, year), pending, carried,
@@ -562,6 +565,17 @@ public class LeaveService {
                         ? WorkingDays.count(request.getFromDate(), today, request.getHalfDay() != null, holidays.datesBetween(request.getFromDate(), today))
                         : request.getDays())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    // A waiting amendment and the request it amends: approving one cancels the other, so together they hold only the
+    // longer of the two. These are the days counted twice.
+    private BigDecimal heldTwice(LeaveRequest request, LeaveType type) {
+        if (!LeaveRequest.AMENDED.equals(request.getKind())) {
+            return BigDecimal.ZERO;
+        }
+        return requests.findById(request.getRelatedRequestId())
+                .filter(original -> (original.isPending() || original.isApproved()) && original.getType().equals(type.getCode()))
+                .map(original -> original.getDays().min(request.getDays())).orElse(BigDecimal.ZERO);
     }
 
     private static BigDecimal sum(List<LeaveRequest> requests) {

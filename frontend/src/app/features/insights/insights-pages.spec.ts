@@ -11,7 +11,7 @@ const share = (label: string, count: number, percent: number) => ({ label, count
 const DASHBOARD: Dashboard = {
   today: '2026-11-12',
   workforce: { total: 2, joiners: 1, leavers: 0, growthPercent: 100, attritionPercent: 0, retentionPercent: 100 },
-  presence: { present: 1, late: 0, absent: 0, onLeave: 0, fromHome: 0, atResort: 0 },
+  presence: { present: 1, late: 0, notInYet: 2, absent: 0, onLeave: 0, fromHome: 0, atResort: 0 },
   month: { month: '2026-11', attendancePercent: 90, lateCount: 2, onTimePercent: 80 },
   mix: {
     origin: [share('Expatriates', 1, 50), share('Maldivians', 1, 50)],
@@ -81,6 +81,7 @@ describe('insights pages', () => {
       const root = await render();
 
       expect([texts(root, 'kpi-total'), texts(root, 'kpi-joiners'), texts(root, 'kpi-leavers'), texts(root, 'kpi-in')]).toEqual([['2'], ['1'], ['0'], ['1']]);
+      expect(texts(root, 'not-in-yet')).toEqual(['2']);
       expect(texts(root.querySelector('[data-testid=workforce]') as HTMLElement, 'breakdown-row').slice(0, 2)).toEqual(['Expatriates 1 50%', 'Maldivians 1 50%']);
       expect(text(root.querySelector('[data-testid=leave]') as HTMLElement)).toContain('Annual leave used 50%');
       expect(text(root.querySelector('[data-testid=performance]') as HTMLElement)).toBe(

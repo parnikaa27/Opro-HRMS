@@ -78,6 +78,7 @@ const PERCENT = 100;
             <dl class="insight-figures">
               <div><dt>In</dt><dd>{{ data.presence.present }}</dd></div>
               <div><dt>Late</dt><dd>{{ data.presence.late }}</dd></div>
+              <div><dt>Not in yet</dt><dd data-testid="not-in-yet">{{ data.presence.notInYet }}</dd></div>
               <div><dt>Absent</dt><dd>{{ data.presence.absent }}</dd></div>
               <div><dt>On leave</dt><dd>{{ data.presence.onLeave }}</dd></div>
               <div><dt>From home</dt><dd>{{ data.presence.fromHome }}</dd></div>

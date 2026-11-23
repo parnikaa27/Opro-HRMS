@@ -26,6 +26,19 @@ Walked through by hand as Arjun (expatriate employee), Vikram (HOD), Ananya (HR)
 **Missing for go live**
 - [ ] Importing people in bulk, with leave already used this year, visas and bank details, from HR's current spreadsheets. Adding everyone one at a time isn't realistic.
 
+## Found testing every journey (23 November)
+
+All suites pass (435 unit, 227 backend, 56 e2e on the mock and on Spring). Then the journeys with no e2e test were walked against Spring as each role, with 51 checks on permissions, punching at a resort, amended and extended leave, withdrawing a resignation, a plan sent back, exchange rates and insurance.
+
+**Bugs**: both fixed on 23 November (an amendment and its request now hold only the longer of the two; the dashboard counts who isn't in yet).
+
+**Missing**
+- [ ] HR has no "who's away" calendar. HODs and super admins do.
+- [ ] Work permit expiry has no date of its own; the work visa expiry stands in for it. Check with HR that this is how Opro's permits work.
+- [ ] "Mvr has to be more than 0.": field names that are acronyms (MVR, INR) read wrongly in server messages.
+
+**Journeys with no e2e test** (the backend tests cover the rules): compensatory off from a Friday punch to booking it, punching at a resort, amended and extended leave, withdrawing a resignation, a plan sent back, HR opening and closing a cycle, exchange rates, medical insurance.
+
 ## From the meeting with Madhu (19 November)
 
 Being built in batches, one PR each. Leave, documents, exit, the performance changes, allowances and onboarding are done (see Leave below, and Documents, Leaving Opro, Performance, Allowances and Onboarding in CLAUDE.md). Still to come:

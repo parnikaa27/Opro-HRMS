@@ -11,6 +11,7 @@
   "presence": {
     "present": 9,
     "late": 1,
+    "notInYet": 0,
     "absent": 0,
     "onLeave": 0,
     "fromHome": 1,
